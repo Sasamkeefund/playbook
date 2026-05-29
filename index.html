@@ -146,8 +146,7 @@ body { font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; backgrou
 
   <div class="header">
     <div class="header-left">
-      <h1>S1 · 順勢交易</h1>
-      <div class="sub">打入代號，即刻分析</div>
+      <h1>S1</h1>
     </div>
     <div class="header-right">
       <div style="font-size:11px;color:var(--text3)" id="dateDisplay"></div>
@@ -318,59 +317,92 @@ function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
   var offset = closes.length - ema20arr.length;
   var n = ema20arr.length;
 
-  // Find current streak (days above EMA20 from end)
-  var currentStreak = 0;
-  for (var i=n-1; i>=0; i--) {
-    if (closes[i+offset] > ema20arr[i]) currentStreak++;
-    else break;
-  }
-
-  // Find last fake breakout: look backwards for days below EMA20
-  var daysBelowEMA = 0;
-  var fbLowIdx = -1, fbLow = Infinity;
-  var fbStartIdx = -1;
-
-  if (currentStreak === 0) {
-    // Currently below EMA20 - count days below
-    for (var i=n-1; i>=0; i--) {
-      if (closes[i+offset] < ema20arr[i]) {
-        daysBelowEMA++;
-        if (closes[i+offset] < fbLow) { fbLow = closes[i+offset]; fbLowIdx = i; }
-      } else break;
-    }
-    fbStartIdx = n-1-daysBelowEMA;
-  }
-
-  // Find previous streak before last breakout
-  var prevStreak = 0;
-  var searchFrom = currentStreak > 0 ? n-1-currentStreak : n-1-daysBelowEMA;
-  for (var i=searchFrom; i>=0; i--) {
-    if (closes[i+offset] > ema20arr[i]) prevStreak++;
-    else break;
-  }
-
-  // Format dates
   function fmtDate(ts) {
     if (!ts) return '—';
     var d = new Date(ts*1000);
-    return (d.getMonth()+1)+'月'+d.getDate()+'日';
+    return (d.getMonth()+1) + '月' + d.getDate() + '日';
   }
 
-  var streakStartTs = currentStreak > 0 && timestamps ? timestamps[timestamps.length-currentStreak] : null;
-  var fbDate = daysBelowEMA > 0 && timestamps ? fmtDate(timestamps[timestamps.length-daysBelowEMA]) : null;
-  var prevStreakStart = prevStreak > 0 && timestamps ? fmtDate(timestamps[timestamps.length-currentStreak-daysBelowEMA-prevStreak]) : null;
-  var prevStreakEnd = prevStreak > 0 && timestamps ? fmtDate(timestamps[timestamps.length-currentStreak-daysBelowEMA-1]) : null;
+  // Count current streak (above or below EMA20 from end)
+  var currentStreak = 0;
+  var daysBelowEMA = 0;
+  var aboveNow = closes[closes.length-1] > ema20arr[n-1];
 
-  return {
-    currentStreak: currentStreak,
-    prevStreak: prevStreak,
-    daysBelowEMA: daysBelowEMA,
-    fbLow: fbLow < Infinity ? fbLow : null,
-    fbDate: fbDate,
-    prevStreakStart: prevStreakStart,
-    prevStreakEnd: prevStreakEnd,
-    streakStartDate: streakStartTs ? fmtDate(streakStartTs) : null
-  };
+  if (aboveNow) {
+    for (var i=n-1; i>=0; i--) {
+      if (closes[i+offset] > ema20arr[i]) currentStreak++;
+      else break;
+    }
+  } else {
+    for (var i=n-1; i>=0; i--) {
+      if (closes[i+offset] < ema20arr[i]) daysBelowEMA++;
+      else break;
+    }
+  }
+
+  // Find fake breakout date (last day before current streak started, if above)
+  // or first day below EMA20 in current below-streak
+  var fbDate = null;
+  var fbLow = null;
+
+  if (aboveNow && currentStreak < n) {
+    // Find the below-EMA20 period just before current streak
+    var belowStart = n - 1 - currentStreak;
+    var belowCount = 0;
+    var lowPrice = Infinity;
+    for (var i=belowStart; i>=0; i--) {
+      if (closes[i+offset] < ema20arr[i]) {
+        belowCount++;
+        if (closes[i+offset] < lowPrice) lowPrice = closes[i+offset];
+      } else break;
+    }
+    if (belowCount > 0 && timestamps) {
+      fbDate = fmtDate(timestamps[n-1-currentStreak-belowCount+offset]);
+      fbLow = lowPrice;
+    }
+
+    // Find previous streak before the below period
+    var prevStreak = 0;
+    var searchFrom = belowStart - belowCount;
+    for (var i=searchFrom; i>=0; i--) {
+      if (closes[i+offset] > ema20arr[i]) prevStreak++;
+      else break;
+    }
+
+    return {
+      currentStreak: currentStreak,
+      prevStreak: prevStreak,
+      daysBelowEMA: 0,
+      fbLow: fbLow,
+      fbDate: fbDate,
+      streakStartDate: timestamps ? fmtDate(timestamps[timestamps.length-currentStreak]) : null
+    };
+  } else {
+    // Currently below EMA20
+    var fbStartIdx = n - daysBelowEMA;
+    var lowPrice = Infinity;
+    for (var i=fbStartIdx; i<n; i++) {
+      if (closes[i+offset] < lowPrice) lowPrice = closes[i+offset];
+    }
+    fbDate = timestamps ? fmtDate(timestamps[fbStartIdx+offset]) : null;
+    fbLow = lowPrice < Infinity ? lowPrice : null;
+
+    // Previous streak before this below period
+    var prevStreak = 0;
+    for (var i=fbStartIdx-1; i>=0; i--) {
+      if (closes[i+offset] > ema20arr[i]) prevStreak++;
+      else break;
+    }
+
+    return {
+      currentStreak: 0,
+      prevStreak: prevStreak,
+      daysBelowEMA: daysBelowEMA,
+      fbLow: fbLow,
+      fbDate: fbDate,
+      streakStartDate: null
+    };
+  }
 }
 
 function analyzeS1(d) {
@@ -435,18 +467,21 @@ function renderCard(d, s) {
 
   // Previous streak info
   var prevStreakHtml = '';
-  if (si.prevStreak > 0) {
+  if (si.currentStreak > 0) {
+    // Currently above EMA20 - show streak history
+    var streakColor = si.currentStreak >= 7 ? 'green' : si.currentStreak >= 3 ? 'orange' : 'red';
     prevStreakHtml = '<div class="fb-info">' +
-      '<div class="fb-cell"><div class="fb-label">跌穿前連續</div><div class="fb-val ' + (si.prevStreak>=7?'green':si.prevStreak>=3?'orange':'red') + '">' + si.prevStreak + '日</div></div>' +
-      (si.fbDate ? '<div class="fb-cell"><div class="fb-label">假突破日</div><div class="fb-val orange">' + si.fbDate + '</div></div>' : '<div class="fb-cell"><div class="fb-label">假突破</div><div class="fb-val orange">進行中</div></div>') +
-      (si.fbLow ? '<div class="fb-cell"><div class="fb-label">假突破最低</div><div class="fb-val red">$' + si.fbLow.toFixed(2) + '</div></div>' : '<div class="fb-cell"><div class="fb-label">目前最低</div><div class="fb-val">—</div></div>') +
-      '</div>';
-  } else if (si.currentStreak > 0 && si.streakStartDate) {
+      '<div class="fb-cell"><div class="fb-label">假突破前連續</div><div class="fb-val ' + (si.prevStreak>=7?'green':si.prevStreak>=3?'orange':'red') + '">' + (si.prevStreak > 0 ? si.prevStreak+'日' : '—') + '</div></div>' +
+      '<div class="fb-cell"><div class="fb-label">假突破日</div><div class="fb-val orange">' + (si.fbDate || '—') + '</div></div>' +
+      '<div class="fb-cell"><div class="fb-label">升返後連續</div><div class="fb-val ' + streakColor + '">' + si.currentStreak + '日</div></div>' +
+    '</div>';
+  } else if (si.daysBelowEMA > 0) {
+    // Currently below EMA20 - fake breakout in progress
     prevStreakHtml = '<div class="fb-info">' +
-      '<div class="fb-cell"><div class="fb-label">連續開始</div><div class="fb-val blue">' + si.streakStartDate + '</div></div>' +
-      '<div class="fb-cell"><div class="fb-label">假突破</div><div class="fb-val orange">等緊...</div></div>' +
-      '<div class="fb-cell"><div class="fb-label">Set Alert</div><div class="fb-val green">$' + d.ema20.toFixed(2) + '</div></div>' +
-      '</div>';
+      '<div class="fb-cell"><div class="fb-label">假突破前連續</div><div class="fb-val ' + (si.prevStreak>=7?'green':si.prevStreak>=3?'orange':'red') + '">' + (si.prevStreak > 0 ? si.prevStreak+'日' : '—') + '</div></div>' +
+      '<div class="fb-cell"><div class="fb-label">假突破日</div><div class="fb-val orange">' + (si.fbDate || '進行中') + '</div></div>' +
+      '<div class="fb-cell"><div class="fb-label">跌穿已</div><div class="fb-val red">' + si.daysBelowEMA + '日</div></div>' +
+    '</div>';
   }
 
   function tick(v) { return v ? '<span class="tick-ok">✓</span>' : '<span class="tick-none">—</span>'; }
@@ -456,7 +491,7 @@ function renderCard(d, s) {
 
   return '<div class="stock-card ' + cardClass + '" id="card-' + d.ticker + '">' +
 
-    '<div class="pb-row" onclick="showChart(\'' + d.ticker + '\')" style="cursor:pointer">' +
+    '<div class="pb-row" onclick="showChart(\'' + d.ticker + '\')" style="cursor:pointer" title="撳開睇圖">' +
       '<div><div class="pb-ticker">' + d.ticker + '</div></div>' +
       '<div><span class="pb-score ' + (s.pbColor==='green'?'badge-green':s.pbColor==='orange'?'badge-orange':'badge-red') + '">' + s.pbScore + '</span></div>' +
       '<div class="pb-kv">3M ' + d.perf3m.toFixed(1) + '%<br>EMA200' + (d.ema200slope>0?'↑':'↓') + '</div>' +
@@ -505,7 +540,6 @@ async function analyze() {
   results.innerHTML = '<div class="loading"><div class="spinner"></div><br>分析緊 ' + tickers.join(', ') + '...</div>';
   document.getElementById('chartSection').style.display = 'none';
   allData = {};
-
   var cards = [];
   var chartTabs = [];
   for (var i=0; i<tickers.length; i++) {
@@ -532,11 +566,23 @@ async function analyze() {
 }
 
 function showChart(ticker, tabEl) {
+  var cs = document.getElementById('chartSection');
+  if (currentTicker === ticker && cs.style.display !== 'none') {
+    cs.style.display = 'none';
+    currentTicker = '';
+    return;
+  }
   currentTicker = ticker;
   if (tabEl) {
     document.querySelectorAll('.chart-tab').forEach(function(t){ t.classList.remove('active'); });
     tabEl.classList.add('active');
+  } else {
+    document.querySelectorAll('.chart-tab').forEach(function(t){
+      if (t.textContent.trim() === ticker) t.classList.add('active');
+      else t.classList.remove('active');
+    });
   }
+  cs.style.display = 'block';
   updateChart();
 }
 
@@ -552,9 +598,9 @@ function updateChart() {
   var src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(currentTicker) +
     '&interval=' + currentTF +
     '&theme=dark&style=1&locale=en&toolbar_bg=%230b0d13' +
-    '&studies=MASimple%40tv-basicstudies%2CMASimple%40tv-basicstudies%2CMASimple%40tv-basicstudies' +
-    '&studies_overrides=%7B%22ma_length_1%22%3A20%2C%22ma_length_2%22%3A50%2C%22ma_length_3%22%3A200%7D' +
-    '&hide_side_toolbar=1&allow_symbol_change=0';
+    '&studies=MAExp%40tv-basicstudies%2CMAExp%40tv-basicstudies%2CMAExp%40tv-basicstudies' +
+    '&studies_overrides=%7B%22moving+average+exponential.length%22%3A20%2C%22moving+average+exponential.0.length%22%3A50%2C%22moving+average+exponential.1.length%22%3A200%7D' +
+    '&hide_side_toolbar=1&allow_symbol_change=0&save_image=0';
   document.getElementById('chartFrame').src = src;
   document.getElementById('tvLink').href = 'https://www.tradingview.com/chart/?symbol=' + currentTicker;
   document.getElementById('tvLink').textContent = '在 TradingView 開啟 ' + currentTicker + ' →';
