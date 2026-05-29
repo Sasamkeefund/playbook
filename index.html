@@ -242,9 +242,16 @@ async function fetchData(ticker) {
   var price = result.meta.regularMarketPrice;
   var prevClose = result.meta.chartPreviousClose;
 
-  // Filter nulls
-  var validCloses = closes.filter(function(c){return c!==null;});
-  var validVols = volumes.filter(function(v){return v!==null;});
+  // Filter nulls (keep timestamps in sync with closes)
+  var validCloses = [], validVols = [], validTimestamps = [];
+  for (var i = 0; i < closes.length; i++) {
+    if (closes[i] !== null && closes[i] !== undefined) {
+      validCloses.push(closes[i]);
+      validVols.push(volumes[i] !== null && volumes[i] !== undefined ? volumes[i] : 0);
+      if (timestamps) validTimestamps.push(timestamps[i]);
+    }
+  }
+  timestamps = validTimestamps.length > 0 ? validTimestamps : timestamps;
 
   // EMA calculations
   var ema20arr = calcEMAArr(validCloses, 20);
