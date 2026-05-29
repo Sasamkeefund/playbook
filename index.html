@@ -211,65 +211,29 @@ function calcEMAArr(arr, period) {
 }
 
 // Fetch data
-async function fetchWithTimeout(url, ms) {
-  var controller = new AbortController();
-  var timer = setTimeout(function(){ controller.abort(); }, ms);
-  try {
-    var resp = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    return resp;
-  } catch(e) {
-    clearTimeout(timer);
-    throw e;
-  }
-}
-
 async function fetchData(ticker) {
   var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?interval=1d&range=1y';
   var data = null;
-  var lastError = '';
 
+  // Try multiple proxies
   var proxies = [
-    { url: 'https://corsproxy.io/?' + encodeURIComponent(url), name: 'corsproxy' },
-    { url: 'https://api.allorigins.win/get?url=' + encodeURIComponent(url), name: 'allorigins' },
-    { url: 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), name: 'codetabs' },
-    { url: 'https://thingproxy.freeboard.io/fetch/' + url, name: 'thingproxy' }
+    'https://corsproxy.io/?' + encodeURIComponent(url),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent(url),
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)
   ];
 
   for (var i = 0; i < proxies.length; i++) {
-    var retries = 2;
-    while (retries > 0) {
-      try {
-        var resp = await fetchWithTimeout(proxies[i].url, 8000);
-        if (!resp.ok) { lastError = proxies[i].name + ' HTTP ' + resp.status; break; }
-        var json = await resp.json();
-        var raw = json.contents ? JSON.parse(json.contents) : json;
-        if (raw.chart && raw.chart.result && raw.chart.result[0]) { data = raw; break; }
-        lastError = proxies[i].name + ' — 數據格式錯誤';
-        break;
-      } catch(e) {
-        retries--;
-        lastError = proxies[i].name + ' — ' + (e.name === 'AbortError' ? '超時 (8s)' : e.message);
-        if (retries > 0) await new Promise(function(r){ setTimeout(r, 1000); });
-      }
-    }
-    if (data) break;
+    try {
+      var resp = await fetch(proxies[i]);
+      if (!resp.ok) continue;
+      var json = await resp.json();
+      // allorigins wraps in {contents:...}, others return directly
+      var raw = json.contents ? JSON.parse(json.contents) : json;
+      if (raw.chart && raw.chart.result) { data = raw; break; }
+    } catch(e) { continue; }
   }
 
-  if (!data) {
-    var isMarketHours = (function(){
-      var now = new Date();
-      var et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-      var day = et.getDay();
-      var h = et.getHours(), m = et.getMinutes();
-      var mins = h * 60 + m;
-      return day >= 1 && day <= 5 && mins >= 570 && mins <= 960;
-    })();
-    var hint = isMarketHours
-      ? '⚠️ 美股開市中 — Yahoo Finance 開市期間不穩定，建議收市後（美東 4pm / 英國時間 9pm）再試。\n最後錯誤：' + lastError
-      : '搵唔到數據，請確認代號正確。\n最後錯誤：' + lastError;
-    throw new Error(hint);
-  }
+  if (!data) throw new Error('搵唔到數據');
 
   var result = data.chart.result[0];
   var closes = result.indicators.quote[0].close;
@@ -564,14 +528,13 @@ async function analyze() {
   if (!input) return;
   var tickers = input.split(/[,\s]+/).filter(function(t){return t.length>0;}).map(function(t){return t.toUpperCase();});
   var results = document.getElementById('results');
-  var chartContainer = document.getElementById('chartContainer');
-  if (chartContainer) chartContainer.innerHTML = '';
+  results.innerHTML = '<div class="loading"><div class="spinner"></div><br>分析緊 ' + tickers.join(', ') + '...</div>';
+  document.getElementById('chartContainer').innerHTML = '';
   allData = {};
   var cards = [];
   var chartTabs = [];
   for (var i=0; i<tickers.length; i++) {
     var t = tickers[i];
-    results.innerHTML = '<div class="loading"><div class="spinner"></div><br>分析緊 <b>' + t + '</b>（' + (i+1) + '/' + tickers.length + '）...<br><small style="color:#888">正在嘗試多個數據源，請稍候</small></div>';
     try {
       var data = await fetchData(t);
       var score = analyzeS1(data);
@@ -579,9 +542,7 @@ async function analyze() {
       cards.push(renderCard(data, score));
       chartTabs.push('<span class="chart-tab' + (i===0?' active':'') + '" onclick="showChart(\'' + t + '\',this)">' + t + '</span>');
     } catch(e) {
-      var errLines = e.message.split('\n');
-      var errHtml = errLines.map(function(l){ return '<div>' + l + '</div>'; }).join('');
-      cards.push('<div class="error-msg">❌ <b>' + t + '</b><br>' + errHtml + '</div>');
+      cards.push('<div class="error-msg">⚠️ ' + t + ' — 搵唔到數據，請確認代號正確</div>');
     }
   }
 
