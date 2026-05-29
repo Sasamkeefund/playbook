@@ -561,30 +561,21 @@ async function analyze() {
   results.innerHTML = cards.join('');
 
   if (Object.keys(allData).length > 0) {
-    var firstTicker = Object.keys(allData)[0];
     document.getElementById('chartTabs').innerHTML = chartTabs.join('');
-    document.getElementById('chartSection').style.display = 'block';
-    showChart(firstTicker);
   }
 }
 
 function showChart(ticker, tabEl) {
   var cs = document.getElementById('chartSection');
-  if (currentTicker === ticker && cs.style.display !== 'none') {
+  if (currentTicker === ticker && cs.style.display === 'block') {
     cs.style.display = 'none';
     currentTicker = '';
     return;
   }
   currentTicker = ticker;
-  if (tabEl) {
-    document.querySelectorAll('.chart-tab').forEach(function(t){ t.classList.remove('active'); });
-    tabEl.classList.add('active');
-  } else {
-    document.querySelectorAll('.chart-tab').forEach(function(t){
-      if (t.textContent.trim() === ticker) t.classList.add('active');
-      else t.classList.remove('active');
-    });
-  }
+  document.querySelectorAll('.chart-tab').forEach(function(t){
+    t.classList.toggle('active', t.textContent.trim() === ticker);
+  });
   cs.style.display = 'block';
   updateChart();
 }
