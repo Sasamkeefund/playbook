@@ -226,10 +226,28 @@ function calcEMAArr(arr, period) {
 // Fetch data
 async function fetchData(ticker) {
   var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?interval=1d&range=1y';
-  var proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-  var resp = await fetch(proxy);
-  var json = await resp.json();
-  var data = JSON.parse(json.contents);
+  var data = null;
+
+  // Try multiple proxies
+  var proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(url),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent(url),
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url)
+  ];
+
+  for (var i = 0; i < proxies.length; i++) {
+    try {
+      var resp = await fetch(proxies[i]);
+      if (!resp.ok) continue;
+      var json = await resp.json();
+      // allorigins wraps in {contents:...}, others return directly
+      var raw = json.contents ? JSON.parse(json.contents) : json;
+      if (raw.chart && raw.chart.result) { data = raw; break; }
+    } catch(e) { continue; }
+  }
+
+  if (!data) throw new Error('搵唔到數據');
+
   var result = data.chart.result[0];
   var closes = result.indicators.quote[0].close;
   var volumes = result.indicators.quote[0].volume;
