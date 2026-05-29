@@ -163,19 +163,7 @@ body { font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; backgrou
   </div>
 
   <div id="results"></div>
-
-  <div class="chart-section" id="chartSection" style="display:none">
-    <div class="chart-hdr">
-      <div class="chart-ticker-tabs" id="chartTabs"></div>
-      <div class="chart-tf-tabs">
-        <span class="chart-tf active" onclick="setTF('D',this)">D</span>
-        <span class="chart-tf" onclick="setTF('W',this)">W</span>
-        <span class="chart-tf" onclick="setTF('M',this)">M</span>
-      </div>
-    </div>
-    <iframe class="chart-frame" id="chartFrame"></iframe>
-    <a class="tv-link" id="tvLink" target="_blank">在 TradingView 開啟 →</a>
-  </div>
+  <div id="chartContainer"></div>
 
   <div class="rr-section">
     <div class="rr-title">R:R 計算器</div>
@@ -561,43 +549,47 @@ async function analyze() {
   results.innerHTML = cards.join('');
 
   if (Object.keys(allData).length > 0) {
-    document.getElementById('chartTabs').innerHTML = chartTabs.join('');
+    document.getElementById('chartContainer').innerHTML = '';
+    currentTicker = '';
   }
 }
 
 function showChart(ticker, tabEl) {
-  var cs = document.getElementById('chartSection');
-  if (currentTicker === ticker && cs.style.display === 'block') {
-    cs.style.display = 'none';
+  var cc = document.getElementById('chartContainer');
+  if (currentTicker === ticker && cc.innerHTML !== '') {
+    cc.innerHTML = '';
     currentTicker = '';
     return;
   }
   currentTicker = ticker;
-  document.querySelectorAll('.chart-tab').forEach(function(t){
-    t.classList.toggle('active', t.textContent.trim() === ticker);
-  });
-  cs.style.display = 'block';
-  updateChart();
+  var src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(ticker) +
+    '&interval=' + currentTF +
+    '&theme=dark&style=1&locale=en&toolbar_bg=%230b0d13' +
+    '&hide_side_toolbar=1&allow_symbol_change=0&save_image=0';
+  cc.innerHTML =
+    '<div class="chart-section">' +
+      '<div class="chart-hdr">' +
+        '<span style="font-size:12px;font-weight:500;color:var(--text)">' + ticker + ' · 日線圖</span>' +
+        '<div class="chart-tf-tabs">' +
+          '<span class="chart-tf active" onclick="changeTF(\'' + ticker + '\',\'D\',this)">D</span>' +
+          '<span class="chart-tf" onclick="changeTF(\'' + ticker + '\',\'W\',this)">W</span>' +
+          '<span class="chart-tf" onclick="changeTF(\'' + ticker + '\',\'M\',this)">M</span>' +
+        '</div>' +
+      '</div>' +
+      '<iframe class="chart-frame" src="' + src + '"></iframe>' +
+      '<a class="tv-link" href="https://www.tradingview.com/chart/?symbol=' + ticker + '" target="_blank">在 TradingView 開啟 ' + ticker + ' →</a>' +
+    '</div>';
 }
 
-function setTF(tf, el) {
+function changeTF(ticker, tf, el) {
   currentTF = tf;
   document.querySelectorAll('.chart-tf').forEach(function(t){ t.classList.remove('active'); });
   el.classList.add('active');
-  updateChart();
-}
-
-function updateChart() {
-  if (!currentTicker) return;
-  var src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(currentTicker) +
-    '&interval=' + currentTF +
+  var src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(ticker) +
+    '&interval=' + tf +
     '&theme=dark&style=1&locale=en&toolbar_bg=%230b0d13' +
-    '&studies=MAExp%40tv-basicstudies%2CMAExp%40tv-basicstudies%2CMAExp%40tv-basicstudies' +
-    '&studies_overrides=%7B%22moving+average+exponential.length%22%3A20%2C%22moving+average+exponential.0.length%22%3A50%2C%22moving+average+exponential.1.length%22%3A200%7D' +
     '&hide_side_toolbar=1&allow_symbol_change=0&save_image=0';
-  document.getElementById('chartFrame').src = src;
-  document.getElementById('tvLink').href = 'https://www.tradingview.com/chart/?symbol=' + currentTicker;
-  document.getElementById('tvLink').textContent = '在 TradingView 開啟 ' + currentTicker + ' →';
+  document.querySelector('.chart-frame').src = src;
 }
 
 function calcRR() {
