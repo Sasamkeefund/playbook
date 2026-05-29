@@ -352,7 +352,8 @@ function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
       } else break;
     }
     if (belowCount > 0 && timestamps) {
-      fbDate = fmtDate(timestamps[n-1-currentStreak-belowCount+offset]);
+      // fbDate = first day of the below-EMA20 period (when it broke down)
+      fbDate = fmtDate(timestamps[belowStart+offset]);
       fbLow = lowPrice;
     }
 
