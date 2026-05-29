@@ -491,7 +491,7 @@ function renderCard(d, s) {
 
   return '<div class="stock-card ' + cardClass + '" id="card-' + d.ticker + '">' +
 
-    '<div class="pb-row" onclick="showChart(\'' + d.ticker + '\')" style="cursor:pointer" title="撳開睇圖">' +
+    '<div class="pb-row">' +
       '<div><div class="pb-ticker">' + d.ticker + '</div></div>' +
       '<div><span class="pb-score ' + (s.pbColor==='green'?'badge-green':s.pbColor==='orange'?'badge-orange':'badge-red') + '">' + s.pbScore + '</span></div>' +
       '<div class="pb-kv">3M ' + d.perf3m.toFixed(1) + '%<br>EMA200' + (d.ema200slope>0?'↑':'↓') + '</div>' +
@@ -527,7 +527,10 @@ function renderCard(d, s) {
       '</div>' +
 
       prevStreakHtml +
-      '<div class="quality-action ' + s.qualityClass + '">' + s.qualityTxt + '</div>' +
+      '<div class="quality-action ' + s.qualityClass + '" style="display:flex;align-items:center;justify-content:space-between;">' +
+        '<span>' + s.qualityTxt + '</span>' +
+        '<button onclick="showChart(\'' + d.ticker + '\')" style="font-size:11px;padding:3px 10px;border-radius:4px;border:0.5px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:0.8;font-family:inherit;margin-left:8px;flex-shrink:0">📊 睇圖</button>' +
+      '</div>' +
     '</div>' +
   '</div>';
 }
