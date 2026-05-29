@@ -564,7 +564,8 @@ async function analyze() {
   if (!input) return;
   var tickers = input.split(/[,\s]+/).filter(function(t){return t.length>0;}).map(function(t){return t.toUpperCase();});
   var results = document.getElementById('results');
-  document.getElementById('chartSection').style.display = 'none';
+  var chartContainer = document.getElementById('chartContainer');
+  if (chartContainer) chartContainer.innerHTML = '';
   allData = {};
   var cards = [];
   var chartTabs = [];
