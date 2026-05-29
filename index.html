@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S1 · 順勢交易</title>
+<style>
+:root {
+  --bg: #0b0d13;
+  --bg2: #13151f;
+  --bg3: #1a1d2a;
+  --border: #1e2130;
+  --border2: #2a2d3a;
+  --text: #e8e8e8;
+  --text2: #888;
+  --text3: #555;
+  --green: #00c896;
+  --green-bg: #0a2018;
+  --orange: #e8a840;
+  --orange-bg: #231800;
+  --red: #f07070;
+  --red-bg: #200d0d;
+  --blue: #6aabf0;
+  --gold: #ffd700;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; background: var(--bg); color: var(--text); min-height: 100vh; }
+.container { max-width: 680px; margin: 0 auto; padding: 20px 16px; }
+
+/* HEADER */
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+.header-left h1 { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
+.header-left .sub { font-size: 11px; color: var(--text3); margin-top: 3px; letter-spacing: .05em; text-transform: uppercase; }
+.header-right { text-align: right; }
+.market-badge { font-size: 11px; padding: 3px 10px; border-radius: 4px; }
+
+/* SEARCH */
+.search-wrap { margin-bottom: 20px; }
+.search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.search-input {
+  flex: 1; padding: 10px 14px; font-size: 13px; font-family: inherit;
+  border-radius: 8px; border: 0.5px solid var(--border2);
+  background: var(--bg2); color: var(--text); outline: none;
+  transition: border-color .15s;
+}
+.search-input:focus { border-color: var(--blue); }
+.search-btn {
+  padding: 10px 18px; font-size: 13px; font-family: inherit;
+  border-radius: 8px; border: 0.5px solid var(--blue);
+  background: transparent; color: var(--blue); cursor: pointer;
+  transition: all .15s;
+}
+.search-btn:hover { background: var(--blue); color: #000; }
+.search-hint { font-size: 11px; color: var(--text3); }
+
+/* LOADING */
+.loading { text-align: center; padding: 40px; color: var(--text3); font-size: 13px; }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* STOCK CARD */
+.stock-card { background: var(--bg2); border-radius: 10px; border: 0.5px solid var(--border2); margin-bottom: 12px; overflow: hidden; }
+.stock-card.quality-high { border-color: var(--green); }
+.stock-card.quality-mid  { border-color: #3a3000; }
+.stock-card.quality-warn { border-color: #3a2000; }
+.stock-card.quality-bad  { border-color: #2a1010; }
+
+/* Playbook row */
+.pb-row { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 0.5px solid var(--border); }
+.pb-ticker { font-size: 15px; font-weight: 700; color: #fff; }
+.pb-name { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.pb-score { font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+.pb-kv { font-size: 10px; color: var(--text3); text-align: center; line-height: 1.4; }
+.pb-signal { font-size: 11px; font-weight: 700; }
+.pb-streak { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-align: center; min-width: 50px; }
+
+/* Detail section */
+.detail { padding: 0; }
+.detail-hdr { display: flex; justify-content: space-between; align-items: center; padding: 7px 14px; background: var(--bg3); border-bottom: 0.5px solid var(--border); }
+.detail-hdr-title { font-size: 11px; color: var(--text2); }
+.scores { display: flex; gap: 12px; }
+.score-item { font-size: 11px; color: var(--text3); }
+
+/* Condition rows */
+.cond-section { border-bottom: 0.5px solid var(--border); }
+.cond-hdr { padding: 4px 14px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.cond-hdr.req { color: var(--blue); background: #0d1420; }
+.cond-hdr.bon { color: var(--orange); background: #1a1200; }
+.cond-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; padding: 5px 14px; border-bottom: 0.5px solid #0f1118; align-items: center; }
+.cond-row:last-child { border-bottom: none; }
+.cond-name { font-size: 11px; color: var(--text2); }
+.cond-val  { font-size: 11px; color: var(--text3); text-align: center; }
+.cond-tick { font-size: 12px; font-weight: 700; text-align: right; min-width: 30px; }
+.tick-ok   { color: var(--green); }
+.tick-warn { color: var(--orange); }
+.tick-fail { color: var(--red); }
+.tick-none { color: var(--text3); }
+
+/* Quality action row */
+.quality-action { padding: 8px 14px; font-size: 12px; font-weight: 600; }
+.qa-green  { background: var(--green-bg);  color: var(--green); }
+.qa-orange { background: var(--orange-bg); color: var(--orange); }
+.qa-red    { background: var(--red-bg);    color: var(--red); }
+
+/* Fake breakout info */
+.fb-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 8px 14px; border-top: 0.5px solid var(--border); background: var(--bg3); }
+.fb-cell { text-align: center; }
+.fb-label { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+.fb-val { font-size: 12px; font-weight: 600; }
+
+/* Chart section */
+.chart-section { background: var(--bg2); border-radius: 10px; border: 0.5px solid var(--border2); overflow: hidden; margin-bottom: 12px; }
+.chart-hdr { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 0.5px solid var(--border); }
+.chart-ticker-tabs { display: flex; gap: 6px; }
+.chart-tab { font-size: 11px; padding: 3px 10px; border-radius: 4px; border: 0.5px solid var(--border2); background: var(--bg3); color: var(--text3); cursor: pointer; transition: all .15s; }
+.chart-tab.active { background: #1a2540; border-color: var(--blue); color: var(--blue); }
+.chart-tf-tabs { display: flex; gap: 4px; }
+.chart-tf { font-size: 10px; padding: 2px 8px; border-radius: 4px; border: 0.5px solid var(--border); background: var(--bg); color: var(--text3); cursor: pointer; }
+.chart-tf.active { color: var(--blue); border-color: var(--blue); }
+.chart-frame { width: 100%; height: 300px; border: none; background: var(--bg); }
+.tv-link { display: flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 11px; color: var(--blue); border-top: 0.5px solid var(--border); cursor: pointer; text-decoration: none; }
+.tv-link:hover { background: #0d1420; }
+
+/* RR Calculator */
+.rr-section { background: var(--bg2); border-radius: 10px; border: 0.5px solid var(--border2); padding: 14px; margin-bottom: 12px; }
+.rr-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+.rr-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.rr-field label { font-size: 10px; color: var(--text3); display: block; margin-bottom: 4px; }
+.rr-input { width: 100%; padding: 7px 8px; font-size: 12px; font-family: inherit; border-radius: 6px; border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); outline: none; }
+.rr-input:focus { border-color: var(--blue); }
+.rr-result { border-radius: 6px; padding: 10px 12px; text-align: center; font-size: 13px; font-weight: 700; background: var(--bg3); color: var(--text3); }
+
+/* Error */
+.error-msg { background: var(--red-bg); border: 0.5px solid #3a1010; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--red); margin-bottom: 8px; }
+
+/* Util */
+.green { color: var(--green); }
+.orange { color: var(--orange); }
+.red { color: var(--red); }
+.blue { color: var(--blue); }
+.gold { color: var(--gold); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>S1 · 順勢交易</h1>
+      <div class="sub">打入代號，即刻分析</div>
+    </div>
+    <div class="header-right">
+      <div style="font-size:11px;color:var(--text3)" id="dateDisplay"></div>
+      <div id="marketBadge" style="margin-top:4px"></div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-row">
+      <input class="search-input" id="tickerInput" type="text" placeholder="e.g. SLB, CRS, ADM, PSX" onkeydown="if(event.key==='Enter')analyze()">
+      <button class="search-btn" onclick="analyze()">分析</button>
+    </div>
+    <div class="search-hint">多隻股票用逗號分隔 · 數據來自 Yahoo Finance</div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="chart-section" id="chartSection" style="display:none">
+    <div class="chart-hdr">
+      <div class="chart-ticker-tabs" id="chartTabs"></div>
+      <div class="chart-tf-tabs">
+        <span class="chart-tf active" onclick="setTF('D',this)">D</span>
+        <span class="chart-tf" onclick="setTF('W',this)">W</span>
+        <span class="chart-tf" onclick="setTF('M',this)">M</span>
+      </div>
+    </div>
+    <iframe class="chart-frame" id="chartFrame"></iframe>
+    <a class="tv-link" id="tvLink" target="_blank">在 TradingView 開啟 →</a>
+  </div>
+
+  <div class="rr-section">
+    <div class="rr-title">R:R 計算器</div>
+    <div class="rr-grid">
+      <div class="rr-field"><label>假突破收市價（入場）</label><input class="rr-input" id="rr_e" type="number" step="0.01" placeholder="55.10" oninput="calcRR()"></div>
+      <div class="rr-field"><label>假突破最低位</label><input class="rr-input" id="rr_l" type="number" step="0.01" placeholder="53.20" oninput="calcRR()"></div>
+      <div class="rr-field"><label>T2 目標（1.618）</label><input class="rr-input" id="rr_t" type="number" step="0.01" placeholder="62.40" oninput="calcRR()"></div>
+      <div class="rr-field"><label>止損緩衝 %</label><input class="rr-input" id="rr_b" type="number" step="0.1" value="1" oninput="calcRR()"></div>
+    </div>
+    <div class="rr-result" id="rrResult">填入數字自動計算 R:R</div>
+  </div>
+
+</div>
+
+<script>
+var currentTF = 'D';
+var currentTicker = '';
+var allData = {};
+
+// Date display
+var d = new Date();
+var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+document.getElementById('dateDisplay').textContent = days[d.getDay()] + ' ' + d.getDate() + ' May 2026';
+
+// EMA calculation
+function calcEMA(arr, period) {
+  if (arr.length < period) return null;
+  var k = 2 / (period + 1);
+  var ema = arr.slice(0, period).reduce(function(a,b){return a+b;},0) / period;
+  for (var i = period; i < arr.length; i++) ema = arr[i] * k + ema * (1-k);
+  return ema;
+}
+
+function calcEMAArr(arr, period) {
+  if (arr.length < period) return [];
+  var k = 2 / (period + 1);
+  var result = [];
+  var ema = arr.slice(0, period).reduce(function(a,b){return a+b;},0) / period;
+  result.push(ema);
+  for (var i = period; i < arr.length; i++) {
+    ema = arr[i] * k + ema * (1-k);
+    result.push(ema);
+  }
+  return result;
+}
+
+// Fetch data
+async function fetchData(ticker) {
+  var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?interval=1d&range=1y';
+  var proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  var resp = await fetch(proxy);
+  var json = await resp.json();
+  var data = JSON.parse(json.contents);
+  var result = data.chart.result[0];
+  var closes = result.indicators.quote[0].close;
+  var volumes = result.indicators.quote[0].volume;
+  var timestamps = result.timestamp;
+  var price = result.meta.regularMarketPrice;
+  var prevClose = result.meta.chartPreviousClose;
+
+  // Filter nulls
+  var validCloses = closes.filter(function(c){return c!==null;});
+  var validVols = volumes.filter(function(v){return v!==null;});
+
+  // EMA calculations
+  var ema20arr = calcEMAArr(validCloses, 20);
+  var ema50arr = calcEMAArr(validCloses, 50);
+  var ema200arr = calcEMAArr(validCloses, 200);
+
+  var ema20 = ema20arr[ema20arr.length-1];
+  var ema50 = ema50arr[ema50arr.length-1];
+  var ema200 = ema200arr[ema200arr.length-1];
+  var ema200prev = ema200arr.length > 10 ? ema200arr[ema200arr.length-11] : null;
+  var ema200slope = ema200prev ? ema200 - ema200prev : 0;
+
+  // RelVol
+  var todayVol = validVols[validVols.length-1];
+  var avg20vol = validVols.slice(-21,-1).reduce(function(a,b){return a+b;},0) / 20;
+  var relVol = avg20vol > 0 ? todayVol / avg20vol : 0;
+
+  // Performance
+  var n = validCloses.length;
+  var perf1w  = n>5  ? (price - validCloses[n-6])  / validCloses[n-6]  * 100 : 0;
+  var perf1m  = n>21 ? (price - validCloses[n-22]) / validCloses[n-22] * 100 : 0;
+  var perf3m  = n>63 ? (price - validCloses[n-64]) / validCloses[n-64] * 100 : 0;
+  var high52w = Math.max.apply(null, validCloses.slice(-252));
+  var pctFrom52w = (price - high52w) / high52w * 100;
+  var rsi = calcRSI(validCloses);
+
+  // Streak & fake breakout analysis
+  var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, timestamps);
+
+  return {
+    ticker: ticker.toUpperCase(),
+    price: price,
+    ema20: ema20, ema50: ema50, ema200: ema200,
+    ema200slope: ema200slope,
+    relVol: relVol,
+    perf1w: perf1w, perf1m: perf1m, perf3m: perf3m,
+    high52w: high52w, pctFrom52w: pctFrom52w,
+    rsi: rsi,
+    streakInfo: streakInfo
+  };
+}
+
+function calcRSI(closes) {
+  var period = 14;
+  if (closes.length < period+1) return 50;
+  var gains=0, losses=0;
+  for (var i=closes.length-period; i<closes.length; i++) {
+    var diff = closes[i] - closes[i-1];
+    if (diff>0) gains+=diff; else losses+=Math.abs(diff);
+  }
+  var avgGain = gains/period, avgLoss = losses/period;
+  if (avgLoss===0) return 100;
+  var rs = avgGain/avgLoss;
+  return 100 - (100/(1+rs));
+}
+
+function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
+  var offset = closes.length - ema20arr.length;
+  var n = ema20arr.length;
+
+  // Find current streak (days above EMA20 from end)
+  var currentStreak = 0;
+  for (var i=n-1; i>=0; i--) {
+    if (closes[i+offset] > ema20arr[i]) currentStreak++;
+    else break;
+  }
+
+  // Find last fake breakout: look backwards for days below EMA20
+  var daysBelowEMA = 0;
+  var fbLowIdx = -1, fbLow = Infinity;
+  var fbStartIdx = -1;
+
+  if (currentStreak === 0) {
+    // Currently below EMA20 - count days below
+    for (var i=n-1; i>=0; i--) {
+      if (closes[i+offset] < ema20arr[i]) {
+        daysBelowEMA++;
+        if (closes[i+offset] < fbLow) { fbLow = closes[i+offset]; fbLowIdx = i; }
+      } else break;
+    }
+    fbStartIdx = n-1-daysBelowEMA;
+  }
+
+  // Find previous streak before last breakout
+  var prevStreak = 0;
+  var searchFrom = currentStreak > 0 ? n-1-currentStreak : n-1-daysBelowEMA;
+  for (var i=searchFrom; i>=0; i--) {
+    if (closes[i+offset] > ema20arr[i]) prevStreak++;
+    else break;
+  }
+
+  // Format dates
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    var d = new Date(ts*1000);
+    return (d.getMonth()+1)+'月'+d.getDate()+'日';
+  }
+
+  var streakStartTs = currentStreak > 0 && timestamps ? timestamps[timestamps.length-currentStreak] : null;
+  var fbDate = daysBelowEMA > 0 && timestamps ? fmtDate(timestamps[timestamps.length-daysBelowEMA]) : null;
+  var prevStreakStart = prevStreak > 0 && timestamps ? fmtDate(timestamps[timestamps.length-currentStreak-daysBelowEMA-prevStreak]) : null;
+  var prevStreakEnd = prevStreak > 0 && timestamps ? fmtDate(timestamps[timestamps.length-currentStreak-daysBelowEMA-1]) : null;
+
+  return {
+    currentStreak: currentStreak,
+    prevStreak: prevStreak,
+    daysBelowEMA: daysBelowEMA,
+    fbLow: fbLow < Infinity ? fbLow : null,
+    fbDate: fbDate,
+    prevStreakStart: prevStreakStart,
+    prevStreakEnd: prevStreakEnd,
+    streakStartDate: streakStartTs ? fmtDate(streakStartTs) : null
+  };
+}
+
+function analyzeS1(d) {
+  // Required
+  var c1 = d.price > d.ema20;
+  var c2 = d.price > d.ema50;
+  var c3 = d.price > d.ema200 && d.ema200slope > 0;
+  var c4 = d.rsi >= 40 && d.rsi <= 70;
+  var c5 = d.perf3m > 5 && d.perf1m < 25;
+  var reqScore = (c1?1:0)+(c2?1:0)+(c3?1:0)+(c4?1:0)+(c5?1:0);
+  var ready = reqScore === 5;
+
+  // Bonus
+  var b1 = d.ema20 > d.ema50;
+  var b2 = d.ema50 > d.ema200;
+  var b3 = d.relVol < 0.9;
+  var b4 = d.perf1w >= -8 && d.perf1w <= 0;
+  var b5 = d.pctFrom52w > -15;
+  var bonScore = (b1?1:0)+(b2?1:0)+(b3?1:0)+(b4?1:0)+(b5?1:0);
+
+  // Quality
+  var hasB2 = b2, hasB3B4 = b3 && b4;
+  var quality, qualityTxt, qualityClass, pbScore, pbColor;
+
+  if (!c1 && reqScore === 4) {
+    quality = 'candidate'; qualityTxt = '👀 假突破候選日 — 等收市確認返上 EMA20';
+    qualityClass = 'qa-orange'; pbScore = 'PARTIAL'; pbColor = 'orange';
+  } else if (!ready) {
+    quality = 'bad'; qualityTxt = '❌ Required 未達標 — 唔入';
+    qualityClass = 'qa-red'; pbScore = reqScore+'/5'; pbColor = 'red';
+  } else if (bonScore <= 2) {
+    quality = 'bad'; qualityTxt = '❌ Bonus 唔夠 — 唔入，等更好時機';
+    qualityClass = 'qa-red'; pbScore = 'ALL MET'; pbColor = 'green';
+  } else if (!hasB2) {
+    quality = 'warn'; qualityTxt = '⚠️ b2 三線未齊 — 極細 position 或唔入';
+    qualityClass = 'qa-orange'; pbScore = 'ALL MET'; pbColor = 'green';
+  } else if (bonScore >= 4) {
+    quality = 'high'; qualityTxt = '🔥 高質 Setup — 等假突破入場，正常 position';
+    qualityClass = 'qa-green'; pbScore = 'ALL MET'; pbColor = 'green';
+  } else if (hasB3B4) {
+    quality = 'mid'; qualityTxt = '✅ 中質 Setup — 可以入，正常 position';
+    qualityClass = 'qa-green'; pbScore = 'ALL MET'; pbColor = 'green';
+  } else {
+    quality = 'warn'; qualityTxt = '⚠️ b3+b4 未同時過 — 等縮量回調先入';
+    qualityClass = 'qa-orange'; pbScore = 'ALL MET'; pbColor = 'green';
+  }
+
+  return { c1,c2,c3,c4,c5, reqScore, ready, b1,b2,b3,b4,b5, bonScore, quality, qualityTxt, qualityClass, pbScore, pbColor };
+}
+
+function renderCard(d, s) {
+  var si = d.streakInfo;
+  var cardClass = s.quality==='high'||s.quality==='mid' ? 'quality-high' : s.quality==='warn'||s.quality==='candidate' ? 'quality-warn' : 'quality-bad';
+
+  // Streak display
+  var streakTxt, streakClass;
+  if (si.currentStreak >= 25) { streakTxt = si.currentStreak+'日 🔥'; streakClass = 'gold'; }
+  else if (si.currentStreak >= 7) { streakTxt = si.currentStreak+'日'; streakClass = 'green'; }
+  else if (si.currentStreak >= 3) { streakTxt = si.currentStreak+'日'; streakClass = 'blue'; }
+  else if (si.currentStreak > 0) { streakTxt = si.currentStreak+'日'; streakClass = 'orange'; }
+  else { streakTxt = si.daysBelowEMA+'日下'; streakClass = 'red'; }
+
+  // Previous streak info
+  var prevStreakHtml = '';
+  if (si.prevStreak > 0) {
+    prevStreakHtml = '<div class="fb-info">' +
+      '<div class="fb-cell"><div class="fb-label">跌穿前連續</div><div class="fb-val ' + (si.prevStreak>=7?'green':si.prevStreak>=3?'orange':'red') + '">' + si.prevStreak + '日</div></div>' +
+      (si.fbDate ? '<div class="fb-cell"><div class="fb-label">假突破日</div><div class="fb-val orange">' + si.fbDate + '</div></div>' : '<div class="fb-cell"><div class="fb-label">假突破</div><div class="fb-val orange">進行中</div></div>') +
+      (si.fbLow ? '<div class="fb-cell"><div class="fb-label">假突破最低</div><div class="fb-val red">$' + si.fbLow.toFixed(2) + '</div></div>' : '<div class="fb-cell"><div class="fb-label">目前最低</div><div class="fb-val">—</div></div>') +
+      '</div>';
+  } else if (si.currentStreak > 0 && si.streakStartDate) {
+    prevStreakHtml = '<div class="fb-info">' +
+      '<div class="fb-cell"><div class="fb-label">連續開始</div><div class="fb-val blue">' + si.streakStartDate + '</div></div>' +
+      '<div class="fb-cell"><div class="fb-label">假突破</div><div class="fb-val orange">等緊...</div></div>' +
+      '<div class="fb-cell"><div class="fb-label">Set Alert</div><div class="fb-val green">$' + d.ema20.toFixed(2) + '</div></div>' +
+      '</div>';
+  }
+
+  function tick(v) { return v ? '<span class="tick-ok">✓</span>' : '<span class="tick-none">—</span>'; }
+  function tickReq(v) { return v ? '<span class="tick-ok">✓</span>' : '<span class="tick-fail">✗</span>'; }
+  function b2Warn() { return d.ema50 > d.ema200 ? (((d.ema50-d.ema200)/d.ema200*100)<3?'<span class="tick-warn">✓⚠</span>':'<span class="tick-ok">✓</span>') : '<span class="tick-warn">⚠️三線未齊</span>'; }
+  function b5Warn() { return d.pctFrom52w > -15 ? '<span class="tick-ok">✓</span>' : d.pctFrom52w > -20 ? '<span class="tick-warn">⚠️偏遠</span>' : '<span class="tick-fail">🔴太遠</span>'; }
+
+  return '<div class="stock-card ' + cardClass + '" id="card-' + d.ticker + '">' +
+
+    '<div class="pb-row" onclick="showChart(\'' + d.ticker + '\')" style="cursor:pointer">' +
+      '<div><div class="pb-ticker">' + d.ticker + '</div></div>' +
+      '<div><span class="pb-score ' + (s.pbColor==='green'?'badge-green':s.pbColor==='orange'?'badge-orange':'badge-red') + '">' + s.pbScore + '</span></div>' +
+      '<div class="pb-kv">3M ' + d.perf3m.toFixed(1) + '%<br>EMA200' + (d.ema200slope>0?'↑':'↓') + '</div>' +
+      '<div class="pb-signal ' + (s.ready?'green':'orange') + '">' + (s.ready?'▲ BUY':'—') + '</div>' +
+      '<div><span class="pb-streak" style="background:var(--bg3);color:var(--' + streakClass + ')">' + streakTxt + '</span></div>' +
+    '</div>' +
+
+    '<div class="detail">' +
+      '<div class="detail-hdr">' +
+        '<span class="detail-hdr-title">S1 · 順勢交易（演化版）</span>' +
+        '<div class="scores">' +
+          '<span class="score-item">Required <span style="color:' + (s.reqScore===5?'var(--green)':'var(--orange)') + ';font-weight:700">' + s.reqScore + '/5</span></span>' +
+          '<span class="score-item">Bonus <span style="color:' + (s.bonScore>=4?'var(--green)':s.bonScore>=3?'var(--orange)':'var(--red)') + ';font-weight:700">' + s.bonScore + '/5</span></span>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="cond-section">' +
+        '<div class="cond-hdr req">Required</div>' +
+        '<div class="cond-row"><span class="cond-name">Price &gt; EMA20</span><span class="cond-val blue">$' + d.price.toFixed(2) + ' &gt; $' + d.ema20.toFixed(2) + '</span>' + tickReq(s.c1) + '</div>' +
+        '<div class="cond-row"><span class="cond-name">Price &gt; EMA50</span><span class="cond-val blue">$' + d.price.toFixed(2) + ' &gt; $' + d.ema50.toFixed(2) + '</span>' + tickReq(s.c2) + '</div>' +
+        '<div class="cond-row"><span class="cond-name">Price &gt; EMA200 &amp; 斜↑</span><span class="cond-val blue">$' + d.ema200.toFixed(2) + ' ' + (d.ema200slope>0?'↑':'↓') + '</span>' + tickReq(s.c3) + '</div>' +
+        '<div class="cond-row"><span class="cond-name">RSI 40–70</span><span class="cond-val blue">RSI = ' + d.rsi.toFixed(1) + '</span>' + tickReq(s.c4) + '</div>' +
+        '<div class="cond-row"><span class="cond-name">3M&gt;5% &amp; 1M&lt;25%</span><span class="cond-val blue">3M=' + d.perf3m.toFixed(1) + '% 1M=' + d.perf1m.toFixed(1) + '%</span>' + tickReq(s.c5) + '</div>' +
+      '</div>' +
+
+      '<div class="cond-section">' +
+        '<div class="cond-hdr bon">Bonus</div>' +
+        '<div class="cond-row"><span class="cond-name">EMA20 &gt; EMA50</span><span class="cond-val">$' + d.ema20.toFixed(2) + ' / $' + d.ema50.toFixed(2) + '</span>' + tick(s.b1) + '</div>' +
+        '<div class="cond-row"><span class="cond-name">EMA50 &gt; EMA200 ⚠️</span><span class="cond-val ' + (s.b2?'':'orange') + '">$' + d.ema50.toFixed(2) + ' / $' + d.ema200.toFixed(2) + '</span>' + b2Warn() + '</div>' +
+        '<div class="cond-row"><span class="cond-name">RelVol &lt; 0.9 (萎縮)</span><span class="cond-val">RelVol = ' + d.relVol.toFixed(2) + 'x</span>' + tick(s.b3) + '</div>' +
+        '<div class="cond-row"><span class="cond-name">1W -8% to 0%</span><span class="cond-val">1W = ' + d.perf1w.toFixed(1) + '%</span>' + tick(s.b4) + '</div>' +
+        '<div class="cond-row"><span class="cond-name">距52週高 &gt; -15%</span><span class="cond-val">' + d.pctFrom52w.toFixed(1) + '% from 52W H</span>' + b5Warn() + '</div>' +
+      '</div>' +
+
+      prevStreakHtml +
+      '<div class="quality-action ' + s.qualityClass + '">' + s.qualityTxt + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+async function analyze() {
+  var input = document.getElementById('tickerInput').value.trim();
+  if (!input) return;
+  var tickers = input.split(/[,\s]+/).filter(function(t){return t.length>0;}).map(function(t){return t.toUpperCase();});
+  var results = document.getElementById('results');
+  results.innerHTML = '<div class="loading"><div class="spinner"></div><br>分析緊 ' + tickers.join(', ') + '...</div>';
+  document.getElementById('chartSection').style.display = 'none';
+  allData = {};
+
+  var cards = [];
+  var chartTabs = [];
+  for (var i=0; i<tickers.length; i++) {
+    var t = tickers[i];
+    try {
+      var data = await fetchData(t);
+      var score = analyzeS1(data);
+      allData[t] = { data: data, score: score };
+      cards.push(renderCard(data, score));
+      chartTabs.push('<span class="chart-tab' + (i===0?' active':'') + '" onclick="showChart(\'' + t + '\',this)">' + t + '</span>');
+    } catch(e) {
+      cards.push('<div class="error-msg">⚠️ ' + t + ' — 搵唔到數據，請確認代號正確</div>');
+    }
+  }
+
+  results.innerHTML = cards.join('');
+
+  if (Object.keys(allData).length > 0) {
+    var firstTicker = Object.keys(allData)[0];
+    document.getElementById('chartTabs').innerHTML = chartTabs.join('');
+    document.getElementById('chartSection').style.display = 'block';
+    showChart(firstTicker);
+  }
+}
+
+function showChart(ticker, tabEl) {
+  currentTicker = ticker;
+  if (tabEl) {
+    document.querySelectorAll('.chart-tab').forEach(function(t){ t.classList.remove('active'); });
+    tabEl.classList.add('active');
+  }
+  updateChart();
+}
+
+function setTF(tf, el) {
+  currentTF = tf;
+  document.querySelectorAll('.chart-tf').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  updateChart();
+}
+
+function updateChart() {
+  if (!currentTicker) return;
+  var src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(currentTicker) +
+    '&interval=' + currentTF +
+    '&theme=dark&style=1&locale=en&toolbar_bg=%230b0d13' +
+    '&studies=MASimple%40tv-basicstudies%2CMASimple%40tv-basicstudies%2CMASimple%40tv-basicstudies' +
+    '&studies_overrides=%7B%22ma_length_1%22%3A20%2C%22ma_length_2%22%3A50%2C%22ma_length_3%22%3A200%7D' +
+    '&hide_side_toolbar=1&allow_symbol_change=0';
+  document.getElementById('chartFrame').src = src;
+  document.getElementById('tvLink').href = 'https://www.tradingview.com/chart/?symbol=' + currentTicker;
+  document.getElementById('tvLink').textContent = '在 TradingView 開啟 ' + currentTicker + ' →';
+}
+
+function calcRR() {
+  var e=parseFloat(document.getElementById('rr_e').value);
+  var l=parseFloat(document.getElementById('rr_l').value);
+  var t=parseFloat(document.getElementById('rr_t').value);
+  var b=parseFloat(document.getElementById('rr_b').value)||1;
+  var el=document.getElementById('rrResult');
+  if(isNaN(e)||isNaN(l)||isNaN(t)){el.style.cssText='border-radius:6px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:var(--bg3);color:var(--text3)';el.textContent='填入數字自動計算 R:R';return;}
+  var sl=l*(1-b/100),risk=e-sl,reward=t-e,rr=reward/risk;
+  if(rr>=3) el.style.cssText='border-radius:6px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:var(--green-bg);color:var(--green)',el.textContent='✅ R:R = '+rr.toFixed(2)+':1 — 優秀！可以入場，止損 $'+sl.toFixed(2);
+  else if(rr>=2) el.style.cssText='border-radius:6px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:var(--green-bg);color:var(--green)',el.textContent='✅ R:R = '+rr.toFixed(2)+':1 — 達標，可以入場，止損 $'+sl.toFixed(2);
+  else if(rr>=1.5) el.style.cssText='border-radius:6px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:var(--orange-bg);color:var(--orange)',el.textContent='⚠️ R:R = '+rr.toFixed(2)+':1 — 唔夠 2:1，唔建議入';
+  else el.style.cssText='border-radius:6px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:var(--red-bg);color:var(--red)',el.textContent='❌ R:R = '+rr.toFixed(2)+':1 — 唔夠，保存子彈';
+}
+</script>
+</body>
+</html>
