@@ -279,7 +279,10 @@ async function fetchData(ticker) {
   var rsi = calcRSI(validCloses);
 
   // Streak & fake breakout analysis
-  var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, timestamps);
+  // Align timestamps with ema20arr (drop first 19 entries to match EMA offset)
+  var tsOffset = validCloses.length - ema20arr.length;
+  var alignedTS = timestamps ? timestamps.slice(tsOffset) : null;
+  var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, alignedTS);
 
   return {
     ticker: ticker.toUpperCase(),
@@ -353,7 +356,7 @@ function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
     }
     if (belowCount > 0 && timestamps) {
       // fbDate = first day of the below-EMA20 period (when it broke down)
-      fbDate = fmtDate(timestamps[belowStart+offset]);
+      fbDate = fmtDate(timestamps[belowStart]);
       fbLow = lowPrice;
     }
 
@@ -380,7 +383,7 @@ function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
     for (var i=fbStartIdx; i<n; i++) {
       if (closes[i+offset] < lowPrice) lowPrice = closes[i+offset];
     }
-    fbDate = timestamps ? fmtDate(timestamps[fbStartIdx+offset]) : null;
+    fbDate = timestamps ? fmtDate(timestamps[fbStartIdx]) : null;
     fbLow = lowPrice < Infinity ? lowPrice : null;
 
     // Previous streak before this below period
