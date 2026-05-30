@@ -282,7 +282,47 @@ async function fetchData(ticker) {
   // Align timestamps with ema20arr (drop first 19 entries to match EMA offset)
   var tsOffset = validCloses.length - ema20arr.length;
   var alignedTS = timestamps ? timestamps.slice(tsOffset) : null;
-  var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, alignedTS);
+
+  // Pre-calculate Required 5/5 conditions for each bar (same as TradingView s1_ready)
+  // c1: price>ema20, c2: price>ema50, c3: price>ema200 & slope up, c4: RSI 40-70, c5: 3M>5% & 1M<25%
+  var s1ReadyArr = [];
+  var n200 = ema200arr.length;
+  var offset200 = validCloses.length - n200;
+  var n50 = ema50arr.length;
+  var offset50 = validCloses.length - n50;
+  var n20 = ema20arr.length;
+  // Use ema20arr length as base (shortest alignment)
+  for (var i = 0; i < n20; i++) {
+    var ci = i + tsOffset; // index into validCloses
+    var close_i = validCloses[ci];
+    var e20 = ema20arr[i];
+    var e50 = i >= (n20 - n50) ? ema50arr[i - (n20 - n50)] : null;
+    var e200 = i >= (n20 - n200) ? ema200arr[i - (n20 - n200)] : null;
+    var e200prev = (i >= (n20 - n200) + 10) ? ema200arr[i - (n20 - n200) - 10] : null;
+    var slope200 = e200prev ? (e200 - e200prev) : 0;
+    var rc1 = close_i > e20;
+    var rc2 = e50 ? close_i > e50 : false;
+    var rc3 = e200 ? (close_i > e200 && slope200 > 0) : false;
+    // RSI: approximate using last 14 bars
+    var rsiOk = false;
+    if (ci >= 14) {
+      var gains=0, losses=0;
+      for (var j=ci-13; j<=ci; j++) {
+        var diff = validCloses[j] - validCloses[j-1];
+        if (diff>0) gains+=diff; else losses+=Math.abs(diff);
+      }
+      var avgG=gains/14, avgL=losses/14;
+      var rsiVal = avgL===0 ? 100 : 100-(100/(1+avgG/avgL));
+      rsiOk = rsiVal>=40 && rsiVal<=70;
+    }
+    // perf3m, perf1m approximate
+    var p3m = ci>=63 ? (close_i-validCloses[ci-63])/validCloses[ci-63]*100 : 0;
+    var p1m = ci>=21 ? (close_i-validCloses[ci-21])/validCloses[ci-21]*100 : 0;
+    var rc5 = p3m>5 && p1m<25;
+    s1ReadyArr.push(rc1 && rc2 && rc3 && rsiOk && rc5);
+  }
+
+  var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, alignedTS, s1ReadyArr);
 
   return {
     ticker: ticker.toUpperCase(),
@@ -311,7 +351,7 @@ function calcRSI(closes) {
   return 100 - (100/(1+rs));
 }
 
-function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
+function calcStreakAndFakeBreakout(closes, ema20arr, timestamps, s1ReadyArr) {
   var offset = closes.length - ema20arr.length;
   var n = ema20arr.length;
 
@@ -322,12 +362,18 @@ function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
     return (d.getUTCMonth()+1) + '月' + d.getUTCDate() + '日';
   }
 
-  // Count current streak (above or below EMA20 from end)
+  // Count current streak using s1_ready (Required 5/5) — same as TradingView
   var currentStreak = 0;
   var daysBelowEMA = 0;
   var aboveNow = closes[closes.length-1] > ema20arr[n-1];
 
-  if (aboveNow) {
+  if (aboveNow && s1ReadyArr) {
+    // currentStreak = consecutive days where s1_ready = true (from end)
+    for (var i=n-1; i>=0; i--) {
+      if (s1ReadyArr[i]) currentStreak++;
+      else break;
+    }
+  } else if (aboveNow) {
     for (var i=n-1; i>=0; i--) {
       if (closes[i+offset] > ema20arr[i]) currentStreak++;
       else break;
