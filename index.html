@@ -283,47 +283,7 @@ async function fetchData(ticker) {
   var tsOffset = validCloses.length - ema20arr.length;
   var alignedTS = timestamps ? timestamps.slice(tsOffset) : null;
 
-  // Pre-calculate Required 5/5 conditions for each bar (same as TradingView s1_ready)
-  // c1: price>ema20, c2: price>ema50, c3: price>ema200 & slope up, c4: RSI 40-70, c5: 3M>5% & 1M<25%
-  var s1ReadyArr = [];
-  var n200 = ema200arr.length;
-  var offset200 = validCloses.length - n200;
-  var n50 = ema50arr.length;
-  var offset50 = validCloses.length - n50;
-  var n20 = ema20arr.length;
-  // Use ema20arr length as base (shortest alignment)
-  for (var i = 0; i < n20; i++) {
-    var ci = i + tsOffset; // index into validCloses
-    var close_i = validCloses[ci];
-    var e20 = ema20arr[i];
-    var e50 = i >= (n20 - n50) ? ema50arr[i - (n20 - n50)] : null;
-    var e200 = i >= (n20 - n200) ? ema200arr[i - (n20 - n200)] : null;
-    var e200prev = (i >= (n20 - n200) + 10) ? ema200arr[i - (n20 - n200) - 10] : null;
-    var slope200 = e200prev ? (e200 - e200prev) : 0;
-    var rc1 = close_i > e20;
-    var rc2 = e50 ? close_i > e50 : false;
-    var rc3 = e200 ? (close_i > e200 && slope200 > 0) : false;
-    // RSI: approximate using last 14 bars
-    var rsiOk = false;
-    if (ci >= 14) {
-      var gains=0, losses=0;
-      for (var j=ci-13; j<=ci; j++) {
-        var diff = validCloses[j] - validCloses[j-1];
-        if (diff>0) gains+=diff; else losses+=Math.abs(diff);
-      }
-      var avgG=gains/14, avgL=losses/14;
-      var rsiVal = avgL===0 ? 100 : 100-(100/(1+avgG/avgL));
-      rsiOk = rsiVal>=40 && rsiVal<=70;
-    }
-    // perf3m, perf1m approximate
-    var p3m = ci>=63 ? (close_i-validCloses[ci-63])/validCloses[ci-63]*100 : 0;
-    var p1m = ci>=21 ? (close_i-validCloses[ci-21])/validCloses[ci-21]*100 : 0;
-    var rc5 = p3m>5 && p1m<25;
-    // Use c1+c2+c3 for streak (EMA conditions most stable, matches TV better)
-    s1ReadyArr.push(rc1 && rc2 && rc3);
-  }
-
-  var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, alignedTS, s1ReadyArr);
+  var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, alignedTS, null);
 
   return {
     ticker: ticker.toUpperCase(),
@@ -368,13 +328,7 @@ function calcStreakAndFakeBreakout(closes, ema20arr, timestamps, s1ReadyArr) {
   var daysBelowEMA = 0;
   var aboveNow = closes[closes.length-1] > ema20arr[n-1];
 
-  if (aboveNow && s1ReadyArr) {
-    // currentStreak = consecutive days where s1_ready = true (from end)
-    for (var i=n-1; i>=0; i--) {
-      if (s1ReadyArr[i]) currentStreak++;
-      else break;
-    }
-  } else if (aboveNow) {
+  if (aboveNow) {
     for (var i=n-1; i>=0; i--) {
       if (closes[i+offset] > ema20arr[i]) currentStreak++;
       else break;
@@ -520,7 +474,7 @@ function renderCard(d, s) {
     prevStreakHtml = '<div class="fb-info">' +
       '<div class="fb-cell"><div class="fb-label">假突破前連續</div><div class="fb-val ' + (si.prevStreak>=7?'green':si.prevStreak>=3?'orange':'red') + '">' + (si.prevStreak > 0 ? si.prevStreak+'日' : '—') + '</div></div>' +
       '<div class="fb-cell"><div class="fb-label">假突破日</div><div class="fb-val orange">' + (si.fbDate || '—') + '</div></div>' +
-      '<div class="fb-cell"><div class="fb-label">升返後連續</div><div class="fb-val ' + streakColor + '">' + si.currentStreak + '日</div></div>' +
+      '<div class="fb-cell"><div class="fb-label">升返後連續 <span style="font-size:9px;color:#888">※參考</span></div><div class="fb-val ' + streakColor + '">' + si.currentStreak + '日</div></div>' +
     '</div>';
   } else if (si.daysBelowEMA > 0) {
     // Currently below EMA20 - fake breakout in progress
