@@ -317,8 +317,9 @@ function calcStreakAndFakeBreakout(closes, ema20arr, timestamps) {
 
   function fmtDate(ts) {
     if (!ts) return '—';
-    var d = new Date(ts*1000);
-    return (d.getMonth()+1) + '月' + d.getDate() + '日';
+    // Add 12hrs offset to avoid timezone day-shift issues
+    var d = new Date((ts + 43200) * 1000);
+    return (d.getUTCMonth()+1) + '月' + d.getUTCDate() + '日';
   }
 
   // Count current streak (above or below EMA20 from end)
