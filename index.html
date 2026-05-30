@@ -319,7 +319,8 @@ async function fetchData(ticker) {
     var p3m = ci>=63 ? (close_i-validCloses[ci-63])/validCloses[ci-63]*100 : 0;
     var p1m = ci>=21 ? (close_i-validCloses[ci-21])/validCloses[ci-21]*100 : 0;
     var rc5 = p3m>5 && p1m<25;
-    s1ReadyArr.push(rc1 && rc2 && rc3 && rsiOk && rc5);
+    // Use c1+c2+c3 for streak (EMA conditions most stable, matches TV better)
+    s1ReadyArr.push(rc1 && rc2 && rc3);
   }
 
   var streakInfo = calcStreakAndFakeBreakout(validCloses, ema20arr, alignedTS, s1ReadyArr);
