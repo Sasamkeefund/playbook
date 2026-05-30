@@ -474,7 +474,7 @@ function renderCard(d, s) {
     prevStreakHtml = '<div class="fb-info">' +
       '<div class="fb-cell"><div class="fb-label">假突破前連續</div><div class="fb-val ' + (si.prevStreak>=7?'green':si.prevStreak>=3?'orange':'red') + '">' + (si.prevStreak > 0 ? si.prevStreak+'日' : '—') + '</div></div>' +
       '<div class="fb-cell"><div class="fb-label">假突破日</div><div class="fb-val orange">' + (si.fbDate || '—') + '</div></div>' +
-      '<div class="fb-cell"><div class="fb-label">升返後連續 <span style="font-size:9px;color:#888">※參考</span></div><div class="fb-val ' + streakColor + '">' + si.currentStreak + '日</div></div>' +
+
     '</div>';
   } else if (si.daysBelowEMA > 0) {
     // Currently below EMA20 - fake breakout in progress
