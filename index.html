@@ -149,18 +149,20 @@ body {
           "showToolbar": true,
           "colorTheme": "dark",
           "locale": "en",
-          "filters": {
-            "exchange": ["NYSE","NASDAQ"],
-            "ema20": {"above": "close"},
-            "ema50": {"above": "close"},
-            "ema200": {"above": "close"},
-            "Perf.3M": {"from": 5},
-            "Perf.1M": {"to": 25},
-            "RSI": {"from": 40, "to": 70},
-            "Perf.W": {"from": -8, "to": 0},
-            "average_volume_10d_calc": {"from": 500000},
-            "close": {"from": 10, "to": 500}
-          }
+          "column_groups": [],
+          "columns": ["close","change","volume","relative_volume_10d_calc","market_cap_basic","sector"],
+          "filter": [
+            {"left":"close","operation":"in_range","right":[10,500]},
+            {"left":"exchange","operation":"in_range","right":["NYSE","NASDAQ"]},
+            {"left":"average_volume_30d_calc","operation":"greater","right":500000},
+            {"left":"EMA20","operation":"less","right":"close"},
+            {"left":"EMA50","operation":"less","right":"close"},
+            {"left":"EMA200","operation":"less","right":"close"},
+            {"left":"RSI","operation":"in_range","right":[40,70]},
+            {"left":"Perf.3M","operation":"greater","right":5},
+            {"left":"Perf.1M","operation":"less","right":25},
+            {"left":"Perf.W","operation":"in_range","right":[-8,0]}
+          ]
         }
         </script>
       </div>
