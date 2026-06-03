@@ -134,38 +134,17 @@ body {
     <div class="sub-tab" onclick="switchSub('s1','checklist-v1',this)">📋 S1V1 互動檢查表</div>
   </div>
   <div class="sub-panel active" id="s1-scanner">
-    <div style="height:calc(100vh - 100px);">
-      <!-- TradingView Screener Widget -->
-      <div class="tradingview-widget-container" style="height:100%;width:100%">
-        <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-        <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
-        {
-          "width": "100%",
-          "height": "100%",
-          "defaultColumn": "overview",
-          "defaultScreen": "most_capitalized",
-          "market": "america",
-          "showToolbar": true,
-          "colorTheme": "dark",
-          "locale": "en",
-          "column_groups": [],
-          "columns": ["close","change","volume","relative_volume_10d_calc","market_cap_basic","sector"],
-          "filter": [
-            {"left":"close","operation":"in_range","right":[10,500]},
-            {"left":"exchange","operation":"in_range","right":["NYSE","NASDAQ"]},
-            {"left":"average_volume_30d_calc","operation":"greater","right":500000},
-            {"left":"EMA20","operation":"less","right":"close"},
-            {"left":"EMA50","operation":"less","right":"close"},
-            {"left":"EMA200","operation":"less","right":"close"},
-            {"left":"RSI","operation":"in_range","right":[40,70]},
-            {"left":"Perf.3M","operation":"greater","right":5},
-            {"left":"Perf.1M","operation":"less","right":25},
-            {"left":"Perf.W","operation":"in_range","right":[-8,0]}
-          ]
-        }
-        </script>
+    <div style="max-width:680px;margin:40px auto;text-align:center;padding:0 20px;">
+      <div style="font-size:32px;margin-bottom:16px;">🔍</div>
+      <div style="font-size:16px;font-weight:600;color:#e8e8e8;margin-bottom:8px;">S1 順勢交易 Scanner</div>
+      <div style="font-size:13px;color:#666;margin-bottom:24px;line-height:1.6;">
+        撳下面按鈕開 TradingView S1 Scanner<br>
+        已預設所有 S1 條件：Price 10-500、EMA20/50/200、RSI 40-70、3M>5%、1M&lt;25%、1W -8% to 0%
       </div>
+      <a href="https://www.tradingview.com/screener/WnlcUB41/" target="_blank" style="display:inline-block;padding:12px 28px;background:#00c896;color:#000;font-weight:700;font-size:14px;border-radius:8px;text-decoration:none;letter-spacing:.03em;">
+        開啟 S1 Scanner ↗
+      </a>
+      <div style="margin-top:16px;font-size:11px;color:#333;">會喺新分頁開啟 TradingView</div>
     </div>
   </div>
   <div class="sub-panel" id="s1-checklist">
