@@ -3,475 +3,263 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>投機十步曲</title>
+<title>index</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --bg: #0b0d13;
-  --surface: #13151f;
-  --card: #1a1d27;
-  --border: #252836;
-  --text: #e8e8e8;
-  --muted: #666;
-  --accent: #00c896;
-  --amber: #e8a840;
-  --red: #f07070;
-  --blue: #5b9cf6;
+  --bg: #0b0d13; --surface: #13151f; --card: #1a1d27;
+  --border: #252836; --text: #e8e8e8; --muted: #555;
+  --accent: #00c896; --amber: #e8a840; --red: #f07070;
 }
-
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 14px;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+  font-size: 14px; background: var(--bg); color: var(--text);
+  min-height: 100vh; line-height: 1.5;
 }
-
-/* ── TOP NAV ── */
 .top-nav {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 0;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 20px; display: flex; align-items: center;
+  position: sticky; top: 0; z-index: 100;
 }
-
 .nav-brand {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: .05em;
-  padding: 14px 16px 14px 0;
-  border-right: 1px solid var(--border);
-  margin-right: 8px;
+  font-size: 13px; font-weight: 700; color: var(--muted);
+  padding: 14px 16px 14px 0; border-right: 1px solid var(--border);
+  margin-right: 8px; letter-spacing: .03em;
 }
-
 .nav-tab {
-  padding: 14px 18px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all .15s;
-  user-select: none;
+  padding: 14px 18px; font-size: 13px; font-weight: 500;
+  color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all .15s; user-select: none;
 }
 .nav-tab:hover { color: var(--text); }
 .nav-tab.active { color: var(--text); border-bottom-color: var(--accent); }
-
-/* ── SUB TABS ── */
 .sub-nav {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  display: flex;
-  gap: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 20px; display: flex;
 }
-
 .sub-tab {
-  padding: 10px 16px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all .15s;
-  user-select: none;
+  padding: 9px 16px; font-size: 12px; font-weight: 500;
+  color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all .15s; user-select: none;
 }
 .sub-tab:hover { color: var(--text); }
 .sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-/* ── CONTENT PANELS ── */
 .strategy-panel { display: none; }
 .strategy-panel.active { display: block; }
-
 .sub-panel { display: none; padding: 24px 20px; }
 .sub-panel.active { display: block; }
-
-/* Scanner placeholder */
-.scanner-placeholder {
-  max-width: 680px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  gap: 12px;
-  color: var(--muted);
-  text-align: center;
+.coming-soon {
+  max-width: 680px; margin: 0 auto;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 80px 20px; gap: 10px; text-align: center;
 }
-.scanner-placeholder .icon { font-size: 40px; opacity: .3; }
-.scanner-placeholder .title { font-size: 15px; font-weight: 600; color: #444; }
-.scanner-placeholder .desc { font-size: 13px; color: #333; }
+.coming-soon .cs-icon { font-size: 36px; opacity: .25; }
+.coming-soon .cs-title { font-size: 14px; font-weight: 600; color: #333; }
+.coming-soon .cs-desc { font-size: 12px; color: #2a2d3a; }
 
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; background: #0f1117; color: #e8e8e8; padding: 20px; line-height: 1.5; }
   h1 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
   .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
-  .sheet { display: flex; flex-direction: column; gap: 16px; max-width: 680px; margin: 0 auto; }
-
-  .section-title {
-    font-size: 11px; font-weight: 600; color: #888;
-    text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px;
-  }
-  .card {
-    background: #1a1d27; border: 1px solid #2a2d3a;
-    border-radius: 12px; padding: 14px 16px;
-  }
-
-  /* ── CONDITION ROW ── */
-  .cond-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 0; border-bottom: 1px solid #1e2130;
-  }
+  .sheet { display: flex; flex-direction: column; gap: 16px; max-width: 640px; margin: 0 auto; }
+  .section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+  .card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 14px 16px; }
+  .cond-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #1e2130; }
   .cond-row:last-child { border-bottom: none; padding-bottom: 0; }
   .cond-row:first-child { padding-top: 0; }
-
-  /* custom checkbox */
-  .cb-wrap { flex-shrink: 0; }
   .cb-wrap input[type="checkbox"] { display: none; }
-  .cb-wrap label {
-    display: flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 6px;
-    border: 2px solid #3a3d4a; background: #12141d;
-    cursor: pointer; transition: all .15s;
-    font-size: 13px; color: transparent;
-  }
-  .cb-wrap input:checked + label {
-    background: #00c896; border-color: #00c896; color: #fff;
-  }
-
-  .cond-code {
-    font-family: monospace; font-size: 12px; font-weight: 700;
-    min-width: 22px; color: #6aabf0;
-  }
+  .cb-wrap label { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #3a3d4a; background: #12141d; cursor: pointer; transition: all .15s; font-size: 13px; color: transparent; flex-shrink: 0; }
+  .cb-wrap input:checked + label { background: #00c896; border-color: #00c896; color: #fff; }
+  .cond-code { font-family: monospace; font-size: 12px; font-weight: 700; min-width: 22px; color: #6aabf0; }
   .cond-code.bonus { color: #e8a840; }
-
   .cond-info { flex: 1; }
   .cond-name { font-size: 13px; font-weight: 600; color: #e8e8e8; }
   .cond-rule { font-size: 11px; color: #666; margin-top: 1px; }
-
-  /* value input */
-  .val-input {
-    width: 72px; padding: 4px 8px;
-    background: #12141d; border: 1px solid #2a2d3a; border-radius: 6px;
-    color: #e8e8e8; font-size: 12px; font-family: monospace;
-    text-align: center; outline: none; flex-shrink: 0;
-  }
-  .val-input:focus { border-color: #6aabf0; }
-  .val-input.ok    { border-color: #00c896; color: #00c896; }
-  .val-input.warn  { border-color: #f07070; color: #f07070; }
-
-  .val-label { font-size: 11px; color: #555; min-width: 30px; flex-shrink: 0; }
-
-  /* ── SCORE BAR ── */
-  .score-wrap {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
-  }
+  .star { color: #ffd700; font-size: 11px; }
+  .score-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
   .score-label { font-size: 13px; color: #888; min-width: 110px; }
-  .score-bar-bg {
-    flex: 1; height: 8px; background: #1e2130; border-radius: 4px; overflow: hidden;
-  }
-  .score-bar-fill {
-    height: 100%; border-radius: 4px; transition: width .3s, background .3s;
-  }
+  .score-bar-bg { flex: 1; height: 8px; background: #1e2130; border-radius: 4px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 4px; transition: width .3s, background .3s; }
   .score-num { font-size: 14px; font-weight: 700; min-width: 36px; text-align: right; }
-
-  /* ── VERDICT BOX ── */
-  .verdict {
-    border-radius: 10px; padding: 14px 16px;
-    margin-top: 4px; transition: all .3s;
-  }
+  .btn-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .s-btn { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid #2a2d3a; background: #12141d; color: #666; cursor: pointer; transition: all .15s; }
+  .s-btn.active.sg { background: #0d2a1e; border-color: #00c896; color: #00c896; }
+  .s-btn.active.s4 { background: #1a2a0d; border-color: #7ecf60; color: #7ecf60; }
+  .s-btn.active.so { background: #2a1e00; border-color: #e8a840; color: #e8a840; }
+  .s-btn.active.sr { background: #2a1010; border-color: #f07070; color: #f07070; }
+  .hint { font-size: 12px; color: #888; margin-top: 8px; min-height: 18px; }
+  .verdict { border-radius: 10px; padding: 14px 16px; transition: all .3s; }
   .verdict.idle    { background: #1a1d27; border: 1px solid #2a2d3a; }
   .verdict.ready   { background: #0d2a1e; border: 1px solid #00c896; }
   .verdict.partial { background: #2a1e00; border: 1px solid #e8a840; }
   .verdict.notyet  { background: #2a1010; border: 1px solid #f07070; }
-
-  .verdict-icon { font-size: 22px; margin-bottom: 6px; }
+  .verdict-icon  { font-size: 22px; margin-bottom: 6px; }
   .verdict-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
-  .verdict.ready   .verdict-title { color: #00c896; }
+  .verdict.ready .verdict-title   { color: #00c896; }
   .verdict.partial .verdict-title { color: #e8a840; }
-  .verdict.notyet  .verdict-title { color: #f07070; }
-  .verdict.idle    .verdict-title { color: #555; }
-
-  .verdict-steps { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-  .verdict-step {
-    display: flex; gap: 8px; font-size: 12px; color: #aaa; align-items: flex-start;
-  }
-  .verdict-step .arrow { color: #6aabf0; flex-shrink: 0; font-weight: 700; }
-
-  /* ── STREAK PICKER ── */
-  .streak-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-  .streak-btn {
-    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
-    border: 1px solid #2a2d3a; background: #12141d; color: #666;
-    cursor: pointer; transition: all .15s;
-  }
-  .streak-btn.active.s5 { background: #0d2a1e; border-color: #00c896; color: #00c896; }
-  .streak-btn.active.s4 { background: #1a2a0d; border-color: #7ecf60; color: #7ecf60; }
-  .streak-btn.active.s3 { background: #2a1e00; border-color: #e8a840; color: #e8a840; }
-  .streak-btn.active.s2 { background: #2a1010; border-color: #f07070; color: #f07070; }
-
-  .streak-hint { font-size: 12px; color: #888; margin-top: 8px; min-height: 18px; }
-
-  /* ── RESET ── */
-  .reset-btn {
-    padding: 8px 20px; border-radius: 8px; border: 1px solid #2a2d3a;
-    background: #12141d; color: #666; font-size: 13px; cursor: pointer;
-    transition: all .15s; align-self: flex-start;
-  }
+  .verdict.notyet .verdict-title  { color: #f07070; }
+  .verdict.idle .verdict-title    { color: #555; }
+  .verdict-steps { display: flex; flex-direction: column; gap: 6px; }
+  .vs { display: flex; gap: 8px; font-size: 12px; color: #aaa; align-items: flex-start; }
+  .vs .ar { color: #6aabf0; flex-shrink: 0; font-weight: 700; }
+  .rr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .rr-field label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+  .rr-input { width: 100%; padding: 8px 10px; background: #12141d; border: 1px solid #2a2d3a; border-radius: 6px; color: #e8e8e8; font-size: 13px; font-family: monospace; outline: none; }
+  .rr-input:focus { border-color: #6aabf0; }
+  .rr-results { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .rr-cell { background: #12141d; border-radius: 8px; padding: 10px; border: 1px solid #2a2d3a; text-align: center; }
+  .rr-cl { font-size: 11px; color: #666; margin-bottom: 4px; }
+  .rr-cv { font-size: 14px; font-weight: 700; font-family: monospace; }
+  .rr-v { border-radius: 8px; padding: 12px 14px; text-align: center; font-size: 15px; font-weight: 700; }
+  .reset-btn { padding: 8px 20px; border-radius: 8px; border: 1px solid #2a2d3a; background: #12141d; color: #666; font-size: 13px; cursor: pointer; transition: all .15s; align-self: flex-start; }
   .reset-btn:hover { border-color: #f07070; color: #f07070; }
-
-  .star { color: #ffd700; font-size: 11px; }
 
 </style>
 </head>
 <body>
 
-<!-- TOP NAV -->
 <div class="top-nav">
-  <div class="nav-brand">投機十步曲</div>
-  <div class="nav-tab active" onclick="switchStrategy('s1', this)">S1 · 順勢交易</div>
-  <div class="nav-tab" onclick="switchStrategy('s3', this)">S3 · 突破交易</div>
-  <div class="nav-tab" onclick="switchStrategy('s6', this)">S6 · 旗形整固</div>
+  <div class="nav-brand">index</div>
+  <div class="nav-tab active" onclick="switchStrategy('s1',this)">S1</div>
+  <div class="nav-tab" onclick="switchStrategy('s3',this)">S3</div>
+  <div class="nav-tab" onclick="switchStrategy('s6',this)">S6</div>
 </div>
 
-<!-- S1 PANEL -->
+<!-- S1 -->
 <div class="strategy-panel active" id="panel-s1">
   <div class="sub-nav">
-    <div class="sub-tab active" onclick="switchSub('s1', 'checklist', this)">📋 互動檢查表</div>
-    <div class="sub-tab" onclick="switchSub('s1', 'scanner', this)">🔍 Scanner</div>
+    <div class="sub-tab active" onclick="switchSub('s1','scanner',this)">🔍 Scanner</div>
+    <div class="sub-tab" onclick="switchSub('s1','checklist',this)">📋 S1 互動檢查表</div>
+    <div class="sub-tab" onclick="switchSub('s1','checklist-v1',this)">📋 S1V1 互動檢查表</div>
   </div>
-  <div class="sub-panel active" id="s1-checklist">
-    <div class="sheet">
-<div class="sheet">
-
-  <!-- HEADER -->
+  <div class="sub-panel active" id="s1-scanner">
+    <div class="coming-soon">
+      <div class="cs-icon">🔍</div>
+      <div class="cs-title">S1 Scanner</div>
+      <div class="cs-desc">即將推出</div>
+    </div>
+  </div>
+  <div class="sub-panel" id="s1-checklist">
+    <div class="sheet"><div class="sheet">
   <div>
     <h1>S1 · 順勢交易 · 互動檢查表</h1>
-    <div class="subtitle">投機十步曲 · 填入數值，逐條 Tick，即時知道應該點做</div>
+    <div class="subtitle">投機十步曲 · 直接從 Scanner Tick，唔需要打數字</div>
   </div>
 
-  <!-- STREAK -->
+  <!-- STEP 1 STREAK -->
   <div>
-    <div class="section-title">Step 1 · Playbook Scanner 連續日數</div>
+    <div class="section-title">Step 1 · 跌穿 EMA20 之前，Playbook Scanner 連續幾多日？</div>
     <div class="card">
-      <div style="font-size:13px;color:#aaa;margin-bottom:10px">今日 S1 行連續幾多日？</div>
-      <div class="streak-wrap">
-        <button class="streak-btn s5" onclick="setStreak(this,'s5','25日+ 🔥 主升浪！S1 最有效，最值得操作')">25日+ 🔥</button>
-        <button class="streak-btn s4" onclick="setStreak(this,'s4','7–14日 ✓ 趨勢健康，正常跟流程入場')">7–14日 ✓</button>
-        <button class="streak-btn s3" onclick="setStreak(this,'s3','3–6日 ⚠️ 趨勢轉弱，保守處理，唔好勉強')">3–6日 ⚠️</button>
-        <button class="streak-btn s2" onclick="setStreak(this,'s2','斷斷續續 ✗ 大趨勢唔支持，唔入，等重新穩定 7日+')">斷斷續續 ✗</button>
+      <div style="font-size:12px;color:#6aabf0;margin-bottom:10px;padding:8px 10px;background:#1a2540;border-radius:8px;border:1px solid #2a3a6a">
+        💡 跌穿 EMA20 嗰日 Scanner 會斷（顯示 0日），呢個係正常！<br>
+        呢度係問：<strong style="color:#fff">跌穿之前</strong>有幾多日連續，確認大趨勢係咪健康。
       </div>
-      <div class="streak-hint" id="streakHint">— 請選擇連續日數 —</div>
+      <div class="btn-wrap">
+        <button class="s-btn" onclick="setBtn(this,'streak','s25','sg','25日+ 🔥 主升浪！大趨勢非常健康，S1 最有效')">25日+ 🔥</button>
+        <button class="s-btn" onclick="setBtn(this,'streak','s7','s4','7–14日 ✓ 趨勢健康，正常入場')">7–14日 ✓</button>
+        <button class="s-btn" onclick="setBtn(this,'streak','s3','so','3–6日 ⚠️ 趨勢轉弱，保守處理')">3–6日 ⚠️</button>
+        <button class="s-btn" onclick="setBtn(this,'streak','s0','sr','唔夠 3日 ✗ 大趨勢唔支持，唔入')">唔夠 3日 ✗</button>
+      </div>
+      <div class="hint" id="h_streak">— 請選擇跌穿 EMA20 之前嘅連續日數 —</div>
     </div>
   </div>
 
-  <!-- REQUIRED -->
+  <!-- STEP 2 REQUIRED -->
   <div>
     <div class="section-title">Step 2 · Required 條件（必須 5/5 全過）</div>
     <div class="card">
-
-      <!-- c1 -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="c1" onchange="update()">
-          <label for="c1">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="c1" onchange="upd()"><label for="c1">✓</label></div>
         <div class="cond-code">c1</div>
-        <div class="cond-info">
-          <div class="cond-name">Price &gt; EMA20</div>
-          <div class="cond-rule">收市價在短期均線之上</div>
-        </div>
+        <div class="cond-info"><div class="cond-name">Price &gt; EMA20</div><div class="cond-rule">假突破後收市返上才 tick</div></div>
       </div>
-
-      <!-- c2 -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="c2" onchange="update()">
-          <label for="c2">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="c2" onchange="upd()"><label for="c2">✓</label></div>
         <div class="cond-code">c2</div>
-        <div class="cond-info">
-          <div class="cond-name">Price &gt; EMA50</div>
-          <div class="cond-rule">收市價在中期均線之上</div>
-        </div>
+        <div class="cond-info"><div class="cond-name">Price &gt; EMA50</div><div class="cond-rule">中期趨勢向上</div></div>
       </div>
-
-      <!-- c3 -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="c3" onchange="update()">
-          <label for="c3">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="c3" onchange="upd()"><label for="c3">✓</label></div>
         <div class="cond-code">c3</div>
-        <div class="cond-info">
-          <div class="cond-name">Price &gt; EMA200 且 EMA200 ↑</div>
-          <div class="cond-rule">大趨勢向上，EMA200 斜率必須向上</div>
-        </div>
+        <div class="cond-info"><div class="cond-name">Price &gt; EMA200 且 EMA200 ↑</div><div class="cond-rule">大趨勢向上，EMA200 斜率必須向上</div></div>
       </div>
-
-      <!-- c4 RSI with input -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="c4" onchange="update()">
-          <label for="c4">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="c4" onchange="upd()"><label for="c4">✓</label></div>
         <div class="cond-code">c4</div>
-        <div class="cond-info">
-          <div class="cond-name">RSI 40–70</div>
-          <div class="cond-rule">唔超買唔超賣，有空間繼續升</div>
-        </div>
-        <div class="val-label">RSI</div>
-        <input class="val-input" id="v_rsi" type="number" placeholder="e.g. 55" oninput="validateRsi(); update()">
+        <div class="cond-info"><div class="cond-name">RSI 40–70</div><div class="cond-rule">唔超買唔超賣</div></div>
       </div>
-
-      <!-- c5 -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="c5" onchange="update()">
-          <label for="c5">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="c5" onchange="upd()"><label for="c5">✓</label></div>
         <div class="cond-code">c5</div>
-        <div class="cond-info">
-          <div class="cond-name">3M &gt;5% 且 1M &lt;25%</div>
-          <div class="cond-rule">趨勢強但唔過熱</div>
-        </div>
+        <div class="cond-info"><div class="cond-name">3M &gt;5% 且 1M &lt;25%</div><div class="cond-rule">趨勢強但唔過熱</div></div>
       </div>
-
-      <!-- required score bar -->
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2d3a">
-        <div class="score-wrap">
-          <div class="score-label">Required Score</div>
-          <div class="score-bar-bg"><div class="score-bar-fill" id="reqBar" style="width:0%;background:#f07070"></div></div>
-          <div class="score-num" id="reqNum" style="color:#f07070">0 / 5</div>
-        </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div class="score-wrap"><div class="score-label">Required</div><div class="score-bar-bg"><div class="score-bar-fill" id="reqBar" style="width:0%;background:#f07070"></div></div><div class="score-num" id="reqNum" style="color:#f07070">0/5</div></div>
       </div>
     </div>
   </div>
 
-  <!-- BONUS -->
+  <!-- STEP 3 BONUS -->
   <div>
-    <div class="section-title">Step 3 · Bonus 條件（目標 3/5 以上，b3+b4 最重要）</div>
+    <div class="section-title">Step 3 · Bonus 條件（目標 3/5，b3+b4 最重要）</div>
     <div class="card">
-
-      <!-- b1 -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="b1" onchange="update()">
-          <label for="b1">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="b1" onchange="upd()"><label for="b1">✓</label></div>
         <div class="cond-code bonus">b1</div>
-        <div class="cond-info">
-          <div class="cond-name">EMA20 &gt; EMA50</div>
-          <div class="cond-rule">短中期均線排列，趨勢加速</div>
-        </div>
+        <div class="cond-info"><div class="cond-name">EMA20 &gt; EMA50</div></div>
       </div>
-
-      <!-- b2 -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="b2" onchange="update()">
-          <label for="b2">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="b2" onchange="upd()"><label for="b2">✓</label></div>
         <div class="cond-code bonus">b2</div>
         <div class="cond-info">
-          <div class="cond-name">EMA50 &gt; EMA200</div>
-          <div class="cond-rule">三線完美排列 EMA20&gt;50&gt;200</div>
+          <div class="cond-name">EMA50 &gt; EMA200 <span class="star">⭐</span></div>
+          <div class="cond-rule">三線完美排列 — <span style="color:#f07070;font-weight:600">b2 fail = 中長期趨勢未恢復，唔入或極細 position</span></div>
         </div>
       </div>
-
-      <!-- b3 RelVol -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="b3" onchange="update()">
-          <label for="b3">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="b3" onchange="upd()"><label for="b3">✓</label></div>
         <div class="cond-code bonus">b3</div>
-        <div class="cond-info">
-          <div class="cond-name">RelVol &lt; 0.9 <span class="star">⭐</span></div>
-          <div class="cond-rule">成交萎縮，健康回調中</div>
-        </div>
-        <div class="val-label">RelVol</div>
-        <input class="val-input" id="v_rvol" type="number" step="0.01" placeholder="e.g. 0.7" oninput="validateRvol(); update()">
+        <div class="cond-info"><div class="cond-name">RelVol &lt; 0.9 <span class="star">⭐</span></div><div class="cond-rule">成交萎縮</div></div>
       </div>
-
-      <!-- b4 1W% -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="b4" onchange="update()">
-          <label for="b4">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="b4" onchange="upd()"><label for="b4">✓</label></div>
         <div class="cond-code bonus">b4</div>
-        <div class="cond-info">
-          <div class="cond-name">1W -8% 至 0% <span class="star">⭐</span></div>
-          <div class="cond-rule">本週輕微回調，接近入場機會</div>
-        </div>
-        <div class="val-label">1W%</div>
-        <input class="val-input" id="v_1w" type="number" step="0.1" placeholder="e.g. -3.2" oninput="validate1w(); update()">
+        <div class="cond-info"><div class="cond-name">1W -8% 至 0% <span class="star">⭐</span></div><div class="cond-rule">本週輕微回調</div></div>
       </div>
-
-      <!-- b5 52W -->
       <div class="cond-row">
-        <div class="cb-wrap">
-          <input type="checkbox" id="b5" onchange="update()">
-          <label for="b5">✓</label>
-        </div>
+        <div class="cb-wrap"><input type="checkbox" id="b5" onchange="upd()"><label for="b5">✓</label></div>
         <div class="cond-code bonus">b5</div>
-        <div class="cond-info">
-          <div class="cond-name">距52週高 &gt; -15%</div>
-          <div class="cond-rule">市場領袖，接近歷史高位</div>
-        </div>
-        <div class="val-label">52W%</div>
-        <input class="val-input" id="v_52w" type="number" step="0.1" placeholder="e.g. -8.5" oninput="validate52w(); update()">
+        <div class="cond-info"><div class="cond-name">距52週高 &gt; -15%</div></div>
       </div>
-
-      <!-- bonus score bar -->
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2d3a">
-        <div class="score-wrap">
-          <div class="score-label">Bonus Score</div>
-          <div class="score-bar-bg"><div class="score-bar-fill" id="bonBar" style="width:0%;background:#e8a840"></div></div>
-          <div class="score-num" id="bonNum" style="color:#e8a840">0 / 5</div>
-        </div>
-        <div id="b3b4hint" style="font-size:12px;color:#555;margin-top:4px;min-height:18px"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div class="score-wrap"><div class="score-label">Bonus</div><div class="score-bar-bg"><div class="score-bar-fill" id="bonBar" style="width:0%;background:#e8a840"></div></div><div class="score-num" id="bonNum" style="color:#e8a840">0/5</div></div>
+        <div class="hint" id="b3b4hint"></div>
       </div>
     </div>
   </div>
 
-  <!-- VOLUME CHECKER -->
+  <!-- STEP 4 FAKE BREAKOUT QUALITY -->
   <div>
-    <div class="section-title">Step 4 · 成交量分析</div>
+    <div class="section-title">Step 4 · 假突破質素</div>
     <div class="card">
-      <div style="font-size:13px;color:#aaa;margin-bottom:12px">今日價格方向同成交量係咩？</div>
-
-      <!-- Price direction -->
-      <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:#666;margin-bottom:6px">今日價格</div>
-        <div style="display:flex;gap:8px">
-          <button class="streak-btn" id="priceUp" onclick="setPrice('up')" style="color:#5ecf8a;border-color:#2a5a35">↑ 升</button>
-          <button class="streak-btn" id="priceDn" onclick="setPrice('dn')" style="color:#f07070;border-color:#6a2a2a">↓ 跌</button>
-        </div>
+      <div style="font-size:12px;color:#666;margin-bottom:6px">假突破嗰日成交量</div>
+      <div class="btn-wrap">
+        <button class="s-btn" onclick="setBtn(this,'vol','縮量','sg','✅ 縮量 — 賣壓唔強，最理想')">縮量 &lt;0.9x ✅</button>
+        <button class="s-btn" onclick="setBtn(this,'vol','中性','so','⚠️ 中性 — 可以接受，但質素一般')">中性 0.9–1.2x</button>
+        <button class="s-btn" onclick="setBtn(this,'vol','放量','sr','❌ 放量 — 可能真賣壓，需要更小心')">放量 &gt;1.5x ❌</button>
       </div>
+      <div class="hint" id="h_vol">— 請選擇假突破當日成交量 —</div>
 
-      <!-- RelVol input -->
-      <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:#666;margin-bottom:6px">今日 RelVol（相對成交量）</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input class="val-input" id="v_vol" type="number" step="0.01" placeholder="e.g. 1.3" style="width:90px" oninput="updateVol()">
-          <span style="font-size:12px;color:#555">（&lt;0.9 = 縮量　1.0 = 平均　&gt;1.5 = 放量）</span>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div style="font-size:12px;color:#666;margin-bottom:6px">跌穿 EMA20 幾日後升返？<span style="color:#e8a840;font-size:11px;margin-left:6px">⚠️ 只計交易日，週末唔算！</span></div>
+        <div class="btn-wrap">
+          <button class="s-btn" onclick="setBtn(this,'days','當日','sg','🔥 當日即彈 — 最強假突破訊號')">當日 🔥</button>
+          <button class="s-btn" onclick="setBtn(this,'days','1–2日','sg','✅ 1–2日升返 — 正常，可以接受')">1–2日 ✅</button>
+          <button class="s-btn" onclick="setBtn(this,'days','3日','so','⚠️ 3日升返 — 較弱，考慮細 position')">3日 ⚠️</button>
+          <button class="s-btn" onclick="setBtn(this,'days','4日+','sr','❌ 4日以上 — Setup 唔成立，唔入')">4日+ ❌</button>
         </div>
-      </div>
-
-      <!-- Volume verdict -->
-      <div id="volVerdict" style="min-height:48px;border-radius:8px;padding:10px 12px;background:#12141d;border:1px solid #2a2d3a;font-size:13px;color:#555">
-        — 請選擇價格方向並輸入 RelVol —
+        <div class="hint" id="h_days"></div>
       </div>
     </div>
   </div>
@@ -482,258 +270,785 @@ body {
     <div class="verdict idle" id="verdict">
       <div class="verdict-icon">—</div>
       <div class="verdict-title">填入條件先可以判斷</div>
-      <div class="verdict-steps" id="verdictSteps"></div>
+      <div class="verdict-steps" id="vSteps"></div>
+    </div>
+  </div>
+
+  <!-- SETUP QUALITY -->
+  <div>
+    <div class="section-title">Setup 質素評級</div>
+    <div class="card" id="qualityCard" style="text-align:center;padding:16px">
+      <div id="qualityIcon" style="font-size:28px;margin-bottom:8px">—</div>
+      <div id="qualityTitle" style="font-size:16px;font-weight:700;color:#555;margin-bottom:8px">填入條件先可以評級</div>
+      <div id="qualityDesc" style="font-size:12px;color:#888;line-height:1.7"></div>
+    </div>
+  </div>
+
+  <!-- RR CALCULATOR -->
+  <div>
+    <div class="section-title">R:R 計算器</div>
+    <div class="card">
+      <div class="rr-grid">
+        <div class="rr-field"><label>假突破收市價（入場價）</label><input class="rr-input" type="number" id="rr_e" step="0.01" placeholder="e.g. 55.10" oninput="calcRR()"></div>
+        <div class="rr-field"><label>假突破最低位</label><input class="rr-input" type="number" id="rr_l" step="0.01" placeholder="e.g. 53.20" oninput="calcRR()"></div>
+        <div class="rr-field"><label>T2 目標（1.618）</label><input class="rr-input" type="number" id="rr_t" step="0.01" placeholder="e.g. 62.40" oninput="calcRR()"></div>
+        <div class="rr-field"><label>止損緩衝 %（預設 1%）</label><input class="rr-input" type="number" id="rr_b" step="0.1" value="1" oninput="calcRR()"></div>
+      </div>
+      <div id="rr_res" style="display:none">
+        <div class="rr-results">
+          <div class="rr-cell"><div class="rr-cl">止損位</div><div class="rr-cv" id="rr_sl" style="color:#f07070"></div></div>
+          <div class="rr-cell"><div class="rr-cl">風險 $</div><div class="rr-cv" id="rr_rk" style="color:#f07070"></div></div>
+          <div class="rr-cell"><div class="rr-cl">回報 $</div><div class="rr-cv" id="rr_rw" style="color:#5ecf8a"></div></div>
+        </div>
+        <div class="rr-v" id="rr_vd"></div>
+      </div>
+      <div id="rr_ph" style="font-size:12px;color:#555;text-align:center;padding:8px 0">— 填入入場價、假突破最低位、T2 目標 —</div>
+    </div>
+  </div>
+
+  <button class="reset-btn" onclick="resetAll()">↺ 重置</button>
+  <div style="font-size:11px;color:#333;text-align:center;padding-bottom:8px">S1 順勢交易 · 投機十步曲</div>
+</div>
+
+<script>
+var state = { streak: null, vol: null, days: null };
+
+function setBtn(btn, group, val, cls, hint) {
+  var groups = {
+    streak: ['s25','s7','s3','s0'],
+    vol: ['縮量','中性','放量'],
+    days: ['當日','1–2日','3日','4日+']
+  };
+  document.querySelectorAll('.s-btn').forEach(function(b) {
+    if (groups[group].some(function(v) { return b.textContent.indexOf(v.replace('+',' ')) >= 0 || b.onclick.toString().indexOf("'"+v+"'") >= 0; })) {
+      b.className = 's-btn';
+    }
+  });
+  btn.className = 's-btn active ' + cls;
+  state[group] = val;
+  document.getElementById('h_' + group).textContent = hint;
+  upd();
+}
+
+function upd() {
+  var req = ['c1','c2','c3','c4','c5'].filter(function(id){ return document.getElementById(id).checked; }).length;
+  var rc = req===5?'#00c896':req>=3?'#e8a840':'#f07070';
+  document.getElementById('reqBar').style.cssText = 'height:100%;border-radius:4px;transition:width .3s;width:'+(req/5*100)+'%;background:'+rc;
+  document.getElementById('reqNum').textContent = req+'/5'; document.getElementById('reqNum').style.color = rc;
+
+  var bon = ['b1','b2','b3','b4','b5'].filter(function(id){ return document.getElementById(id).checked; }).length;
+  var bc = bon>=4?'#00c896':bon>=3?'#e8a840':'#f07070';
+  document.getElementById('bonBar').style.cssText = 'height:100%;border-radius:4px;transition:width .3s;width:'+(bon/5*100)+'%;background:'+bc;
+  document.getElementById('bonNum').textContent = bon+'/5'; document.getElementById('bonNum').style.color = bc;
+
+  var b3=document.getElementById('b3').checked, b4=document.getElementById('b4').checked;
+  var bh=document.getElementById('b3b4hint');
+  if(b3&&b4){bh.textContent='⭐ b3+b4 同時 ✓ — 最佳入場準備狀態！';bh.style.color='#ffd700';}
+  else if(b3||b4){bh.textContent='→ b3 或 b4 其中一個 ✓，仲差一個';bh.style.color='#888';}
+  else{bh.textContent='';}
+
+  renderVerdict(req, bon, b3, b4);
+}
+
+function renderVerdict(req, bon, b3, b4) {
+  var box=document.getElementById('verdict'), steps=document.getElementById('vSteps');
+  function set(cls, icon, title, html) {
+    box.className='verdict '+cls;
+    box.querySelector('.verdict-icon').textContent=icon;
+    box.querySelector('.verdict-title').textContent=title;
+    steps.innerHTML=html;
+  }
+  function vs(ar, txt) { return '<div class="vs"><span class="ar">'+ar+'</span><span>'+txt+'</span></div>'; }
+
+  if(!state.streak) { set('idle','—','請先選擇 Playbook Scanner 連續日數',''); return; }
+  if(state.streak==='s0') { set('notyet','🛑','唔入 — 跌穿前連續日數唔夠', vs('→','跌穿 EMA20 之前少於 3日，大趨勢未確認健康。唔好勉強，等連續日數累積 7日+ 先考慮。')); return; }
+  if(state.streak==='s3') { set('notyet','⚠️','保守 — 跌穿前只有 3–6日，唔建議入', vs('→','跌穿 EMA20 之前連續日數只有 3–6 日，趨勢確認唔夠。就算 Required 全過，都要保守處理。等下次 7日+ 先操作。')); return; }
+  if(state.days==='4日+') { set('notyet','❌','唔入 — 跌穿 EMA20 超過 4日', vs('→','Setup 唔成立。唔係假突破，係真正跌穿。等連續日數重新累積 7日+ 先考慮。')); return; }
+
+  if(req<5) {
+    var miss=[]; if(!document.getElementById('c1').checked)miss.push('c1'); if(!document.getElementById('c2').checked)miss.push('c2'); if(!document.getElementById('c3').checked)miss.push('c3'); if(!document.getElementById('c4').checked)miss.push('c4'); if(!document.getElementById('c5').checked)miss.push('c5');
+    if(miss.length===1&&miss[0]==='c1') {
+      set('partial','👀','假突破候選日！— 等收市確認', vs('→','Price 跌穿 EMA20（c1 fail），其餘全過。等今日收市！')+vs('✅','收市返上 EMA20 → 確認假突破，當晚放 Limit Order')+vs('❌','收市仍在 EMA20 之下 → 唔係假突破，繼續等'));
+      return;
+    }
+    var nm={c1:'Price>EMA20',c2:'Price>EMA50',c3:'EMA200↑',c4:'RSI 40–70',c5:'3M/1M%'};
+    set('notyet','❌','Required 未達標 — 唔入', vs('✗','仲差：'+miss.map(function(c){return nm[c];}).join('、'))); return;
+  }
+  if(bon<3) { set('partial','⚠️','Bonus 唔夠 — 唔建議入', vs('→','Required 全過，但 Bonus 只有 '+bon+'/5。最少要 3/5，b3+b4 同時 ✓ 先入。')); return; }
+
+  // b2 fail 特別警告
+  var b2=document.getElementById('b2').checked;
+  if(!b2) {
+    set('partial','⚠️','b2 fail — 三線排列未完成，極細 position',
+      vs('⚠️','EMA50 < EMA200，股票由跌市反彈，中長期趨勢未完全恢復，反彈容易失敗') +
+      vs('→','如果其他條件都好，可以考慮極細 position（正常嘅一半）') +
+      vs('!','計 R:R ≥ 2:1 先入，計唔到就唔入')
+    ); return;
+  }
+  if(state.vol==='放量') { set('partial','⚠️','放量假突破 — 質素較差', vs('⚠️','假突破放量，可能有真正賣壓。考慮細 position，或等下次縮量假突破。')+vs('!','計 R:R ≥ 2:1 先入，計唔到就唔入')); return; }
+  if(state.days==='3日') { set('partial','⚠️','3日升返 — 訊號較弱', vs('⚠️','用 3日先升返，訊號質素一般。考慮細 position 入場。')+vs('!','計 R:R ≥ 2:1 先入，計唔到就唔入')); return; }
+
+  var b3b4html = (b3&&b4)?vs('⭐','b3+b4 同時 ✓ — 最佳入場準備狀態！'):'';
+  var voltxt = state.vol==='縮量'?'縮量假突破 🔥 最理想':state.vol==='中性'?'成交量中性，可以接受':'';
+  set('ready','✅','READY — 可以進入入場流程',
+    b3b4html +
+    vs('1','假突破確認 ✅' + (voltxt?' ｜ '+voltxt:'')) +
+    vs('2','當晚放 Limit Order（收市價附近，唔係追高）') +
+    vs('3','用下面 R:R 計算器確認 ≥ 2:1 先入場')
+  );
+
+  // ── Setup Quality Rating ──
+  var qualityScore = 0;
+  if (bon >= 5) qualityScore += 3;
+  else if (bon >= 4) qualityScore += 2;
+  else if (bon >= 3) qualityScore += 1;
+  if (state.vol === '縮量') qualityScore += 2;
+  else if (state.vol === '中性') qualityScore += 1;
+  if (state.days === '當日') qualityScore += 2;
+  else if (state.days === '1–2日') qualityScore += 1;
+  if (b3 && b4) qualityScore += 1;
+  if (state.streak === 's5') qualityScore += 1;
+
+  var qIcon, qTitle, qColor, qBg, qBorder, qDesc;
+  if (qualityScore >= 7) {
+    qIcon='🔥'; qTitle='高質 Setup';
+    qColor='#00c896'; qBg='#0d2a1e'; qBorder='#2a5a35';
+    qDesc='Bonus 充足 + 縮量假突破 + 快速彈返<br>最理想入場機會，正常 position 入場';
+  } else if (qualityScore >= 4) {
+    qIcon='✅'; qTitle='中質 Setup';
+    qColor='#e8a840'; qBg='#2a1e00'; qBorder='#6a4800';
+    qDesc='條件合格但有部分不足<br>可以入場，考慮細少少 position';
+  } else {
+    qIcon='⚠️'; qTitle='低質 Setup';
+    qColor='#f07070'; qBg='#2a1010'; qBorder='#6a2a2a';
+    qDesc='多個條件質素一般<br>唔建議入，或者極細 position';
+  }
+  var qCard=document.getElementById('qualityCard');
+  qCard.style.background=qBg; qCard.style.border='1px solid '+qBorder;
+  document.getElementById('qualityIcon').textContent=qIcon;
+  var qt=document.getElementById('qualityTitle');
+  qt.style.color=qColor; qt.textContent=qTitle;
+  document.getElementById('qualityDesc').innerHTML=qDesc;
+}
+
+function calcRR() {
+  var e=parseFloat(document.getElementById('rr_e').value), l=parseFloat(document.getElementById('rr_l').value), t=parseFloat(document.getElementById('rr_t').value), b=parseFloat(document.getElementById('rr_b').value)||1;
+  var res=document.getElementById('rr_res'), ph=document.getElementById('rr_ph');
+  if(isNaN(e)||isNaN(l)||isNaN(t)){res.style.display='none';ph.style.display='block';return;}
+  var sl=l*(1-b/100), risk=e-sl, reward=t-e, rr=reward/risk;
+  res.style.display='block'; ph.style.display='none';
+  document.getElementById('rr_sl').textContent='$'+sl.toFixed(2);
+  document.getElementById('rr_rk').textContent='$'+risk.toFixed(2);
+  document.getElementById('rr_rw').textContent='$'+reward.toFixed(2);
+  var v=document.getElementById('rr_vd');
+  if(rr>=3)      v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a',v.textContent='✅ R:R = '+rr.toFixed(2)+':1 — 優秀！可以入場';
+  else if(rr>=2) v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#1a3020;border:1px solid #2a5a35;color:#5ecf8a',v.textContent='✅ R:R = '+rr.toFixed(2)+':1 — 達標，可以入場';
+  else if(rr>=1.5) v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#2a1e00;border:1px solid #6a4800;color:#e8a840',v.textContent='⚠️ R:R = '+rr.toFixed(2)+':1 — 唔夠 2:1，唔建議入';
+  else           v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#2a1010;border:1px solid #6a2a2a;color:#f07070',v.textContent='❌ R:R = '+rr.toFixed(2)+':1 — 唔夠，保存子彈';
+}
+
+function resetAll() {
+  ['c1','c2','c3','c4','c5','b1','b2','b3','b4','b5'].forEach(function(id){ document.getElementById(id).checked=false; });
+  ['rr_e','rr_l','rr_t'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('rr_b').value='1';
+  document.getElementById('rr_res').style.display='none'; document.getElementById('rr_ph').style.display='block';
+  document.querySelectorAll('.s-btn').forEach(function(b){ b.className='s-btn'; });
+  state={streak:null,vol:null,days:null};
+  ['streak','vol','days'].forEach(function(g){ var el=document.getElementById('h_'+g); if(el) el.textContent = g==='streak'?'— 請選擇連續日數 —':g==='vol'?'— 請選擇假突破當日成交量 —':''; });
+  document.getElementById('b3b4hint').textContent='';
+  document.getElementById('reqBar').style.cssText='height:100%;border-radius:4px;width:0%;background:#f07070';
+  document.getElementById('reqNum').textContent='0/5'; document.getElementById('reqNum').style.color='#f07070';
+  document.getElementById('bonBar').style.cssText='height:100%;border-radius:4px;width:0%;background:#e8a840';
+  document.getElementById('bonNum').textContent='0/5'; document.getElementById('bonNum').style.color='#e8a840';
+  var box=document.getElementById('verdict');
+  box.className='verdict idle';
+  box.querySelector('.verdict-icon').textContent='—';
+  box.querySelector('.verdict-title').textContent='填入條件先可以判斷';
+  document.getElementById('vSteps').innerHTML='';
+  var qCard=document.getElementById('qualityCard');
+  qCard.style.background='#1a1d27'; qCard.style.border='1px solid #2a2d3a';
+  document.getElementById('qualityIcon').textContent='—';
+  var qt=document.getElementById('qualityTitle'); qt.style.color='#555'; qt.textContent='填入條件先可以評級';
+  document.getElementById('qualityDesc').innerHTML='';
+}
+</script></div>
+  </div>
+  <div class="sub-panel" id="s1-checklist-v1">
+    <div class="sheet"><div class="sheet">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="v-badge">原版 v1</div>
+    <h1>S1 · 順勢交易 · 原版互動檢查表</h1>
+    <div class="subtitle">投機十步曲 · 以「前頂支撐」作為入場位 · 假突破反彈策略</div>
+  </div>
+
+  <!-- CORE CONCEPT -->
+  <div>
+    <div class="section-title">原版核心概念</div>
+    <div class="concept-box">
+      <div class="concept-title">入場邏輯</div>
+      <div class="concept-flow">
+        <div class="flow-step">上升趨勢中<br>出現推進浪</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">突破前頂<br>明顯距離</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step key">回調略跌穿<br>前頂（支撐位）</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step key">急速反彈<br>返上前頂</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step" style="color:#00c896;border-color:#2a5a35;background:#0d2a1e">入場</div>
+      </div>
+      <div class="info-box" style="margin-top:10px">
+        <div class="info-box-title">💡 原版 vs 演化版（EMA20 版）</div>
+        <div class="info-box-text">
+          原版支撐位係「<strong style="color:#fff">前頂（前高位置）</strong>」，唔係 EMA20。<br>
+          原版更靈活、更貼近市場行為，但需要人手識別前頂位置。<br>
+          EMA20 版（你另一個檢查表）係 Scanner 量化版本，更機械式。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCANNER PRE-STEP -->
+  <div>
+    <div class="section-title">先做 · 用 Scanner 確認大趨勢（入場前必做）</div>
+    <div class="card">
+      <div style="font-size:12px;color:#6aabf0;font-weight:600;margin-bottom:10px">📊 Playbook Scanner → S1 詳細 Scanner → 人手睇圖 → 互動檢查表</div>
+
+      <!-- Playbook Scanner -->
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #1e2130;align-items:flex-start">
+        <div style="min-width:28px;height:28px;border-radius:50%;background:#1a2540;border:1px solid #2a3a6a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#6aabf0;flex-shrink:0">1</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">Playbook Scanner — 睇呢兩樣</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a;font-weight:600">S1 連續日數 7日+</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a;font-weight:600">EMA200 ↑</span>
+          </div>
+          <div style="font-size:12px;color:#f07070">❌ 唔理：Score / Signal — 呢啲係 EMA20 版用嘅，v1 唔適用</div>
+        </div>
+      </div>
+
+      <!-- S1 Scanner -->
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #1e2130;align-items:flex-start">
+        <div style="min-width:28px;height:28px;border-radius:50%;background:#1a2540;border:1px solid #2a3a6a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#6aabf0;flex-shrink:0">2</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">S1 詳細 Scanner — 只睇三個條件</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a;font-weight:600">c3 EMA200↑</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a;font-weight:600">c4 RSI 40–70</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a;font-weight:600">c5 3M>5% 1M&lt;25%</span>
+          </div>
+          <div style="font-size:12px;color:#f07070">❌ 忽略：c1 Price>EMA20 / c2 Price>EMA50 — v1 入場位係前頂，唔係 EMA20</div>
+        </div>
+      </div>
+
+      <!-- Human chart reading -->
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #1e2130;align-items:flex-start">
+        <div style="min-width:28px;height:28px;border-radius:50%;background:#1a2540;border:1px solid #2a3a6a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#6aabf0;flex-shrink:0">3</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:3px">人手睇日線圖 — 識別前頂位置</div>
+          <div style="font-size:12px;color:#aaa;line-height:1.6">搵出第1推進浪頂部（前頂），確認第2推進浪突破前頂「適中距離」，等回調略跌穿前頂後急速反彈</div>
+        </div>
+      </div>
+
+      <!-- This checklist -->
+      <div style="display:flex;gap:10px;padding:10px 0;align-items:flex-start">
+        <div style="min-width:28px;height:28px;border-radius:50%;background:#1a3020;border:1px solid #2a5a35;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5ecf8a;flex-shrink:0">4</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#5ecf8a;margin-bottom:3px">用下面呢個檢查表 Tick 確認 → 計 R:R → 入場</div>
+          <div style="font-size:12px;color:#aaa">Scanner = 大趨勢過濾器　｜　互動檢查表 = 入場前最後確認</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STEP 1: TREND -->
+  <div>
+    <div class="section-title">Step 1 · 趨勢狀態（必須確認）</div>
+    <div class="card">
+      <div style="font-size:13px;color:#aaa;margin-bottom:10px">依家個市 / 呢隻股係咩趨勢？</div>
+      <div class="trend-wrap">
+        <button class="trend-btn up" onclick="s1v1_setTrend(this,'up')">↑ 強上升趨勢</button>
+        <button class="trend-btn down" onclick="s1v1_setTrend(this,'down')">↓ 下跌趨勢已終結跡象</button>
+        <button class="trend-btn flat" onclick="s1v1_setTrend(this,'flat')">→ 橫行 / 下跌中</button>
+      </div>
+      <div class="trend-hint" id="s1v1_trendHint">— 請選擇趨勢狀態 —</div>
+    </div>
+  </div>
+
+  <!-- STEP 2: REQUIRED -->
+  <div>
+    <div class="section-title">Step 2 · 必需元素（Required Checklist）</div>
+    <div class="card">
+
+      <!-- R1 -->
+      <div class="cond-row" style="flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:10px;align-items:flex-start;width:100%">
+          <div class="cb-wrap"><input type="checkbox" id="s1v1_r1" onchange="s1v1_update()"><label for="s1v1_r1">✓</label></div>
+          <div class="cond-info">
+            <div class="cond-name">上升趨勢沒有過度延伸 <span class="tag-req">必須</span></div>
+            <div class="cond-why">唔係趨勢終結狀態，冇出現「價格直線向上 + 天量成交」嘅跡象</div>
+          </div>
+        </div>
+        <!-- R1 SVG: healthy vs overextended -->
+        <div style="width:100%;display:flex;gap:8px;margin-top:4px">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#5ecf8a;font-weight:600;margin-bottom:4px;text-align:center">✅ 健康上升</div>
+            <svg viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+              <polyline points="5,60 25,48 40,52 55,38 70,42 85,28 100,32 115,18" fill="none" stroke="#5ecf8a" stroke-width="2"/>
+              <!-- small volume bars -->
+              <rect x="8"  y="62" width="4" height="5" fill="#5ecf8a" opacity=".4"/>
+              <rect x="22" y="61" width="4" height="6" fill="#5ecf8a" opacity=".4"/>
+              <rect x="36" y="62" width="4" height="5" fill="#5ecf8a" opacity=".4"/>
+              <rect x="50" y="60" width="4" height="7" fill="#5ecf8a" opacity=".4"/>
+              <rect x="64" y="61" width="4" height="6" fill="#5ecf8a" opacity=".4"/>
+              <rect x="78" y="60" width="4" height="7" fill="#5ecf8a" opacity=".4"/>
+              <rect x="92" y="62" width="4" height="5" fill="#5ecf8a" opacity=".4"/>
+              <rect x="106" y="61" width="4" height="6" fill="#5ecf8a" opacity=".4"/>
+            </svg>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:#f07070;font-weight:600;margin-bottom:4px;text-align:center">❌ 過度延伸（唔入）</div>
+            <svg viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+              <!-- steep vertical line -->
+              <polyline points="5,62 20,58 35,50 50,38 65,22 80,8 95,5 110,4" fill="none" stroke="#f07070" stroke-width="2"/>
+              <!-- massive volume -->
+              <rect x="8"  y="64" width="4" height="3"  fill="#f07070" opacity=".3"/>
+              <rect x="22" y="63" width="4" height="4"  fill="#f07070" opacity=".3"/>
+              <rect x="36" y="60" width="4" height="7"  fill="#f07070" opacity=".5"/>
+              <rect x="50" y="56" width="4" height="11" fill="#f07070" opacity=".6"/>
+              <rect x="64" y="50" width="4" height="17" fill="#f07070" opacity=".7"/>
+              <rect x="78" y="44" width="4" height="23" fill="#f07070" opacity=".8"/>
+              <rect x="92" y="42" width="4" height="25" fill="#f07070" opacity=".9"/>
+              <text x="60" y="35" fill="#f07070" font-size="8" text-anchor="middle" opacity=".8">天量！</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- R2 -->
+      <div class="cond-row" style="flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:10px;align-items:flex-start;width:100%">
+          <div class="cb-wrap"><input type="checkbox" id="s1v1_r2" onchange="s1v1_update()"><label for="s1v1_r2">✓</label></div>
+          <div class="cond-info">
+            <div class="cond-name">第2推進浪突破第1推進浪頂部「明顯距離」 <span class="tag-req">必須</span></div>
+            <div class="cond-why">唔係太短（錨點未改變），唔係太長（回調可能過深）</div>
+            <div class="cond-warn">⚠️ 突破距離要適中 — 太短係假突破，太長係過度延伸</div>
+          </div>
+        </div>
+        <!-- R2 SVG: 3 scenarios -->
+        <div style="width:100%;display:flex;gap:6px;margin-top:4px">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#f07070;font-weight:600;margin-bottom:4px;text-align:center">❌ 太短</div>
+            <svg viewBox="0 0 90 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+              <!-- Wave 1 up -->
+              <polyline points="5,60 25,35" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+              <!-- pullback -->
+              <polyline points="25,35 35,42" fill="none" stroke="#888" stroke-width="1.5"/>
+              <!-- Wave 2 barely above -->
+              <polyline points="35,42 50,33" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+              <!-- prev top line -->
+              <line x1="5" y1="35" x2="85" y2="35" stroke="#aaa" stroke-width="1" stroke-dasharray="3,3" opacity=".5"/>
+              <text x="55" y="30" fill="#f07070" font-size="8" text-anchor="middle">僅突破少少</text>
+              <text x="45" y="65" fill="#888" font-size="8" text-anchor="middle">錨點未改變</text>
+            </svg>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:#5ecf8a;font-weight:600;margin-bottom:4px;text-align:center">✅ 適中</div>
+            <svg viewBox="0 0 90 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+              <polyline points="5,62 22,40" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+              <polyline points="22,40 32,47" fill="none" stroke="#888" stroke-width="1.5"/>
+              <polyline points="32,47 52,20" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+              <line x1="5" y1="40" x2="85" y2="40" stroke="#5ecf8a" stroke-width="1" stroke-dasharray="3,3" opacity=".6"/>
+              <text x="45" y="15" fill="#5ecf8a" font-size="8" text-anchor="middle">明顯突破 ✓</text>
+              <!-- bracket showing distance -->
+              <line x1="60" y1="20" x2="60" y2="40" stroke="#5ecf8a" stroke-width="1" opacity=".6"/>
+              <text x="68" y="32" fill="#5ecf8a" font-size="7">適中</text>
+            </svg>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:#f07070;font-weight:600;margin-bottom:4px;text-align:center">❌ 太長</div>
+            <svg viewBox="0 0 90 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+              <polyline points="5,62 22,45" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+              <polyline points="22,45 32,52" fill="none" stroke="#888" stroke-width="1.5"/>
+              <polyline points="32,52 52,5" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+              <line x1="5" y1="45" x2="85" y2="45" stroke="#aaa" stroke-width="1" stroke-dasharray="3,3" opacity=".5"/>
+              <text x="45" y="15" fill="#f07070" font-size="8" text-anchor="middle">過度延伸</text>
+              <text x="45" y="65" fill="#888" font-size="7" text-anchor="middle">回調會過深</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- R3 -->
+      <div class="cond-row" style="flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:10px;align-items:flex-start;width:100%">
+          <div class="cb-wrap"><input type="checkbox" id="s1v1_r3" onchange="s1v1_update()"><label for="s1v1_r3">✓</label></div>
+          <div class="cond-info">
+            <div class="cond-name">假突破蠟燭冇強烈 Momentum <span class="tag-req">必須</span></div>
+            <div class="cond-why">跌穿前頂嗰日唔可以係「大陰燭向下突破」，幅度不能太多</div>
+            <div class="cond-warn">⚠️ 大陰燭 = 可能係真突破，唔係假突破，風險大增</div>
+          </div>
+        </div>
+        <!-- R3 SVG: good vs bad candle -->
+        <div style="width:100%;display:flex;gap:8px;margin-top:4px">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#5ecf8a;font-weight:600;margin-bottom:4px;text-align:center">✅ 好 — 小陰燭 / 有長下影</div>
+            <svg viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+              <!-- prev top dashed line -->
+              <line x1="0" y1="30" x2="120" y2="30" stroke="#aaa" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+              <text x="6" y="27" fill="#aaa" font-size="7">前頂</text>
+              <!-- prev candles going up -->
+              <rect x="10" y="42" width="6" height="12" fill="#5ecf8a" opacity=".7"/>
+              <rect x="22" y="36" width="6" height="14" fill="#5ecf8a" opacity=".7"/>
+              <rect x="34" y="28" width="6" height="12" fill="#5ecf8a" opacity=".7"/>
+              <!-- fake breakout candle: small body, long lower wick -->
+              <line x1="53" y1="22" x2="53" y2="38" stroke="#f07070" stroke-width="1.5"/>
+              <rect x="50" y="28" width="6" height="6" fill="#f07070" opacity=".8"/>
+              <text x="53" y="18" fill="#5ecf8a" font-size="7" text-anchor="middle">小陰 ✓</text>
+              <!-- recovery candle -->
+              <rect x="62" y="24" width="6" height="12" fill="#5ecf8a" opacity=".8"/>
+              <text x="65" y="18" fill="#5ecf8a" font-size="7" text-anchor="middle">反彈</text>
+            </svg>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:#f07070;font-weight:600;margin-bottom:4px;text-align:center">❌ 差 — 大陰燭強勢下跌</div>
+            <svg viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+              <line x1="0" y1="30" x2="120" y2="30" stroke="#aaa" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+              <text x="6" y="27" fill="#aaa" font-size="7">前頂</text>
+              <rect x="10" y="42" width="6" height="12" fill="#5ecf8a" opacity=".7"/>
+              <rect x="22" y="36" width="6" height="14" fill="#5ecf8a" opacity=".7"/>
+              <rect x="34" y="28" width="6" height="12" fill="#5ecf8a" opacity=".7"/>
+              <!-- big red candle breaking through -->
+              <line x1="53" y1="24" x2="53" y2="58" stroke="#f07070" stroke-width="1.5"/>
+              <rect x="50" y="26" width="6" height="28" fill="#f07070" opacity=".85"/>
+              <text x="53" y="18" fill="#f07070" font-size="7" text-anchor="middle">大陰 ✗</text>
+              <text x="80" y="52" fill="#f07070" font-size="7">可能真跌！</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- R4 -->
+      <div class="cond-row" style="flex-wrap:wrap;gap:10px">
+        <div style="display:flex;gap:10px;align-items:flex-start;width:100%">
+          <div class="cb-wrap"><input type="checkbox" id="s1v1_r4" onchange="s1v1_update()"><label for="s1v1_r4">✓</label></div>
+          <div class="cond-info">
+            <div class="cond-name">急速反彈返上前頂（入場訊號）<span class="tag-req">必須</span></div>
+            <div class="cond-why">略跌穿前頂後，急速反彈返上前頂之上。因假突破時反彈急，實際成交價會略高於前頂。</div>
+          </div>
+        </div>
+        <!-- R4 SVG: full pattern with entry -->
+        <div style="width:100%;margin-top:4px">
+          <div style="font-size:10px;color:#5ecf8a;font-weight:600;margin-bottom:4px;text-align:center">完整形態 — 略跌穿前頂 → 急速反彈 → 入場</div>
+          <svg viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:6px;background:#12141d">
+            <!-- Wave 1 up -->
+            <polyline points="10,78 30,60 45,64 60,44" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+            <text x="35" y="55" fill="#6aabf0" font-size="8">#1推進浪</text>
+            <!-- pullback purple -->
+            <polyline points="60,44 75,54" fill="none" stroke="#c084fc" stroke-width="1.5"/>
+            <text x="62" y="68" fill="#c084fc" font-size="7">紫回調</text>
+            <!-- Wave 2 up past prev top -->
+            <polyline points="75,54 95,38 110,42 125,22" fill="none" stroke="#6aabf0" stroke-width="1.5"/>
+            <text x="95" y="32" fill="#6aabf0" font-size="8">#2推進浪</text>
+            <!-- prev top dashed line at y=44 -->
+            <line x1="55" y1="44" x2="280" y2="44" stroke="#ffd700" stroke-width="1" stroke-dasharray="4,3" opacity=".7"/>
+            <text x="57" y="40" fill="#ffd700" font-size="7">前頂（支撐位）</text>
+            <!-- purple pullback dip below prev top -->
+            <polyline points="125,22 140,30 152,48 160,42" fill="none" stroke="#c084fc" stroke-width="1.5"/>
+            <!-- fake breakout highlight -->
+            <circle cx="152" cy="48" r="5" fill="none" stroke="#f07070" stroke-width="1.5" opacity=".8"/>
+            <text x="152" y="62" fill="#f07070" font-size="7" text-anchor="middle">略跌穿</text>
+            <!-- sharp bounce back -->
+            <polyline points="160,42 175,30 190,20" fill="none" stroke="#5ecf8a" stroke-width="2"/>
+            <!-- entry arrow -->
+            <polygon points="168,35 175,28 182,35" fill="#5ecf8a" opacity=".9"/>
+            <text x="185" y="18" fill="#5ecf8a" font-size="8" font-weight="bold">入場！</text>
+            <!-- stop loss line -->
+            <line x1="140" y1="50" x2="220" y2="50" stroke="#f07070" stroke-width="1" stroke-dasharray="3,2" opacity=".5"/>
+            <text x="222" y="53" fill="#f07070" font-size="7">止損</text>
+            <!-- T1 -->
+            <line x1="140" y1="22" x2="270" y2="22" stroke="#e8a840" stroke-width="1" stroke-dasharray="3,2" opacity=".5"/>
+            <text x="222" y="20" fill="#e8a840" font-size="7">T1</text>
+            <!-- T2 -->
+            <line x1="140" y1="8" x2="270" y2="8" stroke="#6aabf0" stroke-width="1" stroke-dasharray="3,2" opacity=".5"/>
+            <text x="222" y="7" fill="#6aabf0" font-size="7">T2 (1.618)</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Required score bar -->
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div class="score-wrap">
+          <div class="score-label">必需元素</div>
+          <div class="score-bar-bg"><div class="score-bar-fill" id="s1v1_reqBar" style="width:0%;background:#f07070"></div></div>
+          <div class="score-num" id="s1v1_reqNum" style="color:#f07070">0 / 4</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: FAKE BREAKOUT QUALITY -->
+  <div>
+    <div class="section-title">Step 3 · 假突破質素判斷</div>
+    <div class="card">
+      <div style="font-size:13px;color:#aaa;margin-bottom:10px">假突破嗰日係咩情況？</div>
+      <div class="fb-wrap">
+        <button class="fb-btn strong" onclick="s1v1_setFB(this,'strong')">🔥 急速反彈 + 縮量回調</button>
+        <button class="fb-btn weak"   onclick="s1v1_setFB(this,'weak')">⚠️ 慢慢反彈 / 成交正常</button>
+        <button class="fb-btn none"   onclick="s1v1_setFB(this,'none')">❌ 大陰燭 / 仍在跌</button>
+      </div>
+      <div id="s1v1_fbHint" style="font-size:12px;color:#888;margin-top:10px;min-height:36px;line-height:1.6">— 請選擇假突破質素 —</div>
+    </div>
+  </div>
+
+  <!-- STEP 4: BONUS -->
+  <div>
+    <div class="section-title">Step 4 · Bonus 條件（質素加分）</div>
+    <div class="card">
+
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="s1v1_b1" onchange="s1v1_update()"><label for="s1v1_b1">✓</label></div>
+        <div class="cond-info">
+          <div class="cond-name">紫色回調浪急速 <span class="tag-bonus">Bonus</span> <span class="star">⭐</span></div>
+          <div class="cond-why">回調快速完成，唔係緩慢下跌，代表唔係真正賣壓，係短暫洗盤</div>
+        </div>
+      </div>
+
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="s1v1_b2" onchange="s1v1_update()"><label for="s1v1_b2">✓</label></div>
+        <div class="cond-info">
+          <div class="cond-name">紫色回調浪成交低且呈向下趨勢 <span class="tag-bonus">Bonus</span> <span class="star">⭐</span></div>
+          <div class="cond-why">回調期間縮量，賣壓唔強，大戶冇大量出貨，係健康回調</div>
+        </div>
+      </div>
+
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="s1v1_b3" onchange="s1v1_update()"><label for="s1v1_b3">✓</label></div>
+        <div class="cond-info">
+          <div class="cond-name">第2推進浪速度 ≥ 第1推進浪 <span class="tag-bonus">Bonus</span></div>
+          <div class="cond-why">第二段急升速度唔慢過第一段，趨勢動力仍在甚至加速</div>
+        </div>
+      </div>
+
+      <!-- Bonus score bar -->
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div class="score-wrap">
+          <div class="score-label">Bonus Score</div>
+          <div class="score-bar-bg"><div class="score-bar-fill" id="s1v1_bonBar" style="width:0%;background:#e8a840"></div></div>
+          <div class="score-num" id="s1v1_bonNum" style="color:#e8a840">0 / 3</div>
+        </div>
+        <div id="s1v1_b1b2hint" style="font-size:12px;color:#555;min-height:16px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5: ENTRY PLAN -->
+  <div>
+    <div class="section-title">Step 5 · 入場計劃框架</div>
+    <div class="card">
+      <div class="entry-grid">
+        <div class="entry-cell">
+          <div class="entry-cell-title">入場價</div>
+          <div class="entry-cell-val">前頂略上方</div>
+          <div class="entry-cell-sub">假突破急速反彈返上前頂後，實際成交略高於前頂</div>
+        </div>
+        <div class="entry-cell">
+          <div class="entry-cell-title">止損位</div>
+          <div class="entry-cell-val">假突破底部</div>
+          <div class="entry-cell-sub">假突破最低位以下，跌穿即確認唔係假突破</div>
+        </div>
+        <div class="entry-cell">
+          <div class="entry-cell-title">目標 T1</div>
+          <div class="entry-cell-val">推進段頂部</div>
+          <div class="entry-cell-sub">第2推進浪嘅最高點（前高）</div>
+        </div>
+        <div class="entry-cell">
+          <div class="entry-cell-title">目標 T2</div>
+          <div class="entry-cell-val">回調段 × 1.618</div>
+          <div class="entry-cell-sub">回調浪高度 × 1.618 Extension，由入場點向上量</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;background:#2a1010;border-radius:8px;border:1px solid #6a2a2a">
+        <span style="font-size:12px;color:#f07070;font-weight:600">⚠️ R:R 必須 ≥ 2:1 先入場 — T1 唔夠就計 T2，T2 都唔夠就唔入</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VERDICT -->
+  <div>
+    <div class="section-title">結論</div>
+    <div class="verdict idle" id="s1v1_verdict">
+      <div class="verdict-icon">—</div>
+      <div class="verdict-title">填入條件先可以判斷</div>
+      <div class="verdict-steps" id="s1v1_verdictSteps"></div>
     </div>
   </div>
 
   <!-- RESET -->
-  <button class="reset-btn" onclick="resetAll()">↺ 重置</button>
+  <button class="reset-btn" onclick="s1v1_resetAll()">↺ 重置</button>
 
-  <div style="font-size:11px;color:#333;text-align:center;padding-top:4px;padding-bottom:8px">
-    S1 順勢交易 · 投機十步曲 · 投機先要溫功課
+  <div style="font-size:11px;color:#333;text-align:center;padding:4px 0 8px">
+    S1 v1 原版 · 順勢交易 · 投機十步曲 · 投機先要溫功課
   </div>
 </div>
 
 <script>
-  var streakLevel = null;
-  var priceDir = null;
+  var trendLevel = null;
+  var fbLevel = null;
 
-  function setStreak(btn, level, hint) {
-    document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
+  function s1v1_setTrend(btn, level) {
+    document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active','up','down','flat'));
     btn.classList.add('active', level);
-    streakLevel = level;
-    document.getElementById('streakHint').textContent = hint;
-    update();
+    trendLevel = level;
+    var hints = {
+      up:   '✅ 強上升趨勢 — S1 v1 最有效，可以繼續跟流程',
+      down: '⚠️ 下跌趨勢終結跡象 — 可以考慮，但需要確認下跌結構已破壞 + 下跌速度改變',
+      flat: '❌ 橫行 / 下跌中 — 唔可以用本策略，等趨勢明確先'
+    };
+    document.getElementById('trendHint').textContent = hints[level];
+    s1v1_update();
   }
 
-  function setPrice(dir) {
-    priceDir = dir;
-    var up = document.getElementById('priceUp');
-    var dn = document.getElementById('priceDn');
-    up.style.background = dir === 'up' ? '#1a3020' : '#12141d';
-    up.style.borderColor = dir === 'up' ? '#00c896' : '#2a5a35';
-    up.style.color = '#5ecf8a';
-    dn.style.background = dir === 'dn' ? '#2a1010' : '#12141d';
-    dn.style.borderColor = dir === 'dn' ? '#f07070' : '#6a2a2a';
-    dn.style.color = '#f07070';
-    updateVol();
+  function s1v1_setFB(btn, level) {
+    document.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('active','strong','weak','none'));
+    btn.classList.add('active', level);
+    fbLevel = level;
+    var hints = {
+      strong: '🔥 最理想！急速反彈 + 縮量 = 洗盤充分，大戶接貨完成，入場訊號強',
+      weak:   '⚠️ 弱訊號。反彈慢或成交正常，洗盤未夠充分，可能仲有第二波下跌，考慮細 Position 或等更強訊號',
+      none:   '❌ 唔係假突破。大陰燭或仍在下跌，唔入，等次日收市確認'
+    };
+    document.getElementById('fbHint').textContent = hints[level];
+    s1v1_update();
   }
 
-  function updateVol() {
-    var el = document.getElementById('v_vol');
-    var v = parseFloat(el.value);
-    var box = document.getElementById('volVerdict');
-    if (!priceDir || el.value === '' || isNaN(v)) {
-      box.style.background = '#12141d';
-      box.style.borderColor = '#2a2d3a';
-      box.style.color = '#555';
-      box.innerHTML = '— 請選擇價格方向並輸入 RelVol —';
-      return;
-    }
-    var volLevel = v < 0.9 ? 'low' : v < 1.5 ? 'mid' : 'high';
-    var icon, title, desc, bg, border, color;
-    if (priceDir === 'up' && volLevel === 'low') {
-      icon = '🔥'; title = '升價 + 縮量 — 最理想！';
-      desc = '大戶唔放貨，悄悄向上。賣盤乾涸，少少買盤已推高價格。繼續持倉等目標，唔好因為升得慢就走。';
-      bg = '#0d2a1e'; border = '#00c896'; color = '#00c896';
-    } else if (priceDir === 'up' && volLevel === 'mid') {
-      icon = '✅'; title = '升價 + 正常成交量';
-      desc = '正常上升，成交量合理。趨勢健康，繼續持倉觀察。';
-      bg = '#1a2540'; border = '#6aabf0'; color = '#6aabf0';
-    } else if (priceDir === 'up' && volLevel === 'high') {
-      icon = '⚠️'; title = '升價 + 放量 — 警告！';
-      desc = '大量換手，可能係大戶趁高位出貨俾散戶。唔係好事！開始提高警覺，留意下一日走勢，準備考慮減倉。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else if (priceDir === 'dn' && volLevel === 'low') {
-      icon = '✅'; title = '跌價 + 縮量 — 健康回調';
-      desc = '賣壓唔強，無人急著賣。係正常健康回調，唔需要驚。若 Scanner 條件仍然符合，繼續等假突破入場機會。';
-      bg = '#1a2540'; border = '#6aabf0'; color = '#6aabf0';
-    } else if (priceDir === 'dn' && volLevel === 'mid') {
-      icon = '⚠️'; title = '跌價 + 正常成交量 — 留意';
-      desc = '有一定賣壓，但未算嚴重。繼續觀察下一日，若連續放量下跌就要小心。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else {
-      icon = '❌'; title = '跌價 + 放量 — 真正賣壓！';
-      desc = '大量拋售，係真正嘅賣壓。大戶可能出貨。若已持倉，考慮執行止損。若未入場，唔好入，等賣壓消化完先。';
-      bg = '#2a1010'; border = '#f07070'; color = '#f07070';
-    }
-    box.style.background = bg;
-    box.style.borderColor = border;
-    box.style.color = color;
-    box.innerHTML = '<div style="font-weight:700;margin-bottom:4px">' + icon + ' ' + title + '</div>'
-      + '<div style="font-size:12px;color:#aaa;line-height:1.6">' + desc + '</div>';
-  }
-
-  function validateRsi() {
-    var el = document.getElementById('v_rsi');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v >= 40 && v <= 70 ? 'ok' : 'warn');
-    document.getElementById('c4').checked = (v >= 40 && v <= 70);
-  }
-
-  function validateRvol() {
-    var el = document.getElementById('v_rvol');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v < 0.9 ? 'ok' : 'warn');
-    document.getElementById('b3').checked = (v < 0.9);
-  }
-
-  function validate1w() {
-    var el = document.getElementById('v_1w');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v >= -8 && v <= 0 ? 'ok' : 'warn');
-    document.getElementById('b4').checked = (v >= -8 && v <= 0);
-  }
-
-  function validate52w() {
-    var el = document.getElementById('v_52w');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v > -15 ? 'ok' : 'warn');
-    document.getElementById('b5').checked = (v > -15);
-  }
-
-  function update() {
-    var req = ['c1','c2','c3','c4','c5'].filter(id => document.getElementById(id).checked).length;
-    var reqPct = (req / 5) * 100;
-    var reqColor = req === 5 ? '#00c896' : req >= 3 ? '#e8a840' : '#f07070';
+  function s1v1_update() {
+    // required
+    var req = ['r1','r2','r3','r4'].filter(id => document.getElementById(id).checked).length;
+    var reqPct = (req / 4) * 100;
+    var reqColor = req === 4 ? '#00c896' : req >= 2 ? '#e8a840' : '#f07070';
     document.getElementById('reqBar').style.width = reqPct + '%';
     document.getElementById('reqBar').style.background = reqColor;
-    document.getElementById('reqNum').textContent = req + ' / 5';
+    document.getElementById('reqNum').textContent = req + ' / 4';
     document.getElementById('reqNum').style.color = reqColor;
 
-    var bon = ['b1','b2','b3','b4','b5'].filter(id => document.getElementById(id).checked).length;
-    var bonPct = (bon / 5) * 100;
-    var bonColor = bon >= 4 ? '#00c896' : bon >= 3 ? '#e8a840' : '#f07070';
+    // bonus
+    var bon = ['b1','b2','b3'].filter(id => document.getElementById(id).checked).length;
+    var bonPct = (bon / 3) * 100;
+    var bonColor = bon === 3 ? '#00c896' : bon >= 2 ? '#e8a840' : '#f07070';
     document.getElementById('bonBar').style.width = bonPct + '%';
     document.getElementById('bonBar').style.background = bonColor;
-    document.getElementById('bonNum').textContent = bon + ' / 5';
+    document.getElementById('bonNum').textContent = bon + ' / 3';
     document.getElementById('bonNum').style.color = bonColor;
 
-    var b3 = document.getElementById('b3').checked;
-    var b4 = document.getElementById('b4').checked;
-    var hint = document.getElementById('b3b4hint');
-    if (b3 && b4) { hint.textContent = '⭐ b3 + b4 同時 ✓ — 最佳入場準備狀態！'; hint.style.color = '#ffd700'; }
-    else if (b3 || b4) { hint.textContent = '→ b3 或 b4 其中一個 ✓，仲差一個'; hint.style.color = '#888'; }
+    var b1 = document.getElementById('b1').checked;
+    var b2 = document.getElementById('b2').checked;
+    var hint = document.getElementById('b1b2hint');
+    if (b1 && b2) { hint.textContent = '⭐ 急速回調 + 縮量同時 ✓ — 最佳假突破質素！'; hint.style.color = '#ffd700'; }
     else { hint.textContent = ''; }
 
-    renderVerdict(req, bon, b3, b4);
+    s1v1_renderVerdict(req, bon, b1, b2);
   }
 
-  function renderVerdict(req, bon, b3, b4) {
+  function s1v1_renderVerdict(req, bon, b1, b2) {
     var box = document.getElementById('verdict');
     var steps = document.getElementById('verdictSteps');
 
-    if (!streakLevel) {
+    if (!trendLevel) {
       box.className = 'verdict idle';
       box.querySelector('.verdict-icon').textContent = '—';
-      box.querySelector('.verdict-title').textContent = '請先選擇 Playbook Scanner 連續日數';
+      box.querySelector('.verdict-title').textContent = '請先選擇趨勢狀態';
       steps.innerHTML = '';
       return;
     }
 
-    if (streakLevel === 's2') {
+    if (trendLevel === 'flat') {
       box.className = 'verdict notyet';
       box.querySelector('.verdict-icon').textContent = '🛑';
-      box.querySelector('.verdict-title').textContent = '唔入 — 大趨勢唔支持';
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>連續日數斷斷續續，S1 策略唔適合操作。唔好勉強，等連續日數重新穩定 7日+ 先考慮。</span></div>';
+      box.querySelector('.verdict-title').textContent = '唔入 — 橫行 / 下跌市唔可用本策略';
+      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>原版明確指出：橫行狀態時不可使用本策略。等趨勢明確向上先考慮。</span></div>';
       return;
     }
 
-    if (streakLevel === 's3') {
-      box.className = 'verdict notyet';
-      box.querySelector('.verdict-icon').textContent = '⚠️';
-      box.querySelector('.verdict-title').textContent = '保守 — 趨勢轉弱，唔建議入';
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>連續日數只有 3–6 日，趨勢動力不足。就算 Required 全過，都要保守處理，唔好勉強入場。等 7日+ 先操作。</span></div>';
-      return;
-    }
-
-    if (req < 5) {
-      // special case: only c1 missing — possible false breakout day
-      var missing = [];
-      if (!document.getElementById('c1').checked) missing.push('c1');
-      if (!document.getElementById('c2').checked) missing.push('c2');
-      if (!document.getElementById('c3').checked) missing.push('c3');
-      if (!document.getElementById('c4').checked) missing.push('c4');
-      if (!document.getElementById('c5').checked) missing.push('c5');
-
-      if (missing.length === 1 && missing[0] === 'c1') {
-        box.className = 'verdict partial';
-        box.querySelector('.verdict-icon').textContent = '👀';
-        box.querySelector('.verdict-title').textContent = '假突破候選日！— 等收市確認';
+    if (trendLevel === 'down') {
+      if (req < 4) {
+        box.className = 'verdict notyet';
+        box.querySelector('.verdict-icon').textContent = '⚠️';
+        box.querySelector('.verdict-title').textContent = '下跌趨勢終結跡象 — 需要更多確認';
         steps.innerHTML =
-          '<div class="verdict-step"><span class="arrow">→</span><span>Price 跌穿 EMA20（c1 fail），其餘條件全過。呢個係你等緊嘅訊號！</span></div>' +
-          '<div class="verdict-step"><span class="arrow">1</span><span>當晚收市後睇：Price 收市返上 EMA20 → ✅ 確認假突破，即晚放 Limit Order</span></div>' +
-          '<div class="verdict-step"><span class="arrow">2</span><span>若收市仍在 EMA20 之下 → ❌ 唔係假突破，係真跌，唔入，繼續等</span></div>' +
-          '<div class="verdict-step"><span class="arrow">3</span><span>隔日 Gap Up 開市 → 取消 Limit Order，唔追，保存子彈</span></div>';
+          '<div class="verdict-step"><span class="arrow">→</span><span>下跌趨勢要有終結跡象先可用：下跌結構被破壞 + 下跌速度改變</span></div>' +
+          '<div class="verdict-step"><span class="arrow">→</span><span>仲差必需元素，唔入，繼續等確認</span></div>';
         return;
       }
+    }
 
+    if (!fbLevel || fbLevel === 'none') {
       box.className = 'verdict notyet';
       box.querySelector('.verdict-icon').textContent = '❌';
-      box.querySelector('.verdict-title').textContent = 'Required 未達標 — 唔入';
-      var missingNames = [];
-      if (!document.getElementById('c1').checked) missingNames.push('c1 Price > EMA20');
-      if (!document.getElementById('c2').checked) missingNames.push('c2 Price > EMA50');
-      if (!document.getElementById('c3').checked) missingNames.push('c3 EMA200↑');
-      if (!document.getElementById('c4').checked) missingNames.push('c4 RSI 40–70');
-      if (!document.getElementById('c5').checked) missingNames.push('c5 3M>5% & 1M<25%');
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">✗</span><span>仲差：' + missingNames.join('、') + '</span></div>'
-        + '<div class="verdict-step"><span class="arrow">→</span><span>Required 5/5 係入場門檻，缺一不可。等條件符合先考慮入場。</span></div>';
+      box.querySelector('.verdict-title').textContent = '唔入 — 未見假突破確認';
+      steps.innerHTML =
+        '<div class="verdict-step"><span class="arrow">→</span><span>仲未見到假突破急速反彈訊號，或假突破係大陰燭，唔係有效訊號</span></div>' +
+        '<div class="verdict-step"><span class="arrow">→</span><span>等股票略跌穿前頂後急速反彈返上，先係入場時機</span></div>';
       return;
     }
 
-    if (bon < 3) {
+    if (req < 4) {
+      box.className = 'verdict notyet';
+      box.querySelector('.verdict-icon').textContent = '❌';
+      box.querySelector('.verdict-title').textContent = '必需元素未達標 — 唔入';
+      var missing = [];
+      if (!document.getElementById('r1').checked) missing.push('上升趨勢唔過度延伸');
+      if (!document.getElementById('r2').checked) missing.push('第2推進浪突破距離適中');
+      if (!document.getElementById('r3').checked) missing.push('假突破蠟燭冇強 Momentum');
+      if (!document.getElementById('r4').checked) missing.push('急速反彈返上前頂');
+      steps.innerHTML = '<div class="verdict-step"><span class="arrow">✗</span><span>仲差：' + missing.join('、') + '</span></div>'
+        + '<div class="verdict-step"><span class="arrow">→</span><span>4個必需元素全部要符合，缺一不可</span></div>';
+      return;
+    }
+
+    if (fbLevel === 'weak') {
       box.className = 'verdict partial';
       box.querySelector('.verdict-icon').textContent = '⚠️';
-      box.querySelector('.verdict-title').textContent = 'Bonus 唔夠 — Setup 質素差，唔建議入';
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>Required 全過，但 Bonus 只有 ' + bon + '/5，Setup 質素唔夠。</span></div>'
-        + '<div class="verdict-step"><span class="arrow">→</span><span>最少要 3/5，最好 b3（縮量）+ b4（本週回調）同時 ✓ 先入。繼續等。</span></div>';
+      box.querySelector('.verdict-title').textContent = '弱訊號 — 保守處理';
+      steps.innerHTML =
+        '<div class="verdict-step"><span class="arrow">→</span><span>必需元素全過，但假突破質素弱，反彈慢或成交正常</span></div>' +
+        '<div class="verdict-step"><span class="arrow">→</span><span>可以考慮細 Position 入場，或等第二次更強嘅假突破確認</span></div>' +
+        '<div class="verdict-step"><span class="arrow">!</span><span>計 R:R 必須 ≥ 2:1，T1 唔夠就計 T2，都唔夠就唔入</span></div>';
       return;
     }
 
+    // All good
     box.className = 'verdict ready';
     box.querySelector('.verdict-icon').textContent = '✅';
-    var b3b4line = (b3 && b4) ? '⭐ b3 + b4 同時 ✓，最佳入場準備狀態！' : '';
-    box.querySelector('.verdict-title').textContent = 'READY — 可以進入入場流程';
+    box.querySelector('.verdict-title').textContent = 'READY — 可以入場';
+    var b1b2line = (b1 && b2) ? '⭐ 急速回調 + 縮量同時 ✓，最高質素假突破！' : '';
     steps.innerHTML =
-      (b3b4line ? '<div class="verdict-step"><span class="arrow">⭐</span><span>' + b3b4line + '</span></div>' : '') +
-      '<div class="verdict-step"><span class="arrow">1</span><span>主圖日線確認三條 EMA 排列（EMA20 &gt; EMA50 &gt; EMA200）</span></div>' +
-      '<div class="verdict-step"><span class="arrow">2</span><span>等 Price 回調到 EMA20 附近 → 等假突破：跌穿 EMA20 當日收市返上 → 確認</span></div>' +
-      '<div class="verdict-step"><span class="arrow">3</span><span>假突破確認後當晚放 Limit Order（收市價附近，唔係追高）</span></div>' +
-      '<div class="verdict-step"><span class="arrow">4</span><span>計 R:R：止損 = 假突破低位 ×0.97–0.99 ｜ 目標 = 前高 / Resistance ｜ 必須 ≥ 2:1 先入</span></div>' +
-      '<div class="verdict-step"><span class="arrow">!</span><span>計唔到 R:R ≥ 2:1 → 唔入，唔係眼光問題，係 Setup 本身唔適合，保存子彈</span></div>';
+      (b1b2line ? '<div class="verdict-step"><span class="arrow">⭐</span><span>' + b1b2line + '</span></div>' : '') +
+      '<div class="verdict-step"><span class="arrow">1</span><span>入場價：前頂略上方（假突破反彈後實際成交價）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">2</span><span>止損：假突破最低位以下</span></div>' +
+      '<div class="verdict-step"><span class="arrow">3</span><span>目標 T1：推進段頂部（第2推進浪高位）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">4</span><span>目標 T2：回調段高度 × 1.618 Extension</span></div>' +
+      '<div class="verdict-step"><span class="arrow">!</span><span>計 R:R ≥ 2:1 先確認入場 — T1 唔夠就用 T2，都唔夠就唔入，保存子彈</span></div>';
   }
 
-  function resetAll() {
-    ['c1','c2','c3','c4','c5','b1','b2','b3','b4','b5'].forEach(id => document.getElementById(id).checked = false);
-    ['v_rsi','v_rvol','v_1w','v_52w','v_vol'].forEach(id => {
-      var el = document.getElementById(id);
-      el.value = '';
-      el.className = 'val-input';
-    });
-    document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
-    streakLevel = null;
-    priceDir = null;
-    document.getElementById('streakHint').textContent = '— 請選擇連續日數 —';
-    document.getElementById('b3b4hint').textContent = '';
-    document.getElementById('priceUp').style.background = '#12141d';
-    document.getElementById('priceUp').style.borderColor = '#2a5a35';
-    document.getElementById('priceDn').style.background = '#12141d';
-    document.getElementById('priceDn').style.borderColor = '#6a2a2a';
-    var vb = document.getElementById('volVerdict');
-    vb.style.background = '#12141d'; vb.style.borderColor = '#2a2d3a'; vb.style.color = '#555';
-    vb.innerHTML = '— 請選擇價格方向並輸入 RelVol —';
+  function s1v1_resetAll() {
+    ['r1','r2','r3','r4','b1','b2','b3'].forEach(id => document.getElementById(id).checked = false);
+    document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active','up','down','flat'));
+    document.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('active','strong','weak','none'));
+    trendLevel = null; fbLevel = null;
+    document.getElementById('trendHint').textContent = '— 請選擇趨勢狀態 —';
+    document.getElementById('fbHint').textContent = '— 請選擇假突破質素 —';
+    document.getElementById('b1b2hint').textContent = '';
     document.getElementById('reqBar').style.width = '0%';
     document.getElementById('reqBar').style.background = '#f07070';
-    document.getElementById('reqNum').textContent = '0 / 5';
+    document.getElementById('reqNum').textContent = '0 / 4';
     document.getElementById('reqNum').style.color = '#f07070';
     document.getElementById('bonBar').style.width = '0%';
     document.getElementById('bonBar').style.background = '#e8a840';
-    document.getElementById('bonNum').textContent = '0 / 5';
+    document.getElementById('bonNum').textContent = '0 / 3';
     document.getElementById('bonNum').style.color = '#e8a840';
     var box = document.getElementById('verdict');
     box.className = 'verdict idle';
@@ -741,27 +1056,17 @@ body {
     box.querySelector('.verdict-title').textContent = '填入條件先可以判斷';
     document.getElementById('verdictSteps').innerHTML = '';
   }
-</script>
-    </div>
-  </div>
-  <div class="sub-panel" id="s1-scanner">
-    <div class="scanner-placeholder">
-      <div class="icon">🔍</div>
-      <div class="title">S1 Scanner</div>
-      <div class="desc">即將推出</div>
-    </div>
+</script></div>
   </div>
 </div>
 
-<!-- S3 PANEL -->
+<!-- S3 -->
 <div class="strategy-panel" id="panel-s3">
   <div class="sub-nav">
-    <div class="sub-tab active" onclick="switchSub('s3', 'checklist', this)">📋 互動檢查表</div>
-    <div class="sub-tab" onclick="switchSub('s3', 'scanner', this)">🔍 Scanner</div>
+    <div class="sub-tab active" onclick="switchSub('s3','checklist',this)">📋 S3 互動檢查表</div>
   </div>
   <div class="sub-panel active" id="s3-checklist">
-    <div class="sheet">
-<div class="sheet">
+    <div class="sheet"><div class="sheet">
 
   <div>
     <h1>S3 · 突破交易 · 互動檢查表</h1>
@@ -957,33 +1262,97 @@ body {
     </div>
   </div>
 
-  <!-- ══ STEP 5：成交量分析 ══ -->
+  <!-- ══ STEP 5：突破後每日追蹤 ══ -->
   <div>
-    <div class="section-title">Step 5 · 成交量分析（突破日用）</div>
+    <div class="section-title">Step 5 · 突破後每日追蹤（每日收市後填一次）</div>
     <div class="card">
-      <div style="font-size:13px;color:#aaa;margin-bottom:12px">突破嗰日：價格方向同成交量係咩？</div>
-      <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:#666;margin-bottom:6px">今日價格</div>
-        <div style="display:flex;gap:8px">
-          <button class="streak-btn" id="s3_priceUp" onclick="s3_setPrice('up')" style="color:#5ecf8a;border-color:#2a5a35">↑ 升（突破）</button>
-          <button class="streak-btn" id="s3_priceDn" onclick="s3_setPrice('dn')" style="color:#f07070;border-color:#6a2a2a">↓ 跌（回調）</button>
+      <div style="font-size:13px;color:#aaa;margin-bottom:14px">每日收市後填入，即時知道今日應該點做</div>
+
+      <!-- 今日Close vs 突破線 -->
+      <div class="decision-phase">
+        <div class="phase-title">① 今日 Close 係突破線以上定以下？</div>
+        <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
+          <button class="dec-btn" id="s3_d1above" onclick="s3_setDay1('above')">📈 以上（守住／突破）</button>
+          <button class="dec-btn" id="s3_d1below" onclick="s3_setDay1('below')">📉 以下（跌穿）</button>
+        </div>
+        <div style="font-size:11px;color:#555;margin-top:4px">突破第一日：Close &gt; 突破線 → 選「以上」，填 RelVol 判斷係手法A定等待</div>
+      </div>
+
+      <!-- 今日RelVol -->
+      <div class="decision-phase" id="s3_d2wrap" style="display:none">
+        <div class="phase-title">② 今日 RelVol 係幾多？</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:10px 0">
+          <input class="val-input" id="s3_v_daily_vol" type="number" step="0.01" placeholder="1.2" style="width:90px" oninput="s3_updateDaily()">
+          <span style="font-size:12px;color:#555">今日成交量倍數</span>
         </div>
       </div>
-      <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:#666;margin-bottom:6px">今日 RelVol</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input class="val-input" id="s3_v_vol" type="number" step="0.01" placeholder="1.8" style="width:90px" oninput="s3_updateVol()">
-          <span style="font-size:12px;color:#555">（突破日理想 &gt;1.5x）</span>
+
+      <!-- 跌穿後額外資訊 -->
+      <div class="decision-phase" id="s3_d3wrap" style="display:none">
+        <div class="phase-title">③ 記低今日 Close（假突破最低候選）</div>
+        <div style="margin:10px 0">
+          <input class="val-input" id="s3_v_daily_close" type="number" step="0.01" placeholder="324.60" style="width:120px" oninput="s3_updateDaily()">
+          <div style="font-size:11px;color:#555;margin-top:4px">之後等再次突破，用呢個計手法B止損</div>
         </div>
       </div>
-      <div class="vol-result" id="s3_volResult">— 請選擇價格方向並輸入 RelVol —</div>
+
+      <!-- 每日結果 -->
+      <div id="s3_dailyResult" style="margin-top:14px;background:#12141d;border:1px solid #2a2d3a;border-radius:8px;padding:12px 14px;font-size:13px;color:#555">
+        — 選擇今日 Close 位置開始判斷 —
+      </div>
+
+      <!-- 歷史記錄提示 -->
+      <div style="margin-top:10px;font-size:11px;color:#444;border-top:1px solid #1e2130;padding-top:8px">
+        💡 每日收市後重新填入呢個 Step，追蹤突破後走勢直到入場或放棄
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 6：入場計算器 ══ -->
+  <div>
+    <div class="section-title">Step 6 · 入場計算器</div>
+    <div class="card">
+      <div style="font-size:13px;color:#aaa;margin-bottom:14px">根據 Step 5 結果自動顯示等咩、點入場</div>
+
+      <!-- Step 6 狀態顯示（由Step 5帶過嚟） -->
+      <div id="s3_s6status" style="background:#12141d;border:1px solid #2a2d3a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#555">
+        — 先完成 Step 5 —
+      </div>
+
+      <!-- 固定輸入：A點、B點、Buildup底部 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">A點（推進浪起點）</div>
+          <input class="val-input" id="s3_calc_a" type="number" step="0.01" placeholder="205.65" style="width:100%" oninput="s3_calcEntry()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">B點（52W高位）</div>
+          <input class="val-input" id="s3_calc_b" type="number" step="0.01" placeholder="327.97" style="width:100%" oninput="s3_calcEntry()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">Buildup底部</div>
+          <input class="val-input" id="s3_calc_bottom" type="number" step="0.01" placeholder="319.00" style="width:100%" oninput="s3_calcEntry()">
+        </div>
+      </div>
+
+      <!-- 入場價：根據手法顯示不同提示 -->
+      <div id="s3_entryWrap" style="margin-bottom:14px;display:none">
+        <div style="font-size:11px;color:#6aabf0;margin-bottom:4px" id="s3_entryLabel">入場價</div>
+        <input class="val-input" id="s3_calc_entry" type="number" step="0.01" placeholder="330.00" style="width:140px" oninput="s3_calcEntry()">
+        <div style="font-size:11px;color:#555;margin-top:4px" id="s3_entryHint"></div>
+      </div>
+
+      <!-- 結果顯示 -->
+      <div id="s3_calcResult" style="background:#12141d;border:1px solid #2a2d3a;border-radius:8px;padding:12px 14px;font-size:13px;color:#555">
+        — 填入 A點、B點、Buildup底部，再填入場價 —
+      </div>
     </div>
   </div>
 
   <!-- ══ 結論 ══ -->
   <div>
     <div class="section-title">結論</div>
-    <div class="verdict idle" id="verdict">
+    <div class="verdict idle" id="s3_verdict">
       <div class="verdict-icon">—</div>
       <div class="verdict-title">填入條件先可以判斷</div>
       <div class="verdict-steps" id="s3_verdictSteps"></div>
@@ -1000,6 +1369,101 @@ body {
 <script>
   var streakLevel = null;
   var priceDir = null;
+  var entryMethod = null;
+  var altStopValue = null;
+
+  function s3_updateStep6(method, stopVal, stopLabel, waitMsg) {
+    entryMethod = method;
+    altStopValue = stopVal;
+
+    var s6 = document.getElementById('s6status');
+    var entryWrap = document.getElementById('entryWrap');
+    var entryLabel = document.getElementById('entryLabel');
+    var entryHint = document.getElementById('entryHint');
+
+    if (method === 'A') {
+      s6.style.background = '#0d2a1e'; s6.style.borderColor = '#00c896'; s6.style.color = '#00c896';
+      s6.innerHTML = '🔥 <strong>手法A</strong> — 突破日即入<br><span style="font-size:12px;color:#aaa">填入突破日 Close 作入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（突破日 Close）';
+      entryHint.textContent = '';
+    } else if (method === 'B') {
+      s6.style.background = '#2a1e00'; s6.style.borderColor = '#e8a840'; s6.style.color = '#e8a840';
+      s6.innerHTML = '⏳ <strong>手法B</strong> — ' + (waitMsg || '等再次突破') + '<br><span style="font-size:12px;color:#aaa">Alert 響（再次突破突破線）先填入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（再次突破嗰日 Close）';
+      entryHint.textContent = '⚠️ 唔係假突破嗰日Close！係Alert再次響嗰日Close';
+    } else if (method === 'C') {
+      s6.style.background = '#2a1e00'; s6.style.borderColor = '#e8a840'; s6.style.color = '#e8a840';
+      s6.innerHTML = '⏳ <strong>手法C</strong> — ' + (waitMsg || '等守住後放量向上') + '<br><span style="font-size:12px;color:#aaa">守住後放量向上嗰日先填入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（放量向上嗰日 Close）';
+      entryHint.textContent = '⚠️ 唔係守住嗰日！係之後放量向上嗰日Close';
+    }
+    s3_calcEntry();
+  }
+
+  function s3_calcEntry() {
+    var a = parseFloat(document.getElementById('calc_a').value);
+    var b = parseFloat(document.getElementById('calc_b').value);
+    var bottom = parseFloat(document.getElementById('calc_bottom').value);
+    var entry = parseFloat(document.getElementById('calc_entry').value);
+    var res = document.getElementById('calcResult');
+
+    if (isNaN(a) || isNaN(b) || isNaN(bottom) || b <= a) {
+      res.style.borderColor = '#2a2d3a'; res.innerHTML = '— 填入 A點、B點、Buildup底部 —'; res.style.color = '#555';
+      return;
+    }
+
+    if (isNaN(entry)) {
+      res.style.borderColor = '#2a2d3a'; res.style.color = '#555';
+      if (entryMethod === 'B') {
+        res.innerHTML = '⏳ 等 Alert 響（再次突破突破線），填入嗰日 Close 作入場價';
+      } else if (entryMethod === 'C') {
+        res.innerHTML = '⏳ 等守住後放量向上，填入嗰日 Close 作入場價';
+      } else {
+        res.innerHTML = '— 填入入場價 —';
+      }
+      return;
+    }
+
+    // 止損
+    var stopBase = (altStopValue && !isNaN(altStopValue)) ? altStopValue : bottom;
+    var stopLoss = stopBase * 0.98;
+    var stopLabel = (entryMethod === 'B') ? '假突破最低Close × 0.98' :
+                    (entryMethod === 'C') ? '橫行最低Close × 0.98' : 'Buildup底部 × 0.98';
+
+    // T1、T2
+    var buildupHeight = b - bottom;
+    var impulseHeight = b - a;
+    var t1 = b + buildupHeight * 1.5;
+    var t2 = b + impulseHeight * 0.618;
+
+    // R:R
+    var risk = entry - stopLoss;
+    var rr1 = risk > 0 ? (t1 - entry) / risk : 0;
+    var rr2 = risk > 0 ? (t2 - entry) / risk : 0;
+    var rr1Color = rr1 >= 2 ? '#00c896' : rr1 >= 1 ? '#e8a840' : '#f07070';
+    var rr2Color = rr2 >= 2 ? '#00c896' : rr2 >= 1 ? '#e8a840' : '#f07070';
+    var methodLabel = entryMethod ? '手法' + entryMethod : '—';
+
+    res.style.borderColor = '#3a3d4a'; res.style.color = '#e8e8e8';
+    res.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:10px">' +
+      '<div><span style="color:#555;font-size:11px">入場手法</span><br><span style="color:#6aabf0;font-weight:700">' + methodLabel + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">入場價</span><br><span style="font-weight:700">$' + entry.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">止損（' + stopLabel + '）</span><br><span style="color:#f07070;font-weight:700">$' + stopLoss.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">風險</span><br><span style="color:#f07070;font-weight:700">$' + risk.toFixed(2) + ' / 股</span></div>' +
+      '</div>' +
+      '<div style="border-top:1px solid #2a2d3a;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">' +
+      '<div><span style="color:#555;font-size:11px">T1（Buildup高度×1.5）</span><br><span style="color:#00c896;font-weight:700">$' + t1.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T1 R:R（參考）</span><br><span style="color:' + rr1Color + ';font-weight:700">' + rr1.toFixed(2) + 'x</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T2（推進浪×0.618）</span><br><span style="color:#00c896;font-weight:700">$' + t2.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T2 R:R（參考）</span><br><span style="color:' + rr2Color + ';font-weight:700">' + rr2.toFixed(2) + 'x</span></div>' +
+      '</div>' +
+      '<div style="border-top:1px solid #2a2d3a;padding-top:8px;margin-top:4px;font-size:11px;color:#555">' +
+      '⚠️ R:R 係參考，唔係入場門檻。T1到達出一半倉，止損移至入場價（Risk Free）。</div>';
+  }
 
   function s3_setStreak(btn, level, hint) {
     document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
@@ -1007,17 +1471,6 @@ body {
     streakLevel = level;
     document.getElementById('streakHint').textContent = hint;
     s3_update();
-  }
-
-  function s3_setPrice(dir) {
-    priceDir = dir;
-    var up = document.getElementById('priceUp');
-    var dn = document.getElementById('priceDn');
-    up.style.background = dir === 'up' ? '#1a3020' : '#12141d';
-    up.style.borderColor = dir === 'up' ? '#00c896' : '#2a5a35';
-    dn.style.background = dir === 'dn' ? '#2a1010' : '#12141d';
-    dn.style.borderColor = dir === 'dn' ? '#f07070' : '#6a2a2a';
-    s3_updateVol();
   }
 
   function s3_validate52w() {
@@ -1101,45 +1554,89 @@ body {
     }
   }
 
-  function s3_updateVol() {
-    var el = document.getElementById('v_vol');
-    var v = parseFloat(el.value);
-    var box = document.getElementById('volResult');
-    if (!priceDir || el.value === '' || isNaN(v)) {
-      box.style.background = '#12141d'; box.style.borderColor = '#2a2d3a'; box.style.color = '#555';
-      box.innerHTML = '— 請選擇價格方向並輸入 RelVol —';
+  var day1Choice = null;
+  var lowestClose = null; // 記低假突破最低Close
+
+  function s3_setDay1(choice) {
+    day1Choice = choice;
+    document.getElementById('d1above').className = 'dec-btn' + (choice==='above' ? ' active-yes' : '');
+    document.getElementById('d1below').className = 'dec-btn' + (choice==='below' ? ' active-yes' : '');
+    document.getElementById('d2wrap').style.display = 'block';
+    document.getElementById('d3wrap').style.display = choice==='below' ? 'block' : 'none';
+    s3_updateDaily();
+  }
+
+  function s3_updateDaily() {
+    var res = document.getElementById('dailyResult');
+    if (!day1Choice) {
+      res.style.background='#12141d'; res.style.borderColor='#2a2d3a'; res.style.color='#555';
+      res.innerHTML = '— 選擇今日 Close 位置開始判斷 —';
       return;
     }
-    var volLevel = v < 0.9 ? 'low' : v < 1.5 ? 'mid' : 'high';
-    var icon, title, desc, bg, border, color;
-    if (priceDir === 'up' && volLevel === 'high') {
-      icon = '🔥'; title = '突破放量 — 強力確認！';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，放量突破。大戶主動買入，訊號強勁。可以考慮手法A入場。';
-      bg = '#0d2a1e'; border = '#00c896'; color = '#00c896';
-    } else if (priceDir === 'up' && volLevel === 'mid') {
-      icon = '⚠️'; title = '突破量偏弱 — 考慮等手法B';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，成交量一般。突破力度唔夠強，可能係假突破前奏。等跌返再突破（手法B）更理想。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else if (priceDir === 'up' && volLevel === 'low') {
-      icon = '❌'; title = '縮量突破 — 唔入，等手法B';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，縮量突破係假突破前奏。唔入手法A，等跌返再次突破時放量 → 手法B入場。';
-      bg = '#2a1010'; border = '#f07070'; color = '#f07070';
-    } else if (priceDir === 'dn' && volLevel === 'low') {
-      icon = '✅'; title = '縮量回調 — 健康！繼續等';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，跌價縮量，賣壓唔強。Buildup 結構仍然健康，繼續等突破訊號。';
-      bg = '#1a2540'; border = '#6aabf0'; color = '#6aabf0';
-    } else if (priceDir === 'dn' && volLevel === 'mid') {
-      icon = '⚠️'; title = '回調量偏大 — 留意';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，有一定賣壓。繼續觀察，若連續放量下跌要小心 Buildup 失敗。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else {
-      icon = '❌'; title = '跌價放量 — 真正賣壓！';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，大量賣盤。未突破前：睇Buildup底部有冇跌穿；跌穿 → 放棄。已入場：hit止損 → 執行。';
-      bg = '#2a1010'; border = '#f07070'; color = '#f07070';
+
+    var vol = parseFloat(document.getElementById('v_daily_vol').value);
+    if (isNaN(vol) || document.getElementById('v_daily_vol').value==='') {
+      res.style.background='#12141d'; res.style.borderColor='#2a2d3a'; res.style.color='#555';
+      res.innerHTML = '— 填入今日 RelVol —';
+      return;
     }
-    box.style.background = bg; box.style.borderColor = border; box.style.color = color;
-    box.innerHTML = '<div style="font-weight:700;margin-bottom:4px">' + icon + ' ' + title + '</div>'
-      + '<div style="font-size:12px;color:#aaa;line-height:1.6">' + desc + '</div>';
+
+    // 情況1：守住突破線
+    if (day1Choice === 'above') {
+      if (vol >= 1.5) {
+        res.style.background='#0d2a1e'; res.style.borderColor='#00c896'; res.style.color='#00c896';
+        res.innerHTML =
+          '<div style="font-weight:700;font-size:14px;margin-bottom:6px">🔥 放量突破／守住 — 手法A 或 手法C！</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x ✅<br>' +
+          '→ 突破第一日：手法A，今日 Close 即係入場價<br>' +
+          '→ 之後日子守住：手法C，今日 Close 即係入場價<br>' +
+          '→ 落 Step 6 填入今日 Close 作入場價</div>';
+        s3_updateStep6('A', null, null, null);
+      } else if (vol >= 1.0) {
+        res.style.background='#2a1e00'; res.style.borderColor='#e8a840'; res.style.color='#e8a840';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">⚠️ 守住但量唔夠強 — 繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，守住突破線但量唔夠。<br>' +
+          '→ 明日繼續填 Step 5<br>' +
+          '→ 記低今日 Close 做止損參考</div>';
+      } else {
+        res.style.background='#1a2540'; res.style.borderColor='#6aabf0'; res.style.color='#6aabf0';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">➡️ 縮量守住 — 繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，縮量守住係健康整固。<br>' +
+          '→ 明日繼續填 Step 5<br>' +
+          '→ 記低今日 Close 做止損參考</div>';
+      }
+    }
+
+    // 情況2：跌穿突破線（假突破）
+    if (day1Choice === 'below') {
+      var todayClose = parseFloat(document.getElementById('v_daily_close').value);
+      if (vol >= 1.5) {
+        res.style.background='#2a1010'; res.style.borderColor='#f07070'; res.style.color='#f07070';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">📉 放量跌穿 — 假突破確認！等手法B</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，放量跌穿突破線。<br>' +
+          (isNaN(todayClose) ? '' : '→ 今日Close $' + todayClose.toFixed(2) + ' 記低（假突破最低Close）<br>') +
+          '→ Set Alert 保留喺突破線<br>' +
+          '→ 等再次放量突破（≥1.5x）→ 手法B入場<br>' +
+          '→ 落 Step 6 等待，Alert 響先填入場價</div>';
+        if (!isNaN(todayClose)) s3_updateStep6('B', todayClose, null, '等再次突破突破線');
+      } else {
+        res.style.background='#2a1e00'; res.style.borderColor='#e8a840'; res.style.color='#e8a840';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">⚠️ 縮量跌穿 — 可能係假突破，繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，縮量跌穿。<br>' +
+          (isNaN(todayClose) ? '' : '→ 今日Close $' + todayClose.toFixed(2) + ' 記低（止損參考）<br>') +
+          '→ 唔係強賣壓，可能只係輕微回調。<br>' +
+          '→ 明日繼續填 Step 5</div>';
+      }
+    }
   }
 
   function s3_update() {
@@ -1164,10 +1661,10 @@ body {
     else if (b5 || c3) { tip.textContent = '→ b5 或 c3 其中一個 ✓，仲差一個達到最佳'; tip.style.color = '#888'; }
     else { tip.textContent = ''; }
 
-    renderVerdict(req, bon);
+    s3_renderVerdict(req, bon);
   }
 
-  function renderVerdict(req, bon) {
+  function s3_renderVerdict(req, bon) {
     var box = document.getElementById('verdict');
     var steps = document.getElementById('verdictSteps');
 
@@ -1220,7 +1717,8 @@ body {
       '<div class="verdict-step"><span class="arrow">2</span><span>記低 52W 高位，Set Alert 喺呢個價位（Price crossing above）</span></div>' +
       '<div class="verdict-step"><span class="arrow">3</span><span>之後唔需要再睇 Scanner！每日收市後只確認：Close &gt; 52W高位？</span></div>' +
       '<div class="verdict-step"><span class="arrow">4</span><span>突破時睇成交量：放量（&gt;1.5x）→ 手法A｜縮量突破 → 等手法B｜突破後回測 → 手法C</span></div>' +
-      '<div class="verdict-step"><span class="arrow">5</span><span>計 R:R：T1 = 突破點 + Buildup高度×1.5，T2 = 突破點 + 推進浪×0.618，必須 ≥ 2:1</span></div>';
+      '<div class="verdict-step"><span class="arrow">4</span><span>突破時睇成交量：放量（&gt;1.5x）→ 手法A｜縮量突破 → 等手法B｜突破後回測守住 → 手法C（&gt;1.0x）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">5</span><span>落 Step 6 計 T1、T2、止損、R:R（參考用，跟 Playbook 原版唔設門檻）</span></div>';
   }
 
   function s3_resetAll() {
@@ -1259,49 +1757,438 @@ body {
     box.querySelector('.verdict-title').textContent = '填入條件先可以判斷';
     document.getElementById('verdictSteps').innerHTML = '';
   }
-</script>
-    </div>
-  </div>
-  <div class="sub-panel" id="s3-scanner">
-    <div class="scanner-placeholder">
-      <div class="icon">🔍</div>
-      <div class="title">S3 Scanner</div>
-      <div class="desc">即將推出</div>
-    </div>
+</script></div>
   </div>
 </div>
 
-<!-- S6 PANEL -->
+<!-- S6 -->
 <div class="strategy-panel" id="panel-s6">
   <div class="sub-nav">
-    <div class="sub-tab active" onclick="switchSub('s6', 'checklist', this)">📋 互動檢查表</div>
-    <div class="sub-tab" onclick="switchSub('s6', 'scanner', this)">🔍 Scanner</div>
+    <div class="sub-tab active" onclick="switchSub('s6','scanner',this)">🔍 Scanner</div>
+    <div class="sub-tab" onclick="switchSub('s6','checklist',this)">📋 S6 互動檢查表</div>
   </div>
-  <div class="sub-panel active" id="s6-checklist">
-    <div class="scanner-placeholder">
-      <div class="icon">📋</div>
-      <div class="title">S6 互動檢查表</div>
-      <div class="desc">即將推出</div>
+  <div class="sub-panel active" id="s6-scanner">
+    <div class="coming-soon">
+      <div class="cs-icon">🔍</div>
+      <div class="cs-title">S6 Scanner</div>
+      <div class="cs-desc">即將推出</div>
     </div>
   </div>
-  <div class="sub-panel" id="s6-scanner">
-    <div class="scanner-placeholder">
-      <div class="icon">🔍</div>
-      <div class="title">S6 Scanner</div>
-      <div class="desc">即將推出</div>
+  <div class="sub-panel" id="s6-checklist">
+    <div class="sheet"><div class="header">
+  <div class="header-tag">投機十步曲 · Playbook</div>
+  <h1>S6 圖表形態（旗形整固）</h1>
+  <div class="header-sub">Bull Flag · 手法 A — 放量突破即入</div>
+</div>
+
+<div class="container">
+
+  <!-- Progress -->
+  <div class="progress-bar">
+    <div class="progress-label">
+      <span>今日完成進度</span>
+      <span class="progress-count" id="s6_progressCount">0 / 0 步驟</span>
     </div>
+    <div class="progress-track"><div class="progress-fill" id="s6_progressFill"></div></div>
+  </div>
+
+  <!-- Step 1: 整固期間 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">1</span> 整固期間確認（Playbook Scanner 5日🔥停低）</div>
+    <div class="checklist">
+
+      <div class="check-item" onclick="s6_toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">S6 連續 5日🔥 以上</div>
+          <div class="check-sub">6–15日 = 最理想 ｜ &gt;15日 ⚠️ 可能唔係旗形</div>
+        </div>
+      </div>
+
+      <div class="check-item warn">
+        <div class="check-box">⚠</div>
+        <div style="flex:1">
+          <div class="check-label" style="color:var(--orange)">b6 — 畫 Fib（A→B），旗形期間所有 Close ≥ 0.236 位</div>
+          <div class="check-sub">❌ 任何 Close 穿破 0.236 → 即刻跳過，唔需要再做其他步驟</div>
+        </div>
+      </div>
+
+      <div style="padding:4px 4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gray);letter-spacing:1px;">REQUIRED — 4/5 以上先符合</div>
+
+      <div class="check-item req-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c1 &nbsp;Price &gt; EMA20（短期趨勢向上）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c2 &nbsp;Price &gt; EMA50（中期趨勢向上）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c3 &nbsp;1M漲 &gt; 8%（旗杆存在）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c4 &nbsp;1W -5% 至 0%（參考用，浮動）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c5 🔑 &nbsp;RelVol &lt; 0.8x（縮量整固，最關鍵）</div></div>
+      </div>
+
+      <div style="padding:8px 4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gray);letter-spacing:1px;">BONUS — b1+b5 最重要，被震走風險最低</div>
+
+      <div class="check-item bonus-item" data-key="b1" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b1 🔑 &nbsp;旗形極緊（5日波幅 &lt; 4%）← 被震走風險低</div></div>
+      </div>
+      <div class="check-item bonus-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b2 &nbsp;Price &gt; EMA200（大趨勢向上）</div></div>
+      </div>
+      <div class="check-item bonus-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b3 &nbsp;距52W高 ≤ 15%</div></div>
+      </div>
+      <div class="check-item bonus-item" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b4 &nbsp;10日波幅 &lt; 7%</div></div>
+      </div>
+      <div class="check-item bonus-item" data-key="b5" onclick="s6_toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b5 🔑 &nbsp;3M漲 &gt; 15%（強勁旗杆）← 動力強</div></div>
+      </div>
+
+      <!-- 自動評級 -->
+      <div id="s6_qualityBox" style="display:none;margin-top:4px;padding:12px 14px;border-radius:8px;border:1px solid;font-size:13px;font-weight:600;transition:all 0.3s;">
+        <div id="s6_qualityScore" style="font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:4px;"></div>
+        <div id="s6_qualityText"></div>
+        <div id="s6_qualityAction" style="font-size:11px;margin-top:4px;font-weight:400;"></div>
+      </div>
+
+      <div class="check-item warn">
+        <div class="check-box">⚠</div>
+        <div style="flex:1">
+          <div class="check-label" style="color:var(--orange)">b7 — 搵 H1（旗形整固第一個高點）= 突破位</div>
+          <div class="check-sub">H1→H2→H3 連成一線，記低 H1 價位，Set Alert 喺 H1<br>
+          <b style="color:var(--red)">注意：突破位係 H1，唔係 B點！</b></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Step 2: 入場確認 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">2</span> 入場確認（Alert 響後）</div>
+
+    <!-- 決策流程 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);margin-bottom:10px;">📋 Alert 響後，收市後決策</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;line-height:2.2;">
+        RV &gt; 1.5x？<br>
+        <span style="color:var(--green);">→ 係：手法 A</span> — 當晚放 Limit Order @ <b style="color:var(--green);">今日 Close</b><br>
+        <span style="color:var(--orange);">→ 唔係：手法 C</span> — 當晚放 Limit Order @ <b style="color:var(--orange);">H1 原價</b>，等回測自動執行
+      </div>
+    </div>
+
+    <div class="checklist">
+      <div class="check-item" onclick="s6_toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">手法 A：RV &gt; 1.5x → 當晚放 Limit Order @ 今日 Close</div>
+          <div class="check-sub" style="color:var(--red);">RV 必須 &gt; 1.5x，唔夠唔用手法 A ｜ 隔日 Gap Up 太多 → 取消，唔追</div>
+        </div>
+      </div>
+
+      <div class="check-item" onclick="s6_toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">手法 C：RV &lt; 1.5x → 當晚放 Limit Order @ H1 原價</div>
+          <div class="check-sub" style="color:var(--green);">Order 放 H1，唔需要睇 RV ｜ 股票跌返 H1 自動執行</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- H1 Buffer Range 計算器 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:10px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--orange);margin-bottom:10px;">📍 手法 C — 監察用（唔係 Order 位置）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="input-group">
+          <label><span>H1</span> — 旗形上邊界突破位</label>
+          <input type="number" id="s6_inH1" placeholder="例：420.86" step="0.01" oninput="s6_calcBuffer()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:10px;color:var(--gray);font-family:'JetBrains Mono',monospace;">回測監察範圍（±1%）</div>
+          <div style="background:var(--surface2);border:1px solid var(--green);border-radius:6px;padding:8px 10px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);" id="s6_bufferRange">— 至 —</div>
+            <div style="font-size:10px;color:var(--gray);margin-top:2px;">Order 放 H1 ｜ 此範圍用嚟監察假突破</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gray);">
+        每日收市後確認：<br>
+        <span style="color:var(--green);">Close 喺範圍內或以上</span> → Order 執行或等待中，繼續持有<br>
+        <span style="color:var(--red);">Close 低過下限</span> → 假突破，取消 Order，跳過
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: 計算器 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">3</span> 計算止損 / T1 / T2 / R:R</div>
+    <div class="calc-card">
+      <div class="calc-title">📐 S6 旗形計算器</div>
+      <div class="input-grid">
+        <div class="input-group">
+          <label><span>A點</span> — 旗杆起點</label>
+          <input type="number" id="s6_inA" placeholder="例：14.23" step="0.01">
+        </div>
+        <div class="input-group">
+          <label><span>B點</span> — 旗杆頂</label>
+          <input type="number" id="s6_inB" placeholder="例：27.98" step="0.01">
+        </div>
+        <div class="input-group">
+          <label><span>旗形最低 Close</span></label>
+          <input type="number" id="s6_inFlagLow" placeholder="例：26.41" step="0.01">
+        </div>
+        <div class="input-group">
+          <label><span>入場價</span> — 突破當日 Close</label>
+          <input type="number" id="s6_inEntry" placeholder="例：27.86" step="0.01">
+        </div>
+      </div>
+      <button class="calc-btn" onclick="s6_calculate()">▶ 計算</button>
+      <div class="results-grid">
+        <div class="result-item" id="s6_res0236">
+          <div class="r-label">0.236 位</div>
+          <div class="r-value" id="s6_val0236">—</div>
+          <div class="r-sub">旗形唔可穿破</div>
+        </div>
+        <div class="result-item" id="s6_resStop">
+          <div class="r-label">止損</div>
+          <div class="r-value" id="s6_valStop">—</div>
+          <div class="r-sub">旗形低 × 0.98</div>
+        </div>
+        <div class="result-item" id="s6_resFlagH">
+          <div class="r-label">旗杆高度</div>
+          <div class="r-value" id="s6_valFlagH">—</div>
+          <div class="r-sub">B − A</div>
+        </div>
+        <div class="result-item" id="s6_resT1">
+          <div class="r-label">T1 目標</div>
+          <div class="r-value" id="s6_valT1">—</div>
+          <div class="r-sub">旗形低 + 旗杆 × 0.618</div>
+        </div>
+        <div class="result-item" id="s6_resT2">
+          <div class="r-label">T2 目標</div>
+          <div class="r-value" id="s6_valT2">—</div>
+          <div class="r-sub">旗形低 + 旗杆高度</div>
+        </div>
+        <div class="result-item" id="s6_resRR">
+          <div class="r-label">R:R（至T1）</div>
+          <div class="r-value" id="s6_valRR">—</div>
+          <div class="r-sub">需要 ≥ 2:1</div>
+        </div>
+      </div>
+      <div class="rr-verdict" id="s6_rrVerdict"></div>
+    </div>
+  </div>
+
+  <!-- Step 4: 入場後 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">4</span> 入場後管理</div>
+    <div class="checklist">
+
+      <div class="check-item" onclick="s6_toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">止損管理：每日收市後人手確認 Close</div>
+          <div class="check-sub">Close &lt; 止損位 → 人手賣出 ｜ 唔放 Stop Market，睇收市價</div>
+        </div>
+      </div>
+
+      <div class="check-item" onclick="s6_toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">T1 到達 → 出一半，止損移入場價（Risk Free）</div>
+          <div class="check-sub">餘下一半繼續持倉等 T2</div>
+        </div>
+      </div>
+
+      <div class="check-item" onclick="s6_toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">T2 到達 → 餘下全出</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Reset -->
+  <div style="text-align:center; margin-top:12px;">
+    <button class="reset-btn" onclick="s6_resetAll()">↺ 重置所有勾選</button>
+  </div>
+
+</div>
+
+<script>
+  function s6_calcBuffer() {
+    const h1 = parseFloat(document.getElementById('inH1').value);
+    const el = document.getElementById('bufferRange');
+    if (isNaN(h1) || h1 <= 0) { el.textContent = '— 至 —'; return; }
+    const lower = (h1 * 0.99).toFixed(2);
+    const upper = (h1 * 1.01).toFixed(2);
+    el.textContent = '$' + lower + ' 至 $' + upper;
+  }
+
+  function s6_toggle(el) {
+    if (el.classList.contains('warn') || el.classList.contains('red')) return;
+    el.classList.s6_toggle('checked');
+    s6_updateProgress();
+  }
+
+  function s6_toggleScored(el) {
+    if (el.classList.contains('warn') || el.classList.contains('red')) return;
+    el.classList.s6_toggle('checked');
+    s6_updateProgress();
+    s6_updateQuality();
+  }
+
+  function s6_updateQuality() {
+    const reqItems = document.querySelectorAll('.req-item');
+    const bonusItems = document.querySelectorAll('.bonus-item');
+    const reqScore = document.querySelectorAll('.req-item.checked').length;
+    const bonusScore = document.querySelectorAll('.bonus-item.checked').length;
+    const b1checked = document.querySelector('.bonus-item[data-key="b1"]').classList.contains('checked');
+    const b5checked = document.querySelector('.bonus-item[data-key="b5"]').classList.contains('checked');
+
+    const box = document.getElementById('qualityBox');
+    const scoreEl = document.getElementById('qualityScore');
+    const textEl = document.getElementById('qualityText');
+    const actionEl = document.getElementById('qualityAction');
+
+    // 只有 tick 曬 c1-c5 同 b1-b5 先顯示
+    const totalTicked = reqScore + bonusScore;
+    if (totalTicked === 0) { box.style.display = 'none'; return; }
+
+    box.style.display = 'block';
+    scoreEl.textContent = 'Required ' + reqScore + '/5　Bonus ' + bonusScore + '/5';
+
+    if (reqScore < 4) {
+      box.style.background = 'rgba(255,77,77,0.1)';
+      box.style.borderColor = '#ff4d4d';
+      textEl.style.color = '#ff4d4d';
+      textEl.textContent = '❌ 唔符合 — Required 未夠 4/5';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 跳過此股，等下一個機會';
+    } else if (reqScore >= 4 && b1checked && b5checked) {
+      box.style.background = 'rgba(0,200,150,0.1)';
+      box.style.borderColor = '#00c896';
+      textEl.style.color = '#00c896';
+      textEl.textContent = '🔥 頂級 Setup — b1+b5 通過，被震走風險最低';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 優先入場，正常倉位';
+    } else if (reqScore >= 4 && (b1checked || b5checked)) {
+      box.style.background = 'rgba(0,200,150,0.08)';
+      box.style.borderColor = '#00c896';
+      textEl.style.color = '#00c896';
+      textEl.textContent = '✅ 良好 Setup — b1 或 b5 通過';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 正常入場，留意被震走風險';
+    } else if (reqScore >= 4 && bonusScore >= 3) {
+      box.style.background = 'rgba(255,179,71,0.08)';
+      box.style.borderColor = '#ffb347';
+      textEl.style.color = '#ffb347';
+      textEl.textContent = '⚠️ 一般 Setup — Bonus 3/5 但 b1 b5 都未過';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 考慮細倉入場，R:R 要 ≥ 3:1（唔係 2:1）';
+    } else {
+      box.style.background = 'rgba(255,77,77,0.12)';
+      box.style.borderColor = '#ff4d4d';
+      textEl.style.color = '#ff4d4d';
+      textEl.textContent = '❌ 直接跳過 — b1 b5 都 Fail，Bonus < 3';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 唔入場，等下一個更好嘅 Setup';
+    }
+  }
+
+  function s6_updateProgress() {
+    const all = document.querySelectorAll('.check-item:not(.warn):not(.red)');
+    const checked = document.querySelectorAll('.check-item.checked').length;
+    const pct = all.length > 0 ? Math.round((checked / all.length) * 100) : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressCount').textContent = checked + ' / ' + all.length + ' 步驟';
+  }
+
+  function s6_resetAll() {
+    document.querySelectorAll('.check-item.checked').forEach(el => el.classList.remove('checked'));
+    document.getElementById('qualityBox').style.display = 'none';
+    s6_updateProgress();
+    ['val0236','valStop','valFlagH','valT1','valT2','valRR'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    ['res0236','resStop','resFlagH','resT1','resT2','resRR'].forEach(id => {
+      document.getElementById(id).classList.remove('active','warn-rr');
+    });
+    document.getElementById('rrVerdict').className = 'rr-verdict';
+    ['inA','inB','inFlagLow','inEntry'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  function s6_fmt(n) { return '$' + n.toFixed(2); }
+
+  function s6_calculate() {
+    const A = parseFloat(document.getElementById('inA').value);
+    const B = parseFloat(document.getElementById('inB').value);
+    const flagLow = parseFloat(document.getElementById('inFlagLow').value);
+    const entry = parseFloat(document.getElementById('inEntry').value);
+    if ([A,B,flagLow,entry].some(isNaN)) { alert('請填寫全部四個數字'); return; }
+    if (B <= A) { alert('B點必須大於A點'); return; }
+    if (entry <= flagLow) { alert('入場價必須大於旗形低點'); return; }
+    const poleH = B - A;
+    const fib236 = B - poleH * 0.236;
+    const stop = flagLow * 0.98;
+    const t1 = flagLow + poleH * 0.618;
+    const t2 = flagLow + poleH;
+    const risk = entry - stop;
+    const rr = (t1 - entry) / risk;
+    document.getElementById('val0236').textContent = s6_fmt(fib236);
+    document.getElementById('valStop').textContent = s6_fmt(stop);
+    document.getElementById('valFlagH').textContent = s6_fmt(poleH);
+    document.getElementById('valT1').textContent = s6_fmt(t1);
+    document.getElementById('valT2').textContent = s6_fmt(t2);
+    document.getElementById('valRR').textContent = rr.toFixed(2) + ' : 1';
+    ['res0236','resStop','resFlagH','resT1','resT2'].forEach(id => {
+      document.getElementById(id).classList.add('active');
+      document.getElementById(id).classList.remove('warn-rr');
+    });
+    const rrEl = document.getElementById('resRR');
+    const verdict = document.getElementById('rrVerdict');
+    if (rr >= 2) {
+      rrEl.classList.add('active'); rrEl.classList.remove('warn-rr');
+      verdict.textContent = '✅ R:R ' + rr.toFixed(2) + ':1 — 符合入場標準，可以放 Limit Order！';
+      verdict.className = 'rr-verdict show pass';
+    } else {
+      rrEl.classList.add('warn-rr'); rrEl.classList.remove('active');
+      verdict.textContent = '❌ R:R ' + rr.toFixed(2) + ':1 — 唔夠 2:1，跳過此股';
+      verdict.className = 'rr-verdict show fail';
+    }
+  }
+
+  s6_updateProgress();
+</script></div>
   </div>
 </div>
 
 <script>
-// ── NAV LOGIC ──
 function switchStrategy(id, el) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.strategy-panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('panel-' + id).classList.add('active');
 }
-
 function switchSub(strategy, sub, el) {
   var panel = document.getElementById('panel-' + strategy);
   panel.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
@@ -1310,257 +2197,428 @@ function switchSub(strategy, sub, el) {
   document.getElementById(strategy + '-' + sub).classList.add('active');
 }
 
-// ── S1 LOGIC ──
-var streakLevel = null;
-  var priceDir = null;
+// S1
+var state = { streak: null, vol: null, days: null };
 
-  function setStreak(btn, level, hint) {
-    document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
-    btn.classList.add('active', level);
-    streakLevel = level;
-    document.getElementById('streakHint').textContent = hint;
-    update();
+function setBtn(btn, group, val, cls, hint) {
+  var groups = {
+    streak: ['s25','s7','s3','s0'],
+    vol: ['縮量','中性','放量'],
+    days: ['當日','1–2日','3日','4日+']
+  };
+  document.querySelectorAll('.s-btn').forEach(function(b) {
+    if (groups[group].some(function(v) { return b.textContent.indexOf(v.replace('+',' ')) >= 0 || b.onclick.toString().indexOf("'"+v+"'") >= 0; })) {
+      b.className = 's-btn';
+    }
+  });
+  btn.className = 's-btn active ' + cls;
+  state[group] = val;
+  document.getElementById('h_' + group).textContent = hint;
+  upd();
+}
+
+function upd() {
+  var req = ['c1','c2','c3','c4','c5'].filter(function(id){ return document.getElementById(id).checked; }).length;
+  var rc = req===5?'#00c896':req>=3?'#e8a840':'#f07070';
+  document.getElementById('reqBar').style.cssText = 'height:100%;border-radius:4px;transition:width .3s;width:'+(req/5*100)+'%;background:'+rc;
+  document.getElementById('reqNum').textContent = req+'/5'; document.getElementById('reqNum').style.color = rc;
+
+  var bon = ['b1','b2','b3','b4','b5'].filter(function(id){ return document.getElementById(id).checked; }).length;
+  var bc = bon>=4?'#00c896':bon>=3?'#e8a840':'#f07070';
+  document.getElementById('bonBar').style.cssText = 'height:100%;border-radius:4px;transition:width .3s;width:'+(bon/5*100)+'%;background:'+bc;
+  document.getElementById('bonNum').textContent = bon+'/5'; document.getElementById('bonNum').style.color = bc;
+
+  var b3=document.getElementById('b3').checked, b4=document.getElementById('b4').checked;
+  var bh=document.getElementById('b3b4hint');
+  if(b3&&b4){bh.textContent='⭐ b3+b4 同時 ✓ — 最佳入場準備狀態！';bh.style.color='#ffd700';}
+  else if(b3||b4){bh.textContent='→ b3 或 b4 其中一個 ✓，仲差一個';bh.style.color='#888';}
+  else{bh.textContent='';}
+
+  renderVerdict(req, bon, b3, b4);
+}
+
+function renderVerdict(req, bon, b3, b4) {
+  var box=document.getElementById('verdict'), steps=document.getElementById('vSteps');
+  function set(cls, icon, title, html) {
+    box.className='verdict '+cls;
+    box.querySelector('.verdict-icon').textContent=icon;
+    box.querySelector('.verdict-title').textContent=title;
+    steps.innerHTML=html;
   }
+  function vs(ar, txt) { return '<div class="vs"><span class="ar">'+ar+'</span><span>'+txt+'</span></div>'; }
 
-  function setPrice(dir) {
-    priceDir = dir;
-    var up = document.getElementById('priceUp');
-    var dn = document.getElementById('priceDn');
-    up.style.background = dir === 'up' ? '#1a3020' : '#12141d';
-    up.style.borderColor = dir === 'up' ? '#00c896' : '#2a5a35';
-    up.style.color = '#5ecf8a';
-    dn.style.background = dir === 'dn' ? '#2a1010' : '#12141d';
-    dn.style.borderColor = dir === 'dn' ? '#f07070' : '#6a2a2a';
-    dn.style.color = '#f07070';
-    updateVol();
-  }
+  if(!state.streak) { set('idle','—','請先選擇 Playbook Scanner 連續日數',''); return; }
+  if(state.streak==='s0') { set('notyet','🛑','唔入 — 跌穿前連續日數唔夠', vs('→','跌穿 EMA20 之前少於 3日，大趨勢未確認健康。唔好勉強，等連續日數累積 7日+ 先考慮。')); return; }
+  if(state.streak==='s3') { set('notyet','⚠️','保守 — 跌穿前只有 3–6日，唔建議入', vs('→','跌穿 EMA20 之前連續日數只有 3–6 日，趨勢確認唔夠。就算 Required 全過，都要保守處理。等下次 7日+ 先操作。')); return; }
+  if(state.days==='4日+') { set('notyet','❌','唔入 — 跌穿 EMA20 超過 4日', vs('→','Setup 唔成立。唔係假突破，係真正跌穿。等連續日數重新累積 7日+ 先考慮。')); return; }
 
-  function updateVol() {
-    var el = document.getElementById('v_vol');
-    var v = parseFloat(el.value);
-    var box = document.getElementById('volVerdict');
-    if (!priceDir || el.value === '' || isNaN(v)) {
-      box.style.background = '#12141d';
-      box.style.borderColor = '#2a2d3a';
-      box.style.color = '#555';
-      box.innerHTML = '— 請選擇價格方向並輸入 RelVol —';
+  if(req<5) {
+    var miss=[]; if(!document.getElementById('c1').checked)miss.push('c1'); if(!document.getElementById('c2').checked)miss.push('c2'); if(!document.getElementById('c3').checked)miss.push('c3'); if(!document.getElementById('c4').checked)miss.push('c4'); if(!document.getElementById('c5').checked)miss.push('c5');
+    if(miss.length===1&&miss[0]==='c1') {
+      set('partial','👀','假突破候選日！— 等收市確認', vs('→','Price 跌穿 EMA20（c1 fail），其餘全過。等今日收市！')+vs('✅','收市返上 EMA20 → 確認假突破，當晚放 Limit Order')+vs('❌','收市仍在 EMA20 之下 → 唔係假突破，繼續等'));
       return;
     }
-    var volLevel = v < 0.9 ? 'low' : v < 1.5 ? 'mid' : 'high';
-    var icon, title, desc, bg, border, color;
-    if (priceDir === 'up' && volLevel === 'low') {
-      icon = '🔥'; title = '升價 + 縮量 — 最理想！';
-      desc = '大戶唔放貨，悄悄向上。賣盤乾涸，少少買盤已推高價格。繼續持倉等目標，唔好因為升得慢就走。';
-      bg = '#0d2a1e'; border = '#00c896'; color = '#00c896';
-    } else if (priceDir === 'up' && volLevel === 'mid') {
-      icon = '✅'; title = '升價 + 正常成交量';
-      desc = '正常上升，成交量合理。趨勢健康，繼續持倉觀察。';
-      bg = '#1a2540'; border = '#6aabf0'; color = '#6aabf0';
-    } else if (priceDir === 'up' && volLevel === 'high') {
-      icon = '⚠️'; title = '升價 + 放量 — 警告！';
-      desc = '大量換手，可能係大戶趁高位出貨俾散戶。唔係好事！開始提高警覺，留意下一日走勢，準備考慮減倉。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else if (priceDir === 'dn' && volLevel === 'low') {
-      icon = '✅'; title = '跌價 + 縮量 — 健康回調';
-      desc = '賣壓唔強，無人急著賣。係正常健康回調，唔需要驚。若 Scanner 條件仍然符合，繼續等假突破入場機會。';
-      bg = '#1a2540'; border = '#6aabf0'; color = '#6aabf0';
-    } else if (priceDir === 'dn' && volLevel === 'mid') {
-      icon = '⚠️'; title = '跌價 + 正常成交量 — 留意';
-      desc = '有一定賣壓，但未算嚴重。繼續觀察下一日，若連續放量下跌就要小心。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else {
-      icon = '❌'; title = '跌價 + 放量 — 真正賣壓！';
-      desc = '大量拋售，係真正嘅賣壓。大戶可能出貨。若已持倉，考慮執行止損。若未入場，唔好入，等賣壓消化完先。';
-      bg = '#2a1010'; border = '#f07070'; color = '#f07070';
-    }
-    box.style.background = bg;
-    box.style.borderColor = border;
-    box.style.color = color;
-    box.innerHTML = '<div style="font-weight:700;margin-bottom:4px">' + icon + ' ' + title + '</div>'
-      + '<div style="font-size:12px;color:#aaa;line-height:1.6">' + desc + '</div>';
+    var nm={c1:'Price>EMA20',c2:'Price>EMA50',c3:'EMA200↑',c4:'RSI 40–70',c5:'3M/1M%'};
+    set('notyet','❌','Required 未達標 — 唔入', vs('✗','仲差：'+miss.map(function(c){return nm[c];}).join('、'))); return;
+  }
+  if(bon<3) { set('partial','⚠️','Bonus 唔夠 — 唔建議入', vs('→','Required 全過，但 Bonus 只有 '+bon+'/5。最少要 3/5，b3+b4 同時 ✓ 先入。')); return; }
+
+  // b2 fail 特別警告
+  var b2=document.getElementById('b2').checked;
+  if(!b2) {
+    set('partial','⚠️','b2 fail — 三線排列未完成，極細 position',
+      vs('⚠️','EMA50 < EMA200，股票由跌市反彈，中長期趨勢未完全恢復，反彈容易失敗') +
+      vs('→','如果其他條件都好，可以考慮極細 position（正常嘅一半）') +
+      vs('!','計 R:R ≥ 2:1 先入，計唔到就唔入')
+    ); return;
+  }
+  if(state.vol==='放量') { set('partial','⚠️','放量假突破 — 質素較差', vs('⚠️','假突破放量，可能有真正賣壓。考慮細 position，或等下次縮量假突破。')+vs('!','計 R:R ≥ 2:1 先入，計唔到就唔入')); return; }
+  if(state.days==='3日') { set('partial','⚠️','3日升返 — 訊號較弱', vs('⚠️','用 3日先升返，訊號質素一般。考慮細 position 入場。')+vs('!','計 R:R ≥ 2:1 先入，計唔到就唔入')); return; }
+
+  var b3b4html = (b3&&b4)?vs('⭐','b3+b4 同時 ✓ — 最佳入場準備狀態！'):'';
+  var voltxt = state.vol==='縮量'?'縮量假突破 🔥 最理想':state.vol==='中性'?'成交量中性，可以接受':'';
+  set('ready','✅','READY — 可以進入入場流程',
+    b3b4html +
+    vs('1','假突破確認 ✅' + (voltxt?' ｜ '+voltxt:'')) +
+    vs('2','當晚放 Limit Order（收市價附近，唔係追高）') +
+    vs('3','用下面 R:R 計算器確認 ≥ 2:1 先入場')
+  );
+
+  // ── Setup Quality Rating ──
+  var qualityScore = 0;
+  if (bon >= 5) qualityScore += 3;
+  else if (bon >= 4) qualityScore += 2;
+  else if (bon >= 3) qualityScore += 1;
+  if (state.vol === '縮量') qualityScore += 2;
+  else if (state.vol === '中性') qualityScore += 1;
+  if (state.days === '當日') qualityScore += 2;
+  else if (state.days === '1–2日') qualityScore += 1;
+  if (b3 && b4) qualityScore += 1;
+  if (state.streak === 's5') qualityScore += 1;
+
+  var qIcon, qTitle, qColor, qBg, qBorder, qDesc;
+  if (qualityScore >= 7) {
+    qIcon='🔥'; qTitle='高質 Setup';
+    qColor='#00c896'; qBg='#0d2a1e'; qBorder='#2a5a35';
+    qDesc='Bonus 充足 + 縮量假突破 + 快速彈返<br>最理想入場機會，正常 position 入場';
+  } else if (qualityScore >= 4) {
+    qIcon='✅'; qTitle='中質 Setup';
+    qColor='#e8a840'; qBg='#2a1e00'; qBorder='#6a4800';
+    qDesc='條件合格但有部分不足<br>可以入場，考慮細少少 position';
+  } else {
+    qIcon='⚠️'; qTitle='低質 Setup';
+    qColor='#f07070'; qBg='#2a1010'; qBorder='#6a2a2a';
+    qDesc='多個條件質素一般<br>唔建議入，或者極細 position';
+  }
+  var qCard=document.getElementById('qualityCard');
+  qCard.style.background=qBg; qCard.style.border='1px solid '+qBorder;
+  document.getElementById('qualityIcon').textContent=qIcon;
+  var qt=document.getElementById('qualityTitle');
+  qt.style.color=qColor; qt.textContent=qTitle;
+  document.getElementById('qualityDesc').innerHTML=qDesc;
+}
+
+function calcRR() {
+  var e=parseFloat(document.getElementById('rr_e').value), l=parseFloat(document.getElementById('rr_l').value), t=parseFloat(document.getElementById('rr_t').value), b=parseFloat(document.getElementById('rr_b').value)||1;
+  var res=document.getElementById('rr_res'), ph=document.getElementById('rr_ph');
+  if(isNaN(e)||isNaN(l)||isNaN(t)){res.style.display='none';ph.style.display='block';return;}
+  var sl=l*(1-b/100), risk=e-sl, reward=t-e, rr=reward/risk;
+  res.style.display='block'; ph.style.display='none';
+  document.getElementById('rr_sl').textContent='$'+sl.toFixed(2);
+  document.getElementById('rr_rk').textContent='$'+risk.toFixed(2);
+  document.getElementById('rr_rw').textContent='$'+reward.toFixed(2);
+  var v=document.getElementById('rr_vd');
+  if(rr>=3)      v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a',v.textContent='✅ R:R = '+rr.toFixed(2)+':1 — 優秀！可以入場';
+  else if(rr>=2) v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#1a3020;border:1px solid #2a5a35;color:#5ecf8a',v.textContent='✅ R:R = '+rr.toFixed(2)+':1 — 達標，可以入場';
+  else if(rr>=1.5) v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#2a1e00;border:1px solid #6a4800;color:#e8a840',v.textContent='⚠️ R:R = '+rr.toFixed(2)+':1 — 唔夠 2:1，唔建議入';
+  else           v.style.cssText='border-radius:8px;padding:12px;text-align:center;font-size:15px;font-weight:700;background:#2a1010;border:1px solid #6a2a2a;color:#f07070',v.textContent='❌ R:R = '+rr.toFixed(2)+':1 — 唔夠，保存子彈';
+}
+
+function resetAll() {
+  ['c1','c2','c3','c4','c5','b1','b2','b3','b4','b5'].forEach(function(id){ document.getElementById(id).checked=false; });
+  ['rr_e','rr_l','rr_t'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('rr_b').value='1';
+  document.getElementById('rr_res').style.display='none'; document.getElementById('rr_ph').style.display='block';
+  document.querySelectorAll('.s-btn').forEach(function(b){ b.className='s-btn'; });
+  state={streak:null,vol:null,days:null};
+  ['streak','vol','days'].forEach(function(g){ var el=document.getElementById('h_'+g); if(el) el.textContent = g==='streak'?'— 請選擇連續日數 —':g==='vol'?'— 請選擇假突破當日成交量 —':''; });
+  document.getElementById('b3b4hint').textContent='';
+  document.getElementById('reqBar').style.cssText='height:100%;border-radius:4px;width:0%;background:#f07070';
+  document.getElementById('reqNum').textContent='0/5'; document.getElementById('reqNum').style.color='#f07070';
+  document.getElementById('bonBar').style.cssText='height:100%;border-radius:4px;width:0%;background:#e8a840';
+  document.getElementById('bonNum').textContent='0/5'; document.getElementById('bonNum').style.color='#e8a840';
+  var box=document.getElementById('verdict');
+  box.className='verdict idle';
+  box.querySelector('.verdict-icon').textContent='—';
+  box.querySelector('.verdict-title').textContent='填入條件先可以判斷';
+  document.getElementById('vSteps').innerHTML='';
+  var qCard=document.getElementById('qualityCard');
+  qCard.style.background='#1a1d27'; qCard.style.border='1px solid #2a2d3a';
+  document.getElementById('qualityIcon').textContent='—';
+  var qt=document.getElementById('qualityTitle'); qt.style.color='#555'; qt.textContent='填入條件先可以評級';
+  document.getElementById('qualityDesc').innerHTML='';
+}
+
+// S1V1
+var trendLevel = null;
+  var fbLevel = null;
+
+  function s1v1_setTrend(btn, level) {
+    document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active','up','down','flat'));
+    btn.classList.add('active', level);
+    trendLevel = level;
+    var hints = {
+      up:   '✅ 強上升趨勢 — S1 v1 最有效，可以繼續跟流程',
+      down: '⚠️ 下跌趨勢終結跡象 — 可以考慮，但需要確認下跌結構已破壞 + 下跌速度改變',
+      flat: '❌ 橫行 / 下跌中 — 唔可以用本策略，等趨勢明確先'
+    };
+    document.getElementById('s1v1_trendHint').textContent = hints[level];
+    s1v1_update();
   }
 
-  function validateRsi() {
-    var el = document.getElementById('v_rsi');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v >= 40 && v <= 70 ? 'ok' : 'warn');
-    document.getElementById('c4').checked = (v >= 40 && v <= 70);
+  function s1v1_setFB(btn, level) {
+    document.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('active','strong','weak','none'));
+    btn.classList.add('active', level);
+    fbLevel = level;
+    var hints = {
+      strong: '🔥 最理想！急速反彈 + 縮量 = 洗盤充分，大戶接貨完成，入場訊號強',
+      weak:   '⚠️ 弱訊號。反彈慢或成交正常，洗盤未夠充分，可能仲有第二波下跌，考慮細 Position 或等更強訊號',
+      none:   '❌ 唔係假突破。大陰燭或仍在下跌，唔入，等次日收市確認'
+    };
+    document.getElementById('s1v1_fbHint').textContent = hints[level];
+    s1v1_update();
   }
 
-  function validateRvol() {
-    var el = document.getElementById('v_rvol');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v < 0.9 ? 'ok' : 'warn');
-    document.getElementById('b3').checked = (v < 0.9);
-  }
+  function s1v1_update() {
+    // required
+    var req = ['r1','r2','r3','r4'].filter(id => document.getElementById(id).checked).length;
+    var reqPct = (req / 4) * 100;
+    var reqColor = req === 4 ? '#00c896' : req >= 2 ? '#e8a840' : '#f07070';
+    document.getElementById('s1v1_reqBar').style.width = reqPct + '%';
+    document.getElementById('s1v1_reqBar').style.background = reqColor;
+    document.getElementById('s1v1_reqNum').textContent = req + ' / 4';
+    document.getElementById('s1v1_reqNum').style.color = reqColor;
 
-  function validate1w() {
-    var el = document.getElementById('v_1w');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v >= -8 && v <= 0 ? 'ok' : 'warn');
-    document.getElementById('b4').checked = (v >= -8 && v <= 0);
-  }
+    // bonus
+    var bon = ['b1','b2','b3'].filter(id => document.getElementById(id).checked).length;
+    var bonPct = (bon / 3) * 100;
+    var bonColor = bon === 3 ? '#00c896' : bon >= 2 ? '#e8a840' : '#f07070';
+    document.getElementById('s1v1_bonBar').style.width = bonPct + '%';
+    document.getElementById('s1v1_bonBar').style.background = bonColor;
+    document.getElementById('s1v1_bonNum').textContent = bon + ' / 3';
+    document.getElementById('s1v1_bonNum').style.color = bonColor;
 
-  function validate52w() {
-    var el = document.getElementById('v_52w');
-    var v = parseFloat(el.value);
-    if (el.value === '') { el.className = 'val-input'; return; }
-    el.className = 'val-input ' + (v > -15 ? 'ok' : 'warn');
-    document.getElementById('b5').checked = (v > -15);
-  }
-
-  function update() {
-    var req = ['c1','c2','c3','c4','c5'].filter(id => document.getElementById(id).checked).length;
-    var reqPct = (req / 5) * 100;
-    var reqColor = req === 5 ? '#00c896' : req >= 3 ? '#e8a840' : '#f07070';
-    document.getElementById('reqBar').style.width = reqPct + '%';
-    document.getElementById('reqBar').style.background = reqColor;
-    document.getElementById('reqNum').textContent = req + ' / 5';
-    document.getElementById('reqNum').style.color = reqColor;
-
-    var bon = ['b1','b2','b3','b4','b5'].filter(id => document.getElementById(id).checked).length;
-    var bonPct = (bon / 5) * 100;
-    var bonColor = bon >= 4 ? '#00c896' : bon >= 3 ? '#e8a840' : '#f07070';
-    document.getElementById('bonBar').style.width = bonPct + '%';
-    document.getElementById('bonBar').style.background = bonColor;
-    document.getElementById('bonNum').textContent = bon + ' / 5';
-    document.getElementById('bonNum').style.color = bonColor;
-
-    var b3 = document.getElementById('b3').checked;
-    var b4 = document.getElementById('b4').checked;
-    var hint = document.getElementById('b3b4hint');
-    if (b3 && b4) { hint.textContent = '⭐ b3 + b4 同時 ✓ — 最佳入場準備狀態！'; hint.style.color = '#ffd700'; }
-    else if (b3 || b4) { hint.textContent = '→ b3 或 b4 其中一個 ✓，仲差一個'; hint.style.color = '#888'; }
+    var b1 = document.getElementById('s1v1_b1').checked;
+    var b2 = document.getElementById('s1v1_b2').checked;
+    var hint = document.getElementById('s1v1_b1b2hint');
+    if (b1 && b2) { hint.textContent = '⭐ 急速回調 + 縮量同時 ✓ — 最佳假突破質素！'; hint.style.color = '#ffd700'; }
     else { hint.textContent = ''; }
 
-    renderVerdict(req, bon, b3, b4);
+    s1v1_renderVerdict(req, bon, b1, b2);
   }
 
-  function renderVerdict(req, bon, b3, b4) {
-    var box = document.getElementById('verdict');
-    var steps = document.getElementById('verdictSteps');
+  function s1v1_renderVerdict(req, bon, b1, b2) {
+    var box = document.getElementById('s1v1_verdict');
+    var steps = document.getElementById('s1v1_verdictSteps');
 
-    if (!streakLevel) {
+    if (!trendLevel) {
       box.className = 'verdict idle';
       box.querySelector('.verdict-icon').textContent = '—';
-      box.querySelector('.verdict-title').textContent = '請先選擇 Playbook Scanner 連續日數';
+      box.querySelector('.verdict-title').textContent = '請先選擇趨勢狀態';
       steps.innerHTML = '';
       return;
     }
 
-    if (streakLevel === 's2') {
+    if (trendLevel === 'flat') {
       box.className = 'verdict notyet';
       box.querySelector('.verdict-icon').textContent = '🛑';
-      box.querySelector('.verdict-title').textContent = '唔入 — 大趨勢唔支持';
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>連續日數斷斷續續，S1 策略唔適合操作。唔好勉強，等連續日數重新穩定 7日+ 先考慮。</span></div>';
+      box.querySelector('.verdict-title').textContent = '唔入 — 橫行 / 下跌市唔可用本策略';
+      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>原版明確指出：橫行狀態時不可使用本策略。等趨勢明確向上先考慮。</span></div>';
       return;
     }
 
-    if (streakLevel === 's3') {
-      box.className = 'verdict notyet';
-      box.querySelector('.verdict-icon').textContent = '⚠️';
-      box.querySelector('.verdict-title').textContent = '保守 — 趨勢轉弱，唔建議入';
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>連續日數只有 3–6 日，趨勢動力不足。就算 Required 全過，都要保守處理，唔好勉強入場。等 7日+ 先操作。</span></div>';
-      return;
-    }
-
-    if (req < 5) {
-      // special case: only c1 missing — possible false breakout day
-      var missing = [];
-      if (!document.getElementById('c1').checked) missing.push('c1');
-      if (!document.getElementById('c2').checked) missing.push('c2');
-      if (!document.getElementById('c3').checked) missing.push('c3');
-      if (!document.getElementById('c4').checked) missing.push('c4');
-      if (!document.getElementById('c5').checked) missing.push('c5');
-
-      if (missing.length === 1 && missing[0] === 'c1') {
-        box.className = 'verdict partial';
-        box.querySelector('.verdict-icon').textContent = '👀';
-        box.querySelector('.verdict-title').textContent = '假突破候選日！— 等收市確認';
+    if (trendLevel === 'down') {
+      if (req < 4) {
+        box.className = 'verdict notyet';
+        box.querySelector('.verdict-icon').textContent = '⚠️';
+        box.querySelector('.verdict-title').textContent = '下跌趨勢終結跡象 — 需要更多確認';
         steps.innerHTML =
-          '<div class="verdict-step"><span class="arrow">→</span><span>Price 跌穿 EMA20（c1 fail），其餘條件全過。呢個係你等緊嘅訊號！</span></div>' +
-          '<div class="verdict-step"><span class="arrow">1</span><span>當晚收市後睇：Price 收市返上 EMA20 → ✅ 確認假突破，即晚放 Limit Order</span></div>' +
-          '<div class="verdict-step"><span class="arrow">2</span><span>若收市仍在 EMA20 之下 → ❌ 唔係假突破，係真跌，唔入，繼續等</span></div>' +
-          '<div class="verdict-step"><span class="arrow">3</span><span>隔日 Gap Up 開市 → 取消 Limit Order，唔追，保存子彈</span></div>';
+          '<div class="verdict-step"><span class="arrow">→</span><span>下跌趨勢要有終結跡象先可用：下跌結構被破壞 + 下跌速度改變</span></div>' +
+          '<div class="verdict-step"><span class="arrow">→</span><span>仲差必需元素，唔入，繼續等確認</span></div>';
         return;
       }
+    }
 
+    if (!fbLevel || fbLevel === 'none') {
       box.className = 'verdict notyet';
       box.querySelector('.verdict-icon').textContent = '❌';
-      box.querySelector('.verdict-title').textContent = 'Required 未達標 — 唔入';
-      var missingNames = [];
-      if (!document.getElementById('c1').checked) missingNames.push('c1 Price > EMA20');
-      if (!document.getElementById('c2').checked) missingNames.push('c2 Price > EMA50');
-      if (!document.getElementById('c3').checked) missingNames.push('c3 EMA200↑');
-      if (!document.getElementById('c4').checked) missingNames.push('c4 RSI 40–70');
-      if (!document.getElementById('c5').checked) missingNames.push('c5 3M>5% & 1M<25%');
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">✗</span><span>仲差：' + missingNames.join('、') + '</span></div>'
-        + '<div class="verdict-step"><span class="arrow">→</span><span>Required 5/5 係入場門檻，缺一不可。等條件符合先考慮入場。</span></div>';
+      box.querySelector('.verdict-title').textContent = '唔入 — 未見假突破確認';
+      steps.innerHTML =
+        '<div class="verdict-step"><span class="arrow">→</span><span>仲未見到假突破急速反彈訊號，或假突破係大陰燭，唔係有效訊號</span></div>' +
+        '<div class="verdict-step"><span class="arrow">→</span><span>等股票略跌穿前頂後急速反彈返上，先係入場時機</span></div>';
       return;
     }
 
-    if (bon < 3) {
+    if (req < 4) {
+      box.className = 'verdict notyet';
+      box.querySelector('.verdict-icon').textContent = '❌';
+      box.querySelector('.verdict-title').textContent = '必需元素未達標 — 唔入';
+      var missing = [];
+      if (!document.getElementById('s1v1_r1').checked) missing.push('上升趨勢唔過度延伸');
+      if (!document.getElementById('s1v1_r2').checked) missing.push('第2推進浪突破距離適中');
+      if (!document.getElementById('s1v1_r3').checked) missing.push('假突破蠟燭冇強 Momentum');
+      if (!document.getElementById('s1v1_r4').checked) missing.push('急速反彈返上前頂');
+      steps.innerHTML = '<div class="verdict-step"><span class="arrow">✗</span><span>仲差：' + missing.join('、') + '</span></div>'
+        + '<div class="verdict-step"><span class="arrow">→</span><span>4個必需元素全部要符合，缺一不可</span></div>';
+      return;
+    }
+
+    if (fbLevel === 'weak') {
       box.className = 'verdict partial';
       box.querySelector('.verdict-icon').textContent = '⚠️';
-      box.querySelector('.verdict-title').textContent = 'Bonus 唔夠 — Setup 質素差，唔建議入';
-      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>Required 全過，但 Bonus 只有 ' + bon + '/5，Setup 質素唔夠。</span></div>'
-        + '<div class="verdict-step"><span class="arrow">→</span><span>最少要 3/5，最好 b3（縮量）+ b4（本週回調）同時 ✓ 先入。繼續等。</span></div>';
+      box.querySelector('.verdict-title').textContent = '弱訊號 — 保守處理';
+      steps.innerHTML =
+        '<div class="verdict-step"><span class="arrow">→</span><span>必需元素全過，但假突破質素弱，反彈慢或成交正常</span></div>' +
+        '<div class="verdict-step"><span class="arrow">→</span><span>可以考慮細 Position 入場，或等第二次更強嘅假突破確認</span></div>' +
+        '<div class="verdict-step"><span class="arrow">!</span><span>計 R:R 必須 ≥ 2:1，T1 唔夠就計 T2，都唔夠就唔入</span></div>';
       return;
     }
 
+    // All good
     box.className = 'verdict ready';
     box.querySelector('.verdict-icon').textContent = '✅';
-    var b3b4line = (b3 && b4) ? '⭐ b3 + b4 同時 ✓，最佳入場準備狀態！' : '';
-    box.querySelector('.verdict-title').textContent = 'READY — 可以進入入場流程';
+    box.querySelector('.verdict-title').textContent = 'READY — 可以入場';
+    var b1b2line = (b1 && b2) ? '⭐ 急速回調 + 縮量同時 ✓，最高質素假突破！' : '';
     steps.innerHTML =
-      (b3b4line ? '<div class="verdict-step"><span class="arrow">⭐</span><span>' + b3b4line + '</span></div>' : '') +
-      '<div class="verdict-step"><span class="arrow">1</span><span>主圖日線確認三條 EMA 排列（EMA20 &gt; EMA50 &gt; EMA200）</span></div>' +
-      '<div class="verdict-step"><span class="arrow">2</span><span>等 Price 回調到 EMA20 附近 → 等假突破：跌穿 EMA20 當日收市返上 → 確認</span></div>' +
-      '<div class="verdict-step"><span class="arrow">3</span><span>假突破確認後當晚放 Limit Order（收市價附近，唔係追高）</span></div>' +
-      '<div class="verdict-step"><span class="arrow">4</span><span>計 R:R：止損 = 假突破低位 ×0.97–0.99 ｜ 目標 = 前高 / Resistance ｜ 必須 ≥ 2:1 先入</span></div>' +
-      '<div class="verdict-step"><span class="arrow">!</span><span>計唔到 R:R ≥ 2:1 → 唔入，唔係眼光問題，係 Setup 本身唔適合，保存子彈</span></div>';
+      (b1b2line ? '<div class="verdict-step"><span class="arrow">⭐</span><span>' + b1b2line + '</span></div>' : '') +
+      '<div class="verdict-step"><span class="arrow">1</span><span>入場價：前頂略上方（假突破反彈後實際成交價）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">2</span><span>止損：假突破最低位以下</span></div>' +
+      '<div class="verdict-step"><span class="arrow">3</span><span>目標 T1：推進段頂部（第2推進浪高位）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">4</span><span>目標 T2：回調段高度 × 1.618 Extension</span></div>' +
+      '<div class="verdict-step"><span class="arrow">!</span><span>計 R:R ≥ 2:1 先確認入場 — T1 唔夠就用 T2，都唔夠就唔入，保存子彈</span></div>';
   }
 
-  function resetAll() {
-    ['c1','c2','c3','c4','c5','b1','b2','b3','b4','b5'].forEach(id => document.getElementById(id).checked = false);
-    ['v_rsi','v_rvol','v_1w','v_52w','v_vol'].forEach(id => {
-      var el = document.getElementById(id);
-      el.value = '';
-      el.className = 'val-input';
-    });
-    document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
-    streakLevel = null;
-    priceDir = null;
-    document.getElementById('streakHint').textContent = '— 請選擇連續日數 —';
-    document.getElementById('b3b4hint').textContent = '';
-    document.getElementById('priceUp').style.background = '#12141d';
-    document.getElementById('priceUp').style.borderColor = '#2a5a35';
-    document.getElementById('priceDn').style.background = '#12141d';
-    document.getElementById('priceDn').style.borderColor = '#6a2a2a';
-    var vb = document.getElementById('volVerdict');
-    vb.style.background = '#12141d'; vb.style.borderColor = '#2a2d3a'; vb.style.color = '#555';
-    vb.innerHTML = '— 請選擇價格方向並輸入 RelVol —';
-    document.getElementById('reqBar').style.width = '0%';
-    document.getElementById('reqBar').style.background = '#f07070';
-    document.getElementById('reqNum').textContent = '0 / 5';
-    document.getElementById('reqNum').style.color = '#f07070';
-    document.getElementById('bonBar').style.width = '0%';
-    document.getElementById('bonBar').style.background = '#e8a840';
-    document.getElementById('bonNum').textContent = '0 / 5';
-    document.getElementById('bonNum').style.color = '#e8a840';
-    var box = document.getElementById('verdict');
+  function s1v1_resetAll() {
+    ['r1','r2','r3','r4','b1','b2','b3'].forEach(id => document.getElementById(id).checked = false);
+    document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active','up','down','flat'));
+    document.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('active','strong','weak','none'));
+    trendLevel = null; fbLevel = null;
+    document.getElementById('s1v1_trendHint').textContent = '— 請選擇趨勢狀態 —';
+    document.getElementById('s1v1_fbHint').textContent = '— 請選擇假突破質素 —';
+    document.getElementById('s1v1_b1b2hint').textContent = '';
+    document.getElementById('s1v1_reqBar').style.width = '0%';
+    document.getElementById('s1v1_reqBar').style.background = '#f07070';
+    document.getElementById('s1v1_reqNum').textContent = '0 / 4';
+    document.getElementById('s1v1_reqNum').style.color = '#f07070';
+    document.getElementById('s1v1_bonBar').style.width = '0%';
+    document.getElementById('s1v1_bonBar').style.background = '#e8a840';
+    document.getElementById('s1v1_bonNum').textContent = '0 / 3';
+    document.getElementById('s1v1_bonNum').style.color = '#e8a840';
+    var box = document.getElementById('s1v1_verdict');
     box.className = 'verdict idle';
     box.querySelector('.verdict-icon').textContent = '—';
     box.querySelector('.verdict-title').textContent = '填入條件先可以判斷';
-    document.getElementById('verdictSteps').innerHTML = '';
+    document.getElementById('s1v1_verdictSteps').innerHTML = '';
   }
 
-// ── S3 LOGIC ──
+// S3
 var streakLevel = null;
   var priceDir = null;
+  var entryMethod = null;
+  var altStopValue = null;
+
+  function s3_updateStep6(method, stopVal, stopLabel, waitMsg) {
+    entryMethod = method;
+    altStopValue = stopVal;
+
+    var s6 = document.getElementById('s3_s6status');
+    var entryWrap = document.getElementById('s3_entryWrap');
+    var entryLabel = document.getElementById('s3_entryLabel');
+    var entryHint = document.getElementById('s3_entryHint');
+
+    if (method === 'A') {
+      s6.style.background = '#0d2a1e'; s6.style.borderColor = '#00c896'; s6.style.color = '#00c896';
+      s6.innerHTML = '🔥 <strong>手法A</strong> — 突破日即入<br><span style="font-size:12px;color:#aaa">填入突破日 Close 作入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（突破日 Close）';
+      entryHint.textContent = '';
+    } else if (method === 'B') {
+      s6.style.background = '#2a1e00'; s6.style.borderColor = '#e8a840'; s6.style.color = '#e8a840';
+      s6.innerHTML = '⏳ <strong>手法B</strong> — ' + (waitMsg || '等再次突破') + '<br><span style="font-size:12px;color:#aaa">Alert 響（再次突破突破線）先填入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（再次突破嗰日 Close）';
+      entryHint.textContent = '⚠️ 唔係假突破嗰日Close！係Alert再次響嗰日Close';
+    } else if (method === 'C') {
+      s6.style.background = '#2a1e00'; s6.style.borderColor = '#e8a840'; s6.style.color = '#e8a840';
+      s6.innerHTML = '⏳ <strong>手法C</strong> — ' + (waitMsg || '等守住後放量向上') + '<br><span style="font-size:12px;color:#aaa">守住後放量向上嗰日先填入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（放量向上嗰日 Close）';
+      entryHint.textContent = '⚠️ 唔係守住嗰日！係之後放量向上嗰日Close';
+    }
+    s3_calcEntry();
+  }
+
+  function s3_calcEntry() {
+    var a = parseFloat(document.getElementById('s3_calc_a').value);
+    var b = parseFloat(document.getElementById('s3_calc_b').value);
+    var bottom = parseFloat(document.getElementById('s3_calc_bottom').value);
+    var entry = parseFloat(document.getElementById('s3_calc_entry').value);
+    var res = document.getElementById('s3_calcResult');
+
+    if (isNaN(a) || isNaN(b) || isNaN(bottom) || b <= a) {
+      res.style.borderColor = '#2a2d3a'; res.innerHTML = '— 填入 A點、B點、Buildup底部 —'; res.style.color = '#555';
+      return;
+    }
+
+    if (isNaN(entry)) {
+      res.style.borderColor = '#2a2d3a'; res.style.color = '#555';
+      if (entryMethod === 'B') {
+        res.innerHTML = '⏳ 等 Alert 響（再次突破突破線），填入嗰日 Close 作入場價';
+      } else if (entryMethod === 'C') {
+        res.innerHTML = '⏳ 等守住後放量向上，填入嗰日 Close 作入場價';
+      } else {
+        res.innerHTML = '— 填入入場價 —';
+      }
+      return;
+    }
+
+    // 止損
+    var stopBase = (altStopValue && !isNaN(altStopValue)) ? altStopValue : bottom;
+    var stopLoss = stopBase * 0.98;
+    var stopLabel = (entryMethod === 'B') ? '假突破最低Close × 0.98' :
+                    (entryMethod === 'C') ? '橫行最低Close × 0.98' : 'Buildup底部 × 0.98';
+
+    // T1、T2
+    var buildupHeight = b - bottom;
+    var impulseHeight = b - a;
+    var t1 = b + buildupHeight * 1.5;
+    var t2 = b + impulseHeight * 0.618;
+
+    // R:R
+    var risk = entry - stopLoss;
+    var rr1 = risk > 0 ? (t1 - entry) / risk : 0;
+    var rr2 = risk > 0 ? (t2 - entry) / risk : 0;
+    var rr1Color = rr1 >= 2 ? '#00c896' : rr1 >= 1 ? '#e8a840' : '#f07070';
+    var rr2Color = rr2 >= 2 ? '#00c896' : rr2 >= 1 ? '#e8a840' : '#f07070';
+    var methodLabel = entryMethod ? '手法' + entryMethod : '—';
+
+    res.style.borderColor = '#3a3d4a'; res.style.color = '#e8e8e8';
+    res.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:10px">' +
+      '<div><span style="color:#555;font-size:11px">入場手法</span><br><span style="color:#6aabf0;font-weight:700">' + methodLabel + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">入場價</span><br><span style="font-weight:700">$' + entry.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">止損（' + stopLabel + '）</span><br><span style="color:#f07070;font-weight:700">$' + stopLoss.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">風險</span><br><span style="color:#f07070;font-weight:700">$' + risk.toFixed(2) + ' / 股</span></div>' +
+      '</div>' +
+      '<div style="border-top:1px solid #2a2d3a;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">' +
+      '<div><span style="color:#555;font-size:11px">T1（Buildup高度×1.5）</span><br><span style="color:#00c896;font-weight:700">$' + t1.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T1 R:R（參考）</span><br><span style="color:' + rr1Color + ';font-weight:700">' + rr1.toFixed(2) + 'x</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T2（推進浪×0.618）</span><br><span style="color:#00c896;font-weight:700">$' + t2.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T2 R:R（參考）</span><br><span style="color:' + rr2Color + ';font-weight:700">' + rr2.toFixed(2) + 'x</span></div>' +
+      '</div>' +
+      '<div style="border-top:1px solid #2a2d3a;padding-top:8px;margin-top:4px;font-size:11px;color:#555">' +
+      '⚠️ R:R 係參考，唔係入場門檻。T1到達出一半倉，止損移至入場價（Risk Free）。</div>';
+  }
 
   function s3_setStreak(btn, level, hint) {
     document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
@@ -1568,17 +2626,6 @@ var streakLevel = null;
     streakLevel = level;
     document.getElementById('s3_streakHint').textContent = hint;
     s3_update();
-  }
-
-  function s3_setPrice(dir) {
-    priceDir = dir;
-    var up = document.getElementById('s3_priceUp');
-    var dn = document.getElementById('s3_priceDn');
-    up.style.background = dir === 'up' ? '#1a3020' : '#12141d';
-    up.style.borderColor = dir === 'up' ? '#00c896' : '#2a5a35';
-    dn.style.background = dir === 'dn' ? '#2a1010' : '#12141d';
-    dn.style.borderColor = dir === 'dn' ? '#f07070' : '#6a2a2a';
-    s3_updateVol();
   }
 
   function s3_validate52w() {
@@ -1662,45 +2709,89 @@ var streakLevel = null;
     }
   }
 
-  function s3_updateVol() {
-    var el = document.getElementById('s3_v_vol');
-    var v = parseFloat(el.value);
-    var box = document.getElementById('s3_volResult');
-    if (!priceDir || el.value === '' || isNaN(v)) {
-      box.style.background = '#12141d'; box.style.borderColor = '#2a2d3a'; box.style.color = '#555';
-      box.innerHTML = '— 請選擇價格方向並輸入 RelVol —';
+  var day1Choice = null;
+  var lowestClose = null; // 記低假突破最低Close
+
+  function s3_setDay1(choice) {
+    day1Choice = choice;
+    document.getElementById('s3_d1above').className = 'dec-btn' + (choice==='above' ? ' active-yes' : '');
+    document.getElementById('s3_d1below').className = 'dec-btn' + (choice==='below' ? ' active-yes' : '');
+    document.getElementById('s3_d2wrap').style.display = 'block';
+    document.getElementById('s3_d3wrap').style.display = choice==='below' ? 'block' : 'none';
+    s3_updateDaily();
+  }
+
+  function s3_updateDaily() {
+    var res = document.getElementById('s3_dailyResult');
+    if (!day1Choice) {
+      res.style.background='#12141d'; res.style.borderColor='#2a2d3a'; res.style.color='#555';
+      res.innerHTML = '— 選擇今日 Close 位置開始判斷 —';
       return;
     }
-    var volLevel = v < 0.9 ? 'low' : v < 1.5 ? 'mid' : 'high';
-    var icon, title, desc, bg, border, color;
-    if (priceDir === 'up' && volLevel === 'high') {
-      icon = '🔥'; title = '突破放量 — 強力確認！';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，放量突破。大戶主動買入，訊號強勁。可以考慮手法A入場。';
-      bg = '#0d2a1e'; border = '#00c896'; color = '#00c896';
-    } else if (priceDir === 'up' && volLevel === 'mid') {
-      icon = '⚠️'; title = '突破量偏弱 — 考慮等手法B';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，成交量一般。突破力度唔夠強，可能係假突破前奏。等跌返再突破（手法B）更理想。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else if (priceDir === 'up' && volLevel === 'low') {
-      icon = '❌'; title = '縮量突破 — 唔入，等手法B';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，縮量突破係假突破前奏。唔入手法A，等跌返再次突破時放量 → 手法B入場。';
-      bg = '#2a1010'; border = '#f07070'; color = '#f07070';
-    } else if (priceDir === 'dn' && volLevel === 'low') {
-      icon = '✅'; title = '縮量回調 — 健康！繼續等';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，跌價縮量，賣壓唔強。Buildup 結構仍然健康，繼續等突破訊號。';
-      bg = '#1a2540'; border = '#6aabf0'; color = '#6aabf0';
-    } else if (priceDir === 'dn' && volLevel === 'mid') {
-      icon = '⚠️'; title = '回調量偏大 — 留意';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，有一定賣壓。繼續觀察，若連續放量下跌要小心 Buildup 失敗。';
-      bg = '#2a1e00'; border = '#e8a840'; color = '#e8a840';
-    } else {
-      icon = '❌'; title = '跌價放量 — 真正賣壓！';
-      desc = 'RelVol ' + v.toFixed(2) + 'x，大量賣盤。未突破前：睇Buildup底部有冇跌穿；跌穿 → 放棄。已入場：hit止損 → 執行。';
-      bg = '#2a1010'; border = '#f07070'; color = '#f07070';
+
+    var vol = parseFloat(document.getElementById('s3_v_daily_vol').value);
+    if (isNaN(vol) || document.getElementById('s3_v_daily_vol').value==='') {
+      res.style.background='#12141d'; res.style.borderColor='#2a2d3a'; res.style.color='#555';
+      res.innerHTML = '— 填入今日 RelVol —';
+      return;
     }
-    box.style.background = bg; box.style.borderColor = border; box.style.color = color;
-    box.innerHTML = '<div style="font-weight:700;margin-bottom:4px">' + icon + ' ' + title + '</div>'
-      + '<div style="font-size:12px;color:#aaa;line-height:1.6">' + desc + '</div>';
+
+    // 情況1：守住突破線
+    if (day1Choice === 'above') {
+      if (vol >= 1.5) {
+        res.style.background='#0d2a1e'; res.style.borderColor='#00c896'; res.style.color='#00c896';
+        res.innerHTML =
+          '<div style="font-weight:700;font-size:14px;margin-bottom:6px">🔥 放量突破／守住 — 手法A 或 手法C！</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x ✅<br>' +
+          '→ 突破第一日：手法A，今日 Close 即係入場價<br>' +
+          '→ 之後日子守住：手法C，今日 Close 即係入場價<br>' +
+          '→ 落 Step 6 填入今日 Close 作入場價</div>';
+        s3_updateStep6('A', null, null, null);
+      } else if (vol >= 1.0) {
+        res.style.background='#2a1e00'; res.style.borderColor='#e8a840'; res.style.color='#e8a840';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">⚠️ 守住但量唔夠強 — 繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，守住突破線但量唔夠。<br>' +
+          '→ 明日繼續填 Step 5<br>' +
+          '→ 記低今日 Close 做止損參考</div>';
+      } else {
+        res.style.background='#1a2540'; res.style.borderColor='#6aabf0'; res.style.color='#6aabf0';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">➡️ 縮量守住 — 繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，縮量守住係健康整固。<br>' +
+          '→ 明日繼續填 Step 5<br>' +
+          '→ 記低今日 Close 做止損參考</div>';
+      }
+    }
+
+    // 情況2：跌穿突破線（假突破）
+    if (day1Choice === 'below') {
+      var todayClose = parseFloat(document.getElementById('s3_v_daily_close').value);
+      if (vol >= 1.5) {
+        res.style.background='#2a1010'; res.style.borderColor='#f07070'; res.style.color='#f07070';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">📉 放量跌穿 — 假突破確認！等手法B</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，放量跌穿突破線。<br>' +
+          (isNaN(todayClose) ? '' : '→ 今日Close $' + todayClose.toFixed(2) + ' 記低（假突破最低Close）<br>') +
+          '→ Set Alert 保留喺突破線<br>' +
+          '→ 等再次放量突破（≥1.5x）→ 手法B入場<br>' +
+          '→ 落 Step 6 等待，Alert 響先填入場價</div>';
+        if (!isNaN(todayClose)) s3_updateStep6('B', todayClose, null, '等再次突破突破線');
+      } else {
+        res.style.background='#2a1e00'; res.style.borderColor='#e8a840'; res.style.color='#e8a840';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">⚠️ 縮量跌穿 — 可能係假突破，繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，縮量跌穿。<br>' +
+          (isNaN(todayClose) ? '' : '→ 今日Close $' + todayClose.toFixed(2) + ' 記低（止損參考）<br>') +
+          '→ 唔係強賣壓，可能只係輕微回調。<br>' +
+          '→ 明日繼續填 Step 5</div>';
+      }
+    }
   }
 
   function s3_update() {
@@ -1725,11 +2816,11 @@ var streakLevel = null;
     else if (b5 || c3) { tip.textContent = '→ b5 或 c3 其中一個 ✓，仲差一個達到最佳'; tip.style.color = '#888'; }
     else { tip.textContent = ''; }
 
-    renderVerdict(req, bon);
+    s3_renderVerdict(req, bon);
   }
 
-  function renderVerdict(req, bon) {
-    var box = document.getElementById('verdict');
+  function s3_renderVerdict(req, bon) {
+    var box = document.getElementById('s3_verdict');
     var steps = document.getElementById('s3_verdictSteps');
 
     if (!streakLevel) {
@@ -1781,7 +2872,8 @@ var streakLevel = null;
       '<div class="verdict-step"><span class="arrow">2</span><span>記低 52W 高位，Set Alert 喺呢個價位（Price crossing above）</span></div>' +
       '<div class="verdict-step"><span class="arrow">3</span><span>之後唔需要再睇 Scanner！每日收市後只確認：Close &gt; 52W高位？</span></div>' +
       '<div class="verdict-step"><span class="arrow">4</span><span>突破時睇成交量：放量（&gt;1.5x）→ 手法A｜縮量突破 → 等手法B｜突破後回測 → 手法C</span></div>' +
-      '<div class="verdict-step"><span class="arrow">5</span><span>計 R:R：T1 = 突破點 + Buildup高度×1.5，T2 = 突破點 + 推進浪×0.618，必須 ≥ 2:1</span></div>';
+      '<div class="verdict-step"><span class="arrow">4</span><span>突破時睇成交量：放量（&gt;1.5x）→ 手法A｜縮量突破 → 等手法B｜突破後回測守住 → 手法C（&gt;1.0x）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">5</span><span>落 Step 6 計 T1、T2、止損、R:R（參考用，跟 Playbook 原版唔設門檻）</span></div>';
   }
 
   function s3_resetAll() {
@@ -1814,12 +2906,159 @@ var streakLevel = null;
     document.getElementById('s3_bonBar').style.background = '#e8a840';
     document.getElementById('s3_bonNum').textContent = '0 / 5';
     document.getElementById('s3_bonNum').style.color = '#e8a840';
-    var box = document.getElementById('verdict');
+    var box = document.getElementById('s3_verdict');
     box.className = 'verdict idle';
     box.querySelector('.verdict-icon').textContent = '—';
     box.querySelector('.verdict-title').textContent = '填入條件先可以判斷';
     document.getElementById('s3_verdictSteps').innerHTML = '';
   }
+
+// S6
+function s6_calcBuffer() {
+    const h1 = parseFloat(document.getElementById('s6_inH1').value);
+    const el = document.getElementById('s6_bufferRange');
+    if (isNaN(h1) || h1 <= 0) { el.textContent = '— 至 —'; return; }
+    const lower = (h1 * 0.99).toFixed(2);
+    const upper = (h1 * 1.01).toFixed(2);
+    el.textContent = '$' + lower + ' 至 $' + upper;
+  }
+
+  function s6_toggle(el) {
+    if (el.classList.contains('warn') || el.classList.contains('red')) return;
+    el.classList.s6_toggle('checked');
+    s6_updateProgress();
+  }
+
+  function s6_toggleScored(el) {
+    if (el.classList.contains('warn') || el.classList.contains('red')) return;
+    el.classList.s6_toggle('checked');
+    s6_updateProgress();
+    s6_updateQuality();
+  }
+
+  function s6_updateQuality() {
+    const reqItems = document.querySelectorAll('.req-item');
+    const bonusItems = document.querySelectorAll('.bonus-item');
+    const reqScore = document.querySelectorAll('.req-item.checked').length;
+    const bonusScore = document.querySelectorAll('.bonus-item.checked').length;
+    const b1checked = document.querySelector('.bonus-item[data-key="b1"]').classList.contains('checked');
+    const b5checked = document.querySelector('.bonus-item[data-key="b5"]').classList.contains('checked');
+
+    const box = document.getElementById('s6_qualityBox');
+    const scoreEl = document.getElementById('s6_qualityScore');
+    const textEl = document.getElementById('s6_qualityText');
+    const actionEl = document.getElementById('s6_qualityAction');
+
+    // 只有 tick 曬 c1-c5 同 b1-b5 先顯示
+    const totalTicked = reqScore + bonusScore;
+    if (totalTicked === 0) { box.style.display = 'none'; return; }
+
+    box.style.display = 'block';
+    scoreEl.textContent = 'Required ' + reqScore + '/5　Bonus ' + bonusScore + '/5';
+
+    if (reqScore < 4) {
+      box.style.background = 'rgba(255,77,77,0.1)';
+      box.style.borderColor = '#ff4d4d';
+      textEl.style.color = '#ff4d4d';
+      textEl.textContent = '❌ 唔符合 — Required 未夠 4/5';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 跳過此股，等下一個機會';
+    } else if (reqScore >= 4 && b1checked && b5checked) {
+      box.style.background = 'rgba(0,200,150,0.1)';
+      box.style.borderColor = '#00c896';
+      textEl.style.color = '#00c896';
+      textEl.textContent = '🔥 頂級 Setup — b1+b5 通過，被震走風險最低';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 優先入場，正常倉位';
+    } else if (reqScore >= 4 && (b1checked || b5checked)) {
+      box.style.background = 'rgba(0,200,150,0.08)';
+      box.style.borderColor = '#00c896';
+      textEl.style.color = '#00c896';
+      textEl.textContent = '✅ 良好 Setup — b1 或 b5 通過';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 正常入場，留意被震走風險';
+    } else if (reqScore >= 4 && bonusScore >= 3) {
+      box.style.background = 'rgba(255,179,71,0.08)';
+      box.style.borderColor = '#ffb347';
+      textEl.style.color = '#ffb347';
+      textEl.textContent = '⚠️ 一般 Setup — Bonus 3/5 但 b1 b5 都未過';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 考慮細倉入場，R:R 要 ≥ 3:1（唔係 2:1）';
+    } else {
+      box.style.background = 'rgba(255,77,77,0.12)';
+      box.style.borderColor = '#ff4d4d';
+      textEl.style.color = '#ff4d4d';
+      textEl.textContent = '❌ 直接跳過 — b1 b5 都 Fail，Bonus < 3';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 唔入場，等下一個更好嘅 Setup';
+    }
+  }
+
+  function s6_updateProgress() {
+    const all = document.querySelectorAll('.check-item:not(.warn):not(.red)');
+    const checked = document.querySelectorAll('.check-item.checked').length;
+    const pct = all.length > 0 ? Math.round((checked / all.length) * 100) : 0;
+    document.getElementById('s6_progressFill').style.width = pct + '%';
+    document.getElementById('s6_progressCount').textContent = checked + ' / ' + all.length + ' 步驟';
+  }
+
+  function s6_resetAll() {
+    document.querySelectorAll('.check-item.checked').forEach(el => el.classList.remove('checked'));
+    document.getElementById('s6_qualityBox').style.display = 'none';
+    s6_updateProgress();
+    ['val0236','valStop','valFlagH','valT1','valT2','valRR'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    ['res0236','resStop','resFlagH','resT1','resT2','resRR'].forEach(id => {
+      document.getElementById(id).classList.remove('active','warn-rr');
+    });
+    document.getElementById('s6_rrVerdict').className = 'rr-verdict';
+    ['inA','inB','inFlagLow','inEntry'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  function s6_fmt(n) { return '$' + n.toFixed(2); }
+
+  function s6_calculate() {
+    const A = parseFloat(document.getElementById('s6_inA').value);
+    const B = parseFloat(document.getElementById('s6_inB').value);
+    const flagLow = parseFloat(document.getElementById('s6_inFlagLow').value);
+    const entry = parseFloat(document.getElementById('s6_inEntry').value);
+    if ([A,B,flagLow,entry].some(isNaN)) { alert('請填寫全部四個數字'); return; }
+    if (B <= A) { alert('B點必須大於A點'); return; }
+    if (entry <= flagLow) { alert('入場價必須大於旗形低點'); return; }
+    const poleH = B - A;
+    const fib236 = B - poleH * 0.236;
+    const stop = flagLow * 0.98;
+    const t1 = flagLow + poleH * 0.618;
+    const t2 = flagLow + poleH;
+    const risk = entry - stop;
+    const rr = (t1 - entry) / risk;
+    document.getElementById('s6_val0236').textContent = s6_fmt(fib236);
+    document.getElementById('s6_valStop').textContent = s6_fmt(stop);
+    document.getElementById('s6_valFlagH').textContent = s6_fmt(poleH);
+    document.getElementById('s6_valT1').textContent = s6_fmt(t1);
+    document.getElementById('s6_valT2').textContent = s6_fmt(t2);
+    document.getElementById('s6_valRR').textContent = rr.toFixed(2) + ' : 1';
+    ['res0236','resStop','resFlagH','resT1','resT2'].forEach(id => {
+      document.getElementById(id).classList.add('active');
+      document.getElementById(id).classList.remove('warn-rr');
+    });
+    const rrEl = document.getElementById('s6_resRR');
+    const verdict = document.getElementById('s6_rrVerdict');
+    if (rr >= 2) {
+      rrEl.classList.add('active'); rrEl.classList.remove('warn-rr');
+      verdict.textContent = '✅ R:R ' + rr.toFixed(2) + ':1 — 符合入場標準，可以放 Limit Order！';
+      verdict.className = 'rr-verdict show pass';
+    } else {
+      rrEl.classList.add('warn-rr'); rrEl.classList.remove('active');
+      verdict.textContent = '❌ R:R ' + rr.toFixed(2) + ':1 — 唔夠 2:1，跳過此股';
+      verdict.className = 'rr-verdict show fail';
+    }
+  }
+
+  s6_updateProgress();
 </script>
 </body>
 </html>
