@@ -134,18 +134,122 @@ body {
     <div class="sub-tab" onclick="switchSub('s1','checklist-v1',this)">📋 S1V1 互動檢查表</div>
   </div>
   <div class="sub-panel active" id="s1-scanner">
-    <div style="max-width:680px;margin:40px auto;text-align:center;padding:0 20px;">
-      <div style="font-size:32px;margin-bottom:16px;">🔍</div>
-      <div style="font-size:16px;font-weight:600;color:#e8e8e8;margin-bottom:8px;">S1 順勢交易 Scanner</div>
-      <div style="font-size:13px;color:#666;margin-bottom:24px;line-height:1.6;">
-        撳下面按鈕開 TradingView S1 Scanner<br>
-        已預設所有 S1 條件：Price 10-500、EMA20/50/200、RSI 40-70、3M>5%、1M&lt;25%、1W -8% to 0%
+    <div style="padding:16px 20px;max-width:1200px;margin:0 auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#e8e8e8;">S1 順勢交易 Scanner</div>
+          <div style="font-size:11px;color:#555;margin-top:2px;" id="s1-scan-updated">載入中...</div>
+        </div>
+        <button onclick="loadS1Scanner()" style="padding:7px 16px;background:#1a1d27;border:1px solid #2a2d3a;border-radius:6px;color:#aaa;font-size:12px;cursor:pointer;">↺ 刷新</button>
       </div>
-      <a href="https://www.tradingview.com/screener/WnlcUB41/" target="_blank" style="display:inline-block;padding:12px 28px;background:#00c896;color:#000;font-weight:700;font-size:14px;border-radius:8px;text-decoration:none;letter-spacing:.03em;">
-        開啟 S1 Scanner ↗
-      </a>
-      <div style="margin-top:16px;font-size:11px;color:#333;">會喺新分頁開啟 TradingView</div>
+
+      <!-- Filter tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="scan-filter active" onclick="filterScanner('all',this)">全部</button>
+        <button class="scan-filter" onclick="filterScanner('high',this)">🔥 高質（Bonus 4+）</button>
+        <button class="scan-filter" onclick="filterScanner('mid',this)">✅ 中質（Bonus 3）</button>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;" id="s1-scan-table">
+          <thead>
+            <tr style="border-bottom:1px solid #252836;color:#555;font-size:11px;text-align:left;">
+              <th style="padding:8px 12px;font-weight:500;">股票</th>
+              <th style="padding:8px 12px;font-weight:500;">價格</th>
+              <th style="padding:8px 12px;font-weight:500;">RSI</th>
+              <th style="padding:8px 12px;font-weight:500;">RelVol</th>
+              <th style="padding:8px 12px;font-weight:500;">3M%</th>
+              <th style="padding:8px 12px;font-weight:500;">1M%</th>
+              <th style="padding:8px 12px;font-weight:500;">1W%</th>
+              <th style="padding:8px 12px;font-weight:500;">距高%</th>
+              <th style="padding:8px 12px;font-weight:500;">Required</th>
+              <th style="padding:8px 12px;font-weight:500;">Bonus</th>
+              <th style="padding:8px 12px;font-weight:500;">質素</th>
+            </tr>
+          </thead>
+          <tbody id="s1-scan-body">
+            <tr><td colspan="11" style="padding:40px;text-align:center;color:#444;">載入中...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    <style>
+    .scan-filter {
+      padding:5px 12px;background:#1a1d27;border:1px solid #2a2d3a;
+      border-radius:20px;color:#666;font-size:12px;cursor:pointer;transition:all .15s;
+    }
+    .scan-filter.active { background:#00c896;border-color:#00c896;color:#000;font-weight:600; }
+    .scan-row { border-bottom:1px solid #1a1d27;transition:background .1s; }
+    .scan-row:hover { background:#1a1d27; }
+    .scan-row td { padding:10px 12px; }
+    </style>
+
+    <script>
+    var s1ScanData = [];
+    var s1ScanFilter = 'all';
+
+    function loadS1Scanner() {
+      var tbody = document.getElementById('s1-scan-body');
+      tbody.innerHTML = '<tr><td colspan="11" style="padding:40px;text-align:center;color:#444;">載入中...</td></tr>';
+      fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t=' + Date.now())
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          s1ScanData = d.stocks || [];
+          document.getElementById('s1-scan-updated').textContent = '更新時間：' + (d.updated || '—') + '　共 ' + d.count + ' 隻';
+          renderScanner();
+        })
+        .catch(function(){
+          tbody.innerHTML = '<tr><td colspan="11" style="padding:40px;text-align:center;color:#f07070;">載入失敗，請稍後再試</td></tr>';
+        });
+    }
+
+    function filterScanner(f, el) {
+      s1ScanFilter = f;
+      document.querySelectorAll('.scan-filter').forEach(function(b){ b.classList.remove('active'); });
+      el.classList.add('active');
+      renderScanner();
+    }
+
+    function renderScanner() {
+      var tbody = document.getElementById('s1-scan-body');
+      var stocks = s1ScanData.filter(function(s){
+        if (s1ScanFilter === 'high') return s.bonScore >= 4;
+        if (s1ScanFilter === 'mid') return s.bonScore === 3;
+        return true;
+      });
+
+      if (stocks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="padding:40px;text-align:center;color:#444;">冇符合條件嘅股票</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = stocks.map(function(s){
+        var quality = s.bonScore >= 4
+          ? '<span style="color:#00c896;font-weight:600;">🔥 高質</span>'
+          : '<span style="color:#e8a840;font-weight:600;">✅ 中質</span>';
+        var rvolColor = s.relVol < 0.9 ? '#00c896' : s.relVol > 1.5 ? '#f07070' : '#aaa';
+        var w1Color = s.perf1w < 0 ? '#00c896' : '#f07070';
+        return '<tr class="scan-row">' +
+          '<td style="font-weight:700;color:#fff;">' + s.symbol + '</td>' +
+          '<td>$' + s.price + '</td>' +
+          '<td>' + s.rsi + '</td>' +
+          '<td style="color:' + rvolColor + '">' + s.relVol + 'x</td>' +
+          '<td style="color:#00c896">+' + s.perf3m + '%</td>' +
+          '<td>' + (s.perf1m > 0 ? '+' : '') + s.perf1m + '%</td>' +
+          '<td style="color:' + w1Color + '">' + (s.perf1w > 0 ? '+' : '') + s.perf1w + '%</td>' +
+          '<td>' + s.pctFromHigh + '%</td>' +
+          '<td style="color:#00c896">' + s.reqScore + '/5</td>' +
+          '<td style="color:#e8a840">' + s.bonScore + '/5</td>' +
+          '<td>' + quality + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // Auto load when tab is shown
+    document.addEventListener('DOMContentLoaded', function(){ loadS1Scanner(); });
+    </script>
   </div>
   <div class="sub-panel" id="s1-checklist">
     <div class="sheet"><div class="sheet">
