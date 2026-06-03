@@ -134,10 +134,36 @@ body {
     <div class="sub-tab" onclick="switchSub('s1','checklist-v1',this)">📋 S1V1 互動檢查表</div>
   </div>
   <div class="sub-panel active" id="s1-scanner">
-    <div class="coming-soon">
-      <div class="cs-icon">🔍</div>
-      <div class="cs-title">S1 Scanner</div>
-      <div class="cs-desc">即將推出</div>
+    <div style="height:calc(100vh - 100px);">
+      <!-- TradingView Screener Widget -->
+      <div class="tradingview-widget-container" style="height:100%;width:100%">
+        <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+        <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+        {
+          "width": "100%",
+          "height": "100%",
+          "defaultColumn": "overview",
+          "defaultScreen": "most_capitalized",
+          "market": "america",
+          "showToolbar": true,
+          "colorTheme": "dark",
+          "locale": "en",
+          "filters": {
+            "exchange": ["NYSE","NASDAQ"],
+            "ema20": {"above": "close"},
+            "ema50": {"above": "close"},
+            "ema200": {"above": "close"},
+            "Perf.3M": {"from": 5},
+            "Perf.1M": {"to": 25},
+            "RSI": {"from": 40, "to": 70},
+            "Perf.W": {"from": -8, "to": 0},
+            "average_volume_10d_calc": {"from": 500000},
+            "close": {"from": 10, "to": 500}
+          }
+        }
+        </script>
+      </div>
     </div>
   </div>
   <div class="sub-panel" id="s1-checklist">
@@ -1067,10 +1093,32 @@ function resetAll() {
     <div class="sub-tab" onclick="switchSub('s3','checklist',this)">📋 S3 互動檢查表</div>
   </div>
   <div class="sub-panel active" id="s3-scanner">
-    <div class="coming-soon">
-      <div class="cs-icon">🔍</div>
-      <div class="cs-title">S3 Scanner</div>
-      <div class="cs-desc">即將推出</div>
+    <div style="height:calc(100vh - 100px);">
+      <div class="tradingview-widget-container" style="height:100%;width:100%">
+        <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+        <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+        {
+          "width": "100%",
+          "height": "100%",
+          "defaultColumn": "overview",
+          "defaultScreen": "most_capitalized",
+          "market": "america",
+          "showToolbar": true,
+          "colorTheme": "dark",
+          "locale": "en",
+          "filters": {
+            "exchange": ["NYSE","NASDAQ"],
+            "High.3M": {"above": "close"},
+            "ema50": {"above": "close"},
+            "Perf.3M": {"from": 10},
+            "RSI": {"from": 50, "to": 70},
+            "average_volume_10d_calc": {"from": 500000},
+            "close": {"from": 10, "to": 500}
+          }
+        }
+        </script>
+      </div>
     </div>
   </div>
   <div class="sub-panel" id="s3-checklist">
@@ -1776,10 +1824,32 @@ function resetAll() {
     <div class="sub-tab" onclick="switchSub('s6','checklist',this)">📋 S6 互動檢查表</div>
   </div>
   <div class="sub-panel active" id="s6-scanner">
-    <div class="coming-soon">
-      <div class="cs-icon">🔍</div>
-      <div class="cs-title">S6 Scanner</div>
-      <div class="cs-desc">即將推出</div>
+    <div style="height:calc(100vh - 100px);">
+      <div class="tradingview-widget-container" style="height:100%;width:100%">
+        <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+        <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+        {
+          "width": "100%",
+          "height": "100%",
+          "defaultColumn": "overview",
+          "defaultScreen": "most_capitalized",
+          "market": "america",
+          "showToolbar": true,
+          "colorTheme": "dark",
+          "locale": "en",
+          "filters": {
+            "exchange": ["NYSE","NASDAQ"],
+            "ema50": {"above": "close"},
+            "ema200": {"above": "close"},
+            "Perf.1M": {"from": 8},
+            "Perf.W": {"from": -5, "to": 0},
+            "average_volume_10d_calc": {"from": 500000},
+            "close": {"from": 10, "to": 500}
+          }
+        }
+        </script>
+      </div>
     </div>
   </div>
   <div class="sub-panel" id="s6-checklist">
