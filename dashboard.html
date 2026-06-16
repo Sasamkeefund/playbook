@@ -151,14 +151,28 @@
       document.getElementById('chartOpenTV').href = 'https://www.tradingview.com/chart/?symbol=' + ticker;
       const c = document.getElementById('chartContainer');
       c.innerHTML = '';
-      const iframe = document.createElement('iframe');
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.style.border = 'none';
-      iframe.src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(ticker)
-        + '&interval=D&theme=light&style=1&hide_side_toolbar=0&withdateranges=1'
-        + '&studies=' + encodeURIComponent('["RSI@tv-basicstudies"]');
-      c.appendChild(iframe);
+      // 用 advanced-chart widget，明確指定 RSI，確保有獨立 panel
+      const widgetDiv = document.createElement('div');
+      widgetDiv.style.width = '100%';
+      widgetDiv.style.height = '100%';
+      c.appendChild(widgetDiv);
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+      script.async = true;
+      script.innerHTML = JSON.stringify({
+        symbol: ticker,
+        interval: 'D',
+        theme: 'light',
+        style: '1',
+        locale: 'en',
+        autosize: true,
+        withdateranges: true,
+        allow_symbol_change: true,
+        studies: ['STD;RSI'],
+        support_host: 'https://www.tradingview.com'
+      });
+      widgetDiv.appendChild(script);
       document.getElementById('chartModal').style.display = 'block';
     }
     function closeChart() {
