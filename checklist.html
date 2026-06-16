@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>playbook · Checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0a0b12;--surface:#13141f;--surface-2:#1a1c2b;--surface-3:#20233a;
+      --border:#262a3d;--border-2:#323754;--text:#e6e8f0;--dim:#8a8fa3;--faint:#5b6075;
+      --accent:#7c5cff;--accent-2:#4d8dff;}
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%}
+    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);padding:1.25rem;display:flex;flex-direction:column;
+      background-image:radial-gradient(900px 400px at 12% -8%,rgba(124,92,255,.10),transparent 60%),radial-gradient(800px 380px at 92% -10%,rgba(77,141,255,.08),transparent 60%);}
+    .topbar{position:sticky;top:0;z-index:50;background:rgba(19,20,31,.92);backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--border);margin:-1.25rem -1.25rem 1.4rem;padding:11px 1.25rem}
+    .topbar-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    .brand{font-size:20px;font-weight:700;letter-spacing:-.3px;background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .topnav{display:flex;gap:6px}
+    .topnav a{padding:7px 16px;font-size:14px;font-weight:600;text-decoration:none;border-radius:9px;color:var(--dim);transition:.15s}
+    .topnav a:hover{color:var(--text);background:var(--surface-2)}
+    .topnav a.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 4px 14px rgba(124,92,255,.3)}
+    .wrap{max-width:1440px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
+    .subtabs{display:flex;gap:8px;margin-bottom:1rem}
+    .stab{padding:9px 20px;font-size:14px;font-weight:600;background:var(--surface);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--dim);transition:.15s}
+    .stab:hover{color:var(--text);border-color:var(--border-2)}
+    .stab.active{background:var(--surface-3);color:#fff;border-color:var(--accent);box-shadow:0 0 0 1px rgba(124,92,255,.4),0 0 18px rgba(124,92,255,.25)}
+    .frame-box{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:70vh}
+    iframe{width:100%;height:100%;border:none;display:block}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">playbook</div>
+      <nav class="topnav">
+        <a href="overview.html">Market</a>
+        <a href="dashboard.html">Screener</a>
+        <a href="checklist.html" class="active">Checklist</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="subtabs">
+      <button class="stab active" data-src="s1_checklist.html" onclick="loadCL(this)">S1 順勢交易</button>
+      <button class="stab" data-src="s3_checklist.html" onclick="loadCL(this)">S3 突破交易</button>
+      <button class="stab" data-src="s6_checklist.html" onclick="loadCL(this)">S6 圖表形態</button>
+    </div>
+    <div class="frame-box">
+      <iframe id="clFrame" src="s1_checklist.html"></iframe>
+    </div>
+  </div>
+
+  <script>
+    function loadCL(btn){
+      document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('clFrame').src = btn.dataset.src;
+    }
+  </script>
+</body>
+</html>
