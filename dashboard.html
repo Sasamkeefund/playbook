@@ -131,6 +131,46 @@
     </div>
   </div>
 
+  <!-- TradingView 圖 modal -->
+  <div id="chartModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; padding:2vh 2vw;">
+    <div style="background:#fff; border-radius:12px; height:96vh; display:flex; flex-direction:column; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid #d3d1c7;">
+        <strong id="chartTitle" style="font-size:16px;">—</strong>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <a id="chartOpenTV" href="#" target="_blank" rel="noopener" style="font-size:13px; color:#378add; text-decoration:none;">喺 TradingView 開 ↗</a>
+          <button onclick="closeChart()" style="font-size:20px; background:none; border:none; cursor:pointer; color:#888780; line-height:1;">✕</button>
+        </div>
+      </div>
+      <div id="chartContainer" style="flex:1;"></div>
+    </div>
+  </div>
+
+  <script>
+    function openChart(ticker) {
+      document.getElementById('chartTitle').textContent = ticker;
+      document.getElementById('chartOpenTV').href = 'https://www.tradingview.com/chart/?symbol=' + ticker;
+      const c = document.getElementById('chartContainer');
+      c.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.style.border = 'none';
+      iframe.src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(ticker)
+        + '&interval=D&theme=light&style=1&hide_side_toolbar=0&studies=[]&withdateranges=1';
+      c.appendChild(iframe);
+      document.getElementById('chartModal').style.display = 'block';
+    }
+    function closeChart() {
+      document.getElementById('chartModal').style.display = 'none';
+      document.getElementById('chartContainer').innerHTML = '';
+    }
+    document.getElementById('chartModal').addEventListener('click', function(e) {
+      if (e.target === this) closeChart();
+    });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeChart(); });
+  </script>
+
+
   <script>
     const STRATEGY_NAMES = {
       S1: { name: '順勢交易', dir: 'Long', thresh: '5/5' },
@@ -305,7 +345,7 @@
           return `
             <tr>
               <td style="text-align:center;">${strat.isNew ? '<span style="background:#097f5f;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">NEW</span>' : ''}</td>
-              <td class="ticker-cell"><a href="https://www.tradingview.com/chart/?symbol=${s.ticker}" target="_blank" rel="noopener" style="color:#378add;text-decoration:none;">${s.ticker} ↗</a></td>
+              <td class="ticker-cell"><a href="#" onclick="openChart('${s.ticker}'); return false;" style="color:#378add;text-decoration:none;">${s.ticker} 📈</a></td>
               <td style="text-align: right;">$${s.close.toFixed(2)}</td>
               <td style="text-align: right;" class="${chgClass}">
                 ${s.chgPct > 0 ? '+' : ''}${s.chgPct.toFixed(2)}%
