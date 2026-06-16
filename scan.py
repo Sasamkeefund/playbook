@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-投機十步曲 · S1-S6 Scanner（夜晚 GitHub Actions 跑）
-====================================================
+投機十步曲 · S1-S6 Scanner + Bonus Points（夜晚 GitHub Actions 跑）
+====================================================================
+Phase 1.5 升級：加埋 Bonus 條件（b1-b5）計分
+
 解決舊 app 兩個問題：
   1. 攞 data 唔穩 —— 全部喺 server 度一次過攞、計、寫 data.json，前端唔使自己上網
   2. 同 TradingView 唔同 —— 攞 5 年 history + Wilder RSI/ATR + 收市後跑
 
-條件完全對齊 Playbook_Scanner_v2.pine。
 輸出 data.json 畀前端讀。
 
 只需要標準庫 + requests：  pip install requests
@@ -23,10 +24,10 @@ import requests
 # ─────────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────────
-HISTORY_RANGE = "5y"      # 5 年 → EMA200 完全收斂，貼近 TradingView
+HISTORY_RANGE = "5y"
 INTERVAL = "1d"
-STREAK_LOOKBACK = 60      # 計連續日數最多睇返 60 個交易日
-REQUEST_SLEEP = 0.25      # 每隻股之間停一陣，避免被 Yahoo 限流
+STREAK_LOOKBACK = 60
+REQUEST_SLEEP = 0.25
 OUTPUT_FILE = "data.json"
 
 YF_HEADERS = {
@@ -39,22 +40,21 @@ YF_HEADERS = {
     "Referer": "https://finance.yahoo.com/",
 }
 
-# 六個策略 metadata（前端用）
+# 六個策略 metadata
 STRATEGY_META = {
-    "S1": {"name": "順勢交易",  "dir": "Long",       "live": True,  "thresh": "ALL 5/5"},
-    "S2": {"name": "趨勢終結",  "dir": "Short",      "live": False, "thresh": "4/5+"},
-    "S3": {"name": "突破交易",  "dir": "Long",       "live": True,  "thresh": "4/5+"},
-    "S4": {"name": "假突破",    "dir": "Long/Short", "live": False, "thresh": "3/4+"},
-    "S5": {"name": "支持阻力",  "dir": "Long",       "live": True,  "thresh": "ALL 4/4"},
-    "S6": {"name": "圖表形態",  "dir": "Long",       "live": True,  "thresh": "4/5+"},
+    "S1": {"name": "順勢交易",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
+    "S2": {"name": "趨勢終結",  "dir": "Short",      "live": False, "reqMax": 5, "bonusMax": 5},
+    "S3": {"name": "突破交易",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
+    "S4": {"name": "假突破",    "dir": "Long/Short", "live": False, "reqMax": 4, "bonusMax": 4},
+    "S5": {"name": "支持阻力",  "dir": "Long",       "live": True,  "reqMax": 4, "bonusMax": 4},
+    "S6": {"name": "圖表形態",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
 }
 
 
 # ─────────────────────────────────────────────────────────────
-# 技術指標（對齊 TradingView）
+# 技術指標
 # ─────────────────────────────────────────────────────────────
 def ema(values, length):
-    """EMA，第一個值用 source 起手（同 Pine ta.ema 一致）。返回同長度 array，warmup 處 None。"""
     out = [None] * len(values)
     if len(values) == 0:
         return out
@@ -68,7 +68,6 @@ def ema(values, length):
 
 
 def rma(values, length):
-    """Wilder smoothing（Pine ta.rma），用頭 length 個嘅 SMA 起手。"""
     out = [None] * len(values)
     if len(values) < length:
         return out
@@ -83,7 +82,6 @@ def rma(values, length):
 
 
 def rsi(closes, length=14):
-    """Wilder RSI（對齊 TradingView ta.rsi）。"""
     n = len(closes)
     out = [None] * n
     if n < length + 1:
@@ -96,7 +94,6 @@ def rsi(closes, length=14):
         losses[i] = -chg if chg < 0 else 0.0
     avg_gain = rma(gains[1:], length)
     avg_loss = rma(losses[1:], length)
-    # avg_gain/avg_loss 對應 index i+1
     for j in range(len(avg_gain)):
         i = j + 1
         ag, al = avg_gain[j], avg_loss[j]
@@ -111,7 +108,6 @@ def rsi(closes, length=14):
 
 
 def atr(highs, lows, closes, length):
-    """Wilder ATR（對齊 TradingView ta.atr）。"""
     n = len(closes)
     tr = [None] * n
     if n == 0:
@@ -125,7 +121,6 @@ def atr(highs, lows, closes, length):
 
 
 def sma_at(values, end_idx, length):
-    """end_idx（含）往前 length 個嘅平均；唔夠數返 None。"""
     if end_idx + 1 < length:
         return None
     window = values[end_idx - length + 1: end_idx + 1]
@@ -139,7 +134,6 @@ def highest(values, end_idx, length):
 
 
 def pct_change(values, idx, lookback):
-    """values[idx] / values[idx-lookback] - 1，× 100。"""
     if idx - lookback < 0:
         return None
     base = values[idx - lookback]
@@ -149,18 +143,16 @@ def pct_change(values, idx, lookback):
 
 
 # ─────────────────────────────────────────────────────────────
-# 策略條件（逐個 bar 計，方便計連續日數）
-# 完全對齊 Playbook_Scanner_v2.pine
+# 策略評估（包含 bonus）
 # ─────────────────────────────────────────────────────────────
 def eval_strategies(idx, closes, highs, lows, volumes,
                     ema20a, ema50a, ema200a, rsia, atr5a, atr14a):
-    """返回 {S1:{...}, ...}，每個有 conds / score / ready / keyvals。
-    缺數據返 None。"""
+    """返回 {S1:{conds, bonus, score, bonusScore, ready, keyvals}, ...}。"""
     e20, e50, e200 = ema20a[idx], ema50a[idx], ema200a[idx]
     r = rsia[idx]
     if None in (e20, e50, e200, r):
         return None
-    if idx < 63:  # perf3m 要 63 bars
+    if idx < 63:
         return None
 
     close = closes[idx]
@@ -183,7 +175,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
 
     res = {}
 
-    # ── S1 順勢交易（5/5）──
+    # ── S1 順勢交易（Required 5/5, Bonus 5/5）──
     c = [
         close > e20,
         close > e50,
@@ -191,12 +183,17 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (40 <= r <= 70),
         (perf3m is not None and perf1m is not None and perf3m > 5 and perf1m < 25),
     ]
-    res["S1"] = {"conds": c, "score": sum(c), "ready": sum(c) == 5,
-                 "keyvals": {"RSI": round(r, 1),
-                             "1W%": round(perf1w, 1) if perf1w is not None else None,
-                             "EMA200slope": "↑" if (ema200_slope or 0) > 0 else "↓"}}
+    b = [
+        e20 > e50,
+        e50 > e200,
+        (relvol is not None and relvol < 0.9),
+        (perf1w is not None and -8 <= perf1w <= 0),
+        (pct_from_high is not None and pct_from_high >= -15),
+    ]
+    res["S1"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 5,
+                 "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
-    # ── S2 趨勢終結（4/5）──
+    # ── S2 趨勢終結（Required 4/5, Bonus 5/5）──
     c = [
         close < e50,
         close < e200,
@@ -204,12 +201,17 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (relvol is not None and relvol > 2.0),
         (r < 35),
     ]
-    res["S2"] = {"conds": c, "score": sum(c), "ready": sum(c) >= 4,
-                 "keyvals": {"RSI": round(r, 1),
-                             "1D%": round(perf1d, 1) if perf1d is not None else None,
-                             "RelVol": round(relvol, 2) if relvol is not None else None}}
+    b = [
+        e20 < e50,
+        e50 < e200,
+        (relvol is not None and relvol > 1.5),
+        (r < 30),
+        (perf1d is not None and perf1d < -2),
+    ]
+    res["S2"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+                 "keyvals": {"RSI": round(r, 1), "1D%": round(perf1d, 1) if perf1d is not None else None}}
 
-    # ── S3 突破交易（4/5）──
+    # ── S3 突破交易（Required 4/5, Bonus 5/5）──
     c = [
         (pct_from_high is not None and pct_from_high <= 4),
         close > e50,
@@ -217,35 +219,49 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (a5 is not None and a14 is not None and a5 < a14),
         (perf3m is not None and perf3m > 10),
     ]
-    res["S3"] = {"conds": c, "score": sum(c), "ready": sum(c) >= 4,
-                 "keyvals": {"距52W高%": round(-pct_from_high, 1) if pct_from_high is not None else None,
-                             "3M%": round(perf3m, 1) if perf3m is not None else None,
-                             "RelVol": round(relvol, 2) if relvol is not None else None}}
+    b = [
+        e20 > e50,
+        (relvol is not None and relvol < 0.6),
+        (a5 is not None and a14 is not None and a5 < a14 * 0.8),
+        (perf1w is not None and perf1w > -2),
+        (pct_from_high is not None and pct_from_high >= -2),
+    ]
+    res["S3"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+                 "keyvals": {"距52W高%": round(-pct_from_high, 1) if pct_from_high is not None else None, "3M%": round(perf3m, 1) if perf3m is not None else None}}
 
-    # ── S4 假突破（3/4）──
+    # ── S4 假突破（Required 3/4, Bonus 4/4）──
     c = [
         (pct_from_high is not None and pct_from_high <= 8),
         (45 <= r <= 65),
         (perf1w is not None and -4 <= perf1w <= 2),
         (perf1m is not None and abs(perf1m) < 8),
     ]
-    res["S4"] = {"conds": c, "score": sum(c), "ready": sum(c) >= 3,
-                 "keyvals": {"RSI": round(r, 1),
-                             "1W%": round(perf1w, 1) if perf1w is not None else None,
-                             "1M%": round(perf1m, 1) if perf1m is not None else None}}
+    b = [
+        e20 > e50,
+        (relvol is not None and relvol < 1.0),
+        (r >= 50 and r <= 60),
+        (perf1d is not None and perf1d < 0),
+    ]
+    res["S4"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 3,
+                 "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
-    # ── S5 支持阻力（4/4）──
+    # ── S5 支持阻力（Required 4/4, Bonus 4/4）──
     c = [
         close > e50,
         close > e200,
         (30 <= r <= 55),
         (perf1m is not None and -20 <= perf1m <= -5),
     ]
-    res["S5"] = {"conds": c, "score": sum(c), "ready": sum(c) == 4,
-                 "keyvals": {"RSI": round(r, 1),
-                             "1M%": round(perf1m, 1) if perf1m is not None else None}}
+    b = [
+        e20 > e50,
+        (perf1m is not None and perf1m >= -15),
+        (relvol is not None and relvol < 1.0),
+        (perf3m is not None and perf3m > 10),
+    ]
+    res["S5"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 4,
+                 "keyvals": {"RSI": round(r, 1), "1M%": round(perf1m, 1) if perf1m is not None else None}}
 
-    # ── S6 圖表形態（4/5）──
+    # ── S6 圖表形態（Required 4/5, Bonus 5/5）──
     c = [
         close > e20,
         close > e50,
@@ -253,17 +269,21 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (perf1w is not None and -5 <= perf1w <= 0),
         (relvol is not None and relvol < 0.8),
     ]
-    res["S6"] = {"conds": c, "score": sum(c), "ready": sum(c) >= 4,
-                 "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None,
-                             "1W%": round(perf1w, 1) if perf1w is not None else None,
-                             "RelVol": round(relvol, 2) if relvol is not None else None}}
+    b = [
+        e20 > e50,
+        (perf3m is not None and perf3m > 15),
+        (relvol is not None and relvol < 0.7),
+        (a5 is not None and a14 is not None and a5 < a14),
+        (perf1d is not None and perf1d >= -1),
+    ]
+    res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+                 "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
     return res
 
 
 def compute_streaks(closes, highs, lows, volumes,
                     ema20a, ema50a, ema200a, rsia, atr5a, atr14a):
-    """由最後一個 bar 往前數，每個策略連續幾多日 ready。"""
     n = len(closes)
     last = n - 1
     streaks = {s: 0 for s in STRATEGY_META}
@@ -287,7 +307,6 @@ def compute_streaks(closes, highs, lows, volumes,
 # 攞數據
 # ─────────────────────────────────────────────────────────────
 def fetch_history(ticker):
-    """攞 5 年日線。返回 dict(close/high/low/volume) 或 None。"""
     for host in ("query1", "query2"):
         url = (f"https://{host}.finance.yahoo.com/v8/finance/chart/{ticker}"
                f"?interval={INTERVAL}&range={HISTORY_RANGE}")
@@ -305,7 +324,6 @@ def fetch_history(ticker):
             raw_h = q.get("high", [])
             raw_l = q.get("low", [])
             raw_v = q.get("volume", [])
-            meta = r0.get("meta", {})
             closes, highs, lows, vols = [], [], [], []
             for i in range(len(raw_c)):
                 if None in (raw_c[i], raw_h[i], raw_l[i], raw_v[i]):
@@ -316,37 +334,30 @@ def fetch_history(ticker):
                 vols.append(raw_v[i])
             if len(closes) < 64:
                 return None
-            return {"close": closes, "high": highs, "low": lows,
-                    "volume": vols, "meta": meta}
+            return {"close": closes, "high": highs, "low": lows, "volume": vols}
         except Exception as e:
-            print(f"  ! {ticker} {host} error: {e}", file=sys.stderr)
             continue
     return None
 
 
 def get_sp500_tickers():
-    """攞 S&P 500 成份股。先試 Wikipedia，失敗就用內置 fallback。"""
     try:
         url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
         resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=15)
         if resp.status_code == 200:
             import re
-            # 抓 table 入面嘅 ticker（第一欄）
             rows = re.findall(r'<td><a[^>]*>([A-Z][A-Z.\-]{0,6})</a>', resp.text)
             tickers = [t.replace(".", "-") for t in rows]
-            # 去重保序
             seen = set()
             out = [t for t in tickers if not (t in seen or seen.add(t))]
             if len(out) > 400:
                 return out
-    except Exception as e:
-        print(f"Wikipedia fetch failed: {e}", file=sys.stderr)
-    # fallback：可放你自己嘅 tickers.txt
+    except:
+        pass
     try:
         with open("tickers.txt") as f:
             return [ln.strip().upper() for ln in f if ln.strip()]
     except FileNotFoundError:
-        print("冇 tickers.txt，用細 demo list", file=sys.stderr)
         return ["AAPL", "MSFT", "NVDA", "AMD", "PLTR", "CRWD", "AVGO", "META", "TSLA"]
 
 
@@ -354,8 +365,10 @@ def get_sp500_tickers():
 # 主流程
 # ─────────────────────────────────────────────────────────────
 def build_record(ticker, hist):
-    closes = hist["close"]; highs = hist["high"]
-    lows = hist["low"]; volumes = hist["volume"]
+    closes = hist["close"]
+    highs = hist["high"]
+    lows = hist["low"]
+    volumes = hist["volume"]
 
     ema20a = ema(closes, 20)
     ema50a = ema(closes, 50)
@@ -376,9 +389,11 @@ def build_record(ticker, hist):
     for s in STRATEGY_META:
         strategies[s] = {
             "score": today[s]["score"],
+            "bonusScore": today[s]["bonusScore"],
             "ready": today[s]["ready"],
             "streak": streaks[s],
             "conds": today[s]["conds"],
+            "bonus": today[s]["bonus"],
             "keyvals": today[s]["keyvals"],
         }
 
@@ -411,7 +426,6 @@ def main():
             print(f"  {i}/{len(tickers)} … (成功 {ok})")
         time.sleep(REQUEST_SLEEP)
 
-    # 每個策略 ready 嘅清單（前端方便用）
     summary = {}
     for s in STRATEGY_META:
         ready = [r["ticker"] for r in records if r["strategies"][s]["ready"]]
