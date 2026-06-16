@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S3 突破交易 · 互動檢查表</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px; background: #0f1117; color: #e8e8e8;
+    padding: 20px; line-height: 1.5;
+  }
+  h1 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .sheet { display: flex; flex-direction: column; gap: 16px; max-width: 680px; margin: 0 auto; }
+  .section-title {
+    font-size: 11px; font-weight: 600; color: #888;
+    text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px;
+  }
+  .card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 14px 16px; }
+
+  /* ── Condition rows ── */
+  .cond-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid #1e2130;
+  }
+  .cond-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .cond-row:first-child { padding-top: 0; }
+  .cb-wrap { flex-shrink: 0; }
+  .cb-wrap input[type="checkbox"] { display: none; }
+  .cb-wrap label {
+    display: flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 2px solid #3a3d4a; background: #12141d;
+    cursor: pointer; transition: all .15s;
+    font-size: 13px; color: transparent;
+  }
+  .cb-wrap input:checked + label { background: #00c896; border-color: #00c896; color: #fff; }
+  .cond-code { font-family: monospace; font-size: 12px; font-weight: 700; min-width: 22px; color: #6aabf0; }
+  .cond-code.bonus { color: #e8a840; }
+  .cond-info { flex: 1; }
+  .cond-name { font-size: 13px; font-weight: 600; color: #e8e8e8; }
+  .cond-rule { font-size: 11px; color: #666; margin-top: 1px; }
+  .val-input {
+    width: 80px; padding: 4px 8px;
+    background: #12141d; border: 1px solid #2a2d3a; border-radius: 6px;
+    color: #e8e8e8; font-size: 12px; font-family: monospace;
+    text-align: center; outline: none; flex-shrink: 0;
+  }
+  .val-input:focus { border-color: #6aabf0; }
+  .val-input.ok   { border-color: #00c896; color: #00c896; }
+  .val-input.warn { border-color: #f07070; color: #f07070; }
+  .val-label { font-size: 11px; color: #555; min-width: 36px; flex-shrink: 0; }
+
+  /* ── Score bar ── */
+  .score-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .score-label { font-size: 13px; color: #888; min-width: 120px; }
+  .score-bar-bg { flex: 1; height: 8px; background: #1e2130; border-radius: 4px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 4px; transition: width .3s, background .3s; }
+  .score-num { font-size: 14px; font-weight: 700; min-width: 36px; text-align: right; }
+
+  /* ── Streak picker ── */
+  .streak-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .streak-btn {
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1px solid #2a2d3a; background: #12141d; color: #666;
+    cursor: pointer; transition: all .15s;
+  }
+  .streak-btn.active.s5 { background: #0d2a1e; border-color: #00c896; color: #00c896; }
+  .streak-btn.active.s4 { background: #1a2a0d; border-color: #7ecf60; color: #7ecf60; }
+  .streak-btn.active.s3 { background: #2a1e00; border-color: #e8a840; color: #e8a840; }
+  .streak-btn.active.s2 { background: #2a1010; border-color: #f07070; color: #f07070; }
+  .streak-hint { font-size: 12px; color: #888; margin-top: 8px; min-height: 18px; }
+
+  /* ── Verdict ── */
+  .verdict { border-radius: 10px; padding: 14px 16px; margin-top: 4px; transition: all .3s; }
+  .verdict.idle    { background: #1a1d27; border: 1px solid #2a2d3a; }
+  .verdict.ready   { background: #0d2a1e; border: 1px solid #00c896; }
+  .verdict.partial { background: #2a1e00; border: 1px solid #e8a840; }
+  .verdict.notyet  { background: #2a1010; border: 1px solid #f07070; }
+  .verdict-icon { font-size: 22px; margin-bottom: 6px; }
+  .verdict-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .verdict.ready   .verdict-title { color: #00c896; }
+  .verdict.partial .verdict-title { color: #e8a840; }
+  .verdict.notyet  .verdict-title { color: #f07070; }
+  .verdict.idle    .verdict-title { color: #555; }
+  .verdict-steps { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .verdict-step { display: flex; gap: 8px; font-size: 12px; color: #aaa; align-items: flex-start; }
+  .verdict-step .arrow { color: #6aabf0; flex-shrink: 0; font-weight: 700; }
+
+  /* ── Volume checker ── */
+  .vol-result { min-height: 48px; border-radius: 8px; padding: 10px 12px; background: #12141d; border: 1px solid #2a2d3a; font-size: 13px; color: #555; }
+
+  /* ── Fib b6 ── */
+  .fib-box { background: #12141d; border: 1px solid #2a2d3a; border-radius: 8px; padding: 12px 14px; margin-top: 8px; }
+  .fib-result { font-size: 13px; margin-top: 8px; min-height: 20px; color: #555; }
+
+  /* ── Reset ── */
+  .reset-btn {
+    padding: 8px 20px; border-radius: 8px; border: 1px solid #2a2d3a;
+    background: #12141d; color: #666; font-size: 13px; cursor: pointer;
+    transition: all .15s; align-self: flex-start;
+  }
+  .reset-btn:hover { border-color: #f07070; color: #f07070; }
+
+  .decision-phase {
+    border-left: 3px solid #2a2d3a;
+    padding-left: 12px;
+    margin-bottom: 12px;
+  }
+  .phase-title {
+    font-size: 13px; font-weight: 600; color: #e8e8e8; margin-bottom: 4px;
+  }
+  .dec-btn {
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    border: 1px solid #2a2d3a; background: #12141d; color: #888;
+    cursor: pointer; transition: all .15s;
+  }
+  .dec-btn.active-yes { background: #0d2a1e; border-color: #00c896; color: #00c896; }
+  .dec-btn.active-no  { background: #2a1010; border-color: #f07070; color: #f07070; }
+  .tip { font-size: 12px; color: #555; margin-top: 4px; min-height: 18px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div>
+    <h1>S3 · 突破交易 · 互動檢查表</h1>
+    <div class="subtitle">投機十步曲 · 填入數值，逐條 Tick，即時知道應該點做</div>
+  </div>
+
+  <!-- ══ STEP 1：連續日數 ══ -->
+  <div>
+    <div class="section-title">Step 1 · Playbook Scanner 連續日數</div>
+    <div class="card">
+      <div style="font-size:13px;color:#aaa;margin-bottom:10px">今日 S3 行連續幾多日？</div>
+      <div class="streak-wrap">
+        <button class="streak-btn s5" onclick="setStreak(this,'s5','14日+ 🔥 Buildup 非常成熟，最優先候選！')">14日+ 🔥</button>
+        <button class="streak-btn s4" onclick="setStreak(this,'s4','7–13日 ✓ Buildup 健康，正常跟流程')">7–13日 ✓</button>
+        <button class="streak-btn s3" onclick="setStreak(this,'s3','3–6日 ⚠️ Buildup 剛開始，繼續觀察')">3–6日 ⚠️</button>
+        <button class="streak-btn s2" onclick="setStreak(this,'s2','1–2日 ✗ 太早，唔理，等夠3日先')">1–2日 ✗</button>
+      </div>
+      <div class="streak-hint" id="streakHint">— 請選擇連續日數 —</div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 2：Required 條件 ══ -->
+  <div>
+    <div class="section-title">Step 2 · Required 條件（必須 4/5 或以上）</div>
+    <div class="card">
+
+      <!-- c1 距52W高 -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c1" onchange="update()"><label for="c1">✓</label></div>
+        <div class="cond-code">c1</div>
+        <div class="cond-info">
+          <div class="cond-name">距52W高位 ≤ 4%</div>
+          <div class="cond-rule">Buildup 必須喺歷史高位附近形成</div>
+        </div>
+        <div class="val-label">距高%</div>
+        <input class="val-input" id="v_52w" type="number" step="0.1" placeholder="-2.5" oninput="validate52w(); update()">
+      </div>
+
+      <!-- c2 EMA50 -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c2" onchange="update()"><label for="c2">✓</label></div>
+        <div class="cond-code">c2</div>
+        <div class="cond-info">
+          <div class="cond-name">Price &gt; EMA50</div>
+          <div class="cond-rule">中期趨勢向上</div>
+        </div>
+      </div>
+
+      <!-- c3 縮量 -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c3" onchange="update()"><label for="c3">✓</label></div>
+        <div class="cond-code">c3</div>
+        <div class="cond-info">
+          <div class="cond-name">縮量 <span class="star">⭐</span></div>
+          <div class="cond-rule">RelVol &lt; 0.75 或 近5日均量 &lt; 近20日均量</div>
+        </div>
+        <div class="val-label">RelVol</div>
+        <input class="val-input" id="v_rvol" type="number" step="0.01" placeholder="0.45" oninput="validateRvol(); update()">
+      </div>
+
+      <!-- c4 ATR -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c4" onchange="update()"><label for="c4">✓</label></div>
+        <div class="cond-code">c4</div>
+        <div class="cond-info">
+          <div class="cond-name">波幅收窄 ATR5 &lt; ATR14</div>
+          <div class="cond-rule">蠟燭愈來愈細枝，整固收緊中</div>
+        </div>
+      </div>
+
+      <!-- c5 3M -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c5" onchange="update()"><label for="c5">✓</label></div>
+        <div class="cond-code">c5</div>
+        <div class="cond-info">
+          <div class="cond-name">3M漲 &gt; 10%</div>
+          <div class="cond-rule">確認有推進浪存在，動力足夠</div>
+        </div>
+        <div class="val-label">3M%</div>
+        <input class="val-input" id="v_3m" type="number" step="0.1" placeholder="23.9" oninput="validate3m(); update()">
+      </div>
+
+      <!-- Required Score bar -->
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div class="score-wrap">
+          <div class="score-label">Required Score</div>
+          <div class="score-bar-bg"><div class="score-bar-fill" id="reqBar" style="width:0%;background:#f07070"></div></div>
+          <div class="score-num" id="reqNum" style="color:#f07070">0 / 5</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 3：Bonus 條件 ══ -->
+  <div>
+    <div class="section-title">Step 3 · Bonus 條件（目標 3/5 以上，b5+c3 最重要）</div>
+    <div class="card">
+
+      <!-- b1 EMA20 -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="b1" onchange="update()"><label for="b1">✓</label></div>
+        <div class="cond-code bonus">b1</div>
+        <div class="cond-info">
+          <div class="cond-name">Price &gt; EMA20</div>
+          <div class="cond-rule">短期趨勢向上</div>
+        </div>
+      </div>
+
+      <!-- b2 EMA200 -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="b2" onchange="update()"><label for="b2">✓</label></div>
+        <div class="cond-code bonus">b2</div>
+        <div class="cond-info">
+          <div class="cond-name">Price &gt; EMA200</div>
+          <div class="cond-rule">長期趨勢向上</div>
+        </div>
+      </div>
+
+      <!-- b3 RSI -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="b3" onchange="update()"><label for="b3">✓</label></div>
+        <div class="cond-code bonus">b3</div>
+        <div class="cond-info">
+          <div class="cond-name">RSI 50–70</div>
+          <div class="cond-rule">動力充足但唔超買</div>
+        </div>
+        <div class="val-label">RSI</div>
+        <input class="val-input" id="v_rsi" type="number" placeholder="63" oninput="validateRsi(); update()">
+      </div>
+
+      <!-- b4 1W -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="b4" onchange="update()"><label for="b4">✓</label></div>
+        <div class="cond-code bonus">b4</div>
+        <div class="cond-info">
+          <div class="cond-name">1W ±3%（橫行整固）</div>
+          <div class="cond-rule">本週價格唔大升唔大跌，整固中</div>
+        </div>
+        <div class="val-label">1W%</div>
+        <input class="val-input" id="v_1w" type="number" step="0.1" placeholder="1.2" oninput="validate1w(); update()">
+      </div>
+
+      <!-- b5 距高位≤2% -->
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="b5" onchange="update()"><label for="b5">✓</label></div>
+        <div class="cond-code bonus">b5</div>
+        <div class="cond-info">
+          <div class="cond-name">距52W高 ≤ 2% <span class="star">⭐</span></div>
+          <div class="cond-rule">非常接近突破點，Buildup 最成熟</div>
+        </div>
+      </div>
+
+      <!-- Bonus Score bar -->
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div class="score-wrap">
+          <div class="score-label">Bonus Score</div>
+          <div class="score-bar-bg"><div class="score-bar-fill" id="bonBar" style="width:0%;background:#e8a840"></div></div>
+          <div class="score-num" id="bonNum" style="color:#e8a840">0 / 5</div>
+        </div>
+        <div class="tip" id="bonTip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 4：Fib b6 人手確認 ══ -->
+  <div>
+    <div class="section-title">Step 4 · 人手確認 b6 — Fibonacci 0.236</div>
+    <div class="card">
+      <div style="font-size:13px;color:#aaa;margin-bottom:10px">喺圖表上畫 Fib，輸入 A點、B點，自動計算 0.236 線</div>
+      <div class="fib-box">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div>
+            <div style="font-size:11px;color:#555;margin-bottom:4px">A點（推進浪起點）</div>
+            <input class="val-input" id="v_a" type="number" step="0.01" placeholder="11.33" style="width:100px" oninput="calcFib()">
+          </div>
+          <div style="font-size:18px;color:#555;margin-top:16px">→</div>
+          <div>
+            <div style="font-size:11px;color:#555;margin-bottom:4px">B點（52W高位）</div>
+            <input class="val-input" id="v_b" type="number" step="0.01" placeholder="50.23" style="width:100px" oninput="calcFib()">
+          </div>
+          <div style="font-size:18px;color:#555;margin-top:16px">=</div>
+          <div>
+            <div style="font-size:11px;color:#555;margin-bottom:4px">0.236 線</div>
+            <div id="fib236" style="font-family:monospace;font-size:14px;font-weight:700;color:#555;min-width:80px;padding-top:4px">—</div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:11px;color:#555;margin-bottom:4px">而家價格</div>
+          <input class="val-input" id="v_price" type="number" step="0.01" placeholder="48.50" style="width:100px" oninput="calcFib()">
+        </div>
+        <div class="fib-result" id="fibResult">— 輸入 A點、B點、現價 —</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 5：突破後每日追蹤 ══ -->
+  <div>
+    <div class="section-title">Step 5 · 突破後每日追蹤（每日收市後填一次）</div>
+    <div class="card">
+      <div style="font-size:13px;color:#aaa;margin-bottom:14px">每日收市後填入，即時知道今日應該點做</div>
+
+      <!-- 今日Close vs 突破線 -->
+      <div class="decision-phase">
+        <div class="phase-title">① 今日 Close 係突破線以上定以下？</div>
+        <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
+          <button class="dec-btn" id="d1above" onclick="setDay1('above')">📈 以上（守住／突破）</button>
+          <button class="dec-btn" id="d1below" onclick="setDay1('below')">📉 以下（跌穿）</button>
+        </div>
+        <div style="font-size:11px;color:#555;margin-top:4px">突破第一日：Close &gt; 突破線 → 選「以上」，填 RelVol 判斷係手法A定等待</div>
+      </div>
+
+      <!-- 今日RelVol -->
+      <div class="decision-phase" id="d2wrap" style="display:none">
+        <div class="phase-title">② 今日 RelVol 係幾多？</div>
+        <div style="display:flex;align-items:center;gap:10px;margin:10px 0">
+          <input class="val-input" id="v_daily_vol" type="number" step="0.01" placeholder="1.2" style="width:90px" oninput="updateDaily()">
+          <span style="font-size:12px;color:#555">今日成交量倍數</span>
+        </div>
+      </div>
+
+      <!-- 跌穿後額外資訊 -->
+      <div class="decision-phase" id="d3wrap" style="display:none">
+        <div class="phase-title">③ 記低今日 Close（假突破最低候選）</div>
+        <div style="margin:10px 0">
+          <input class="val-input" id="v_daily_close" type="number" step="0.01" placeholder="324.60" style="width:120px" oninput="updateDaily()">
+          <div style="font-size:11px;color:#555;margin-top:4px">之後等再次突破，用呢個計手法B止損</div>
+        </div>
+      </div>
+
+      <!-- 每日結果 -->
+      <div id="dailyResult" style="margin-top:14px;background:#12141d;border:1px solid #2a2d3a;border-radius:8px;padding:12px 14px;font-size:13px;color:#555">
+        — 選擇今日 Close 位置開始判斷 —
+      </div>
+
+      <!-- 歷史記錄提示 -->
+      <div style="margin-top:10px;font-size:11px;color:#444;border-top:1px solid #1e2130;padding-top:8px">
+        💡 每日收市後重新填入呢個 Step，追蹤突破後走勢直到入場或放棄
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 6：入場計算器 ══ -->
+  <div>
+    <div class="section-title">Step 6 · 入場計算器</div>
+    <div class="card">
+      <div style="font-size:13px;color:#aaa;margin-bottom:14px">根據 Step 5 結果自動顯示等咩、點入場</div>
+
+      <!-- Step 6 狀態顯示（由Step 5帶過嚟） -->
+      <div id="s6status" style="background:#12141d;border:1px solid #2a2d3a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#555">
+        — 先完成 Step 5 —
+      </div>
+
+      <!-- 固定輸入：A點、B點、Buildup底部 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">A點（推進浪起點）</div>
+          <input class="val-input" id="calc_a" type="number" step="0.01" placeholder="205.65" style="width:100%" oninput="calcEntry()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">B點（52W高位）</div>
+          <input class="val-input" id="calc_b" type="number" step="0.01" placeholder="327.97" style="width:100%" oninput="calcEntry()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">Buildup底部</div>
+          <input class="val-input" id="calc_bottom" type="number" step="0.01" placeholder="319.00" style="width:100%" oninput="calcEntry()">
+        </div>
+      </div>
+
+      <!-- 入場價：根據手法顯示不同提示 -->
+      <div id="entryWrap" style="margin-bottom:14px;display:none">
+        <div style="font-size:11px;color:#6aabf0;margin-bottom:4px" id="entryLabel">入場價</div>
+        <input class="val-input" id="calc_entry" type="number" step="0.01" placeholder="330.00" style="width:140px" oninput="calcEntry()">
+        <div style="font-size:11px;color:#555;margin-top:4px" id="entryHint"></div>
+      </div>
+
+      <!-- 結果顯示 -->
+      <div id="calcResult" style="background:#12141d;border:1px solid #2a2d3a;border-radius:8px;padding:12px 14px;font-size:13px;color:#555">
+        — 填入 A點、B點、Buildup底部，再填入場價 —
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 結論 ══ -->
+  <div>
+    <div class="section-title">結論</div>
+    <div class="verdict idle" id="verdict">
+      <div class="verdict-icon">—</div>
+      <div class="verdict-title">填入條件先可以判斷</div>
+      <div class="verdict-steps" id="verdictSteps"></div>
+    </div>
+  </div>
+
+  <button class="reset-btn" onclick="resetAll()">↺ 重置</button>
+
+  <div style="font-size:11px;color:#333;text-align:center;padding-top:4px;padding-bottom:8px">
+    S3 突破交易 · 投機十步曲 · 投機先要溫功課
+  </div>
+</div>
+
+<script>
+  var streakLevel = null;
+  var priceDir = null;
+  var entryMethod = null;
+  var altStopValue = null;
+
+  function updateStep6(method, stopVal, stopLabel, waitMsg) {
+    entryMethod = method;
+    altStopValue = stopVal;
+
+    var s6 = document.getElementById('s6status');
+    var entryWrap = document.getElementById('entryWrap');
+    var entryLabel = document.getElementById('entryLabel');
+    var entryHint = document.getElementById('entryHint');
+
+    if (method === 'A') {
+      s6.style.background = '#0d2a1e'; s6.style.borderColor = '#00c896'; s6.style.color = '#00c896';
+      s6.innerHTML = '🔥 <strong>手法A</strong> — 突破日即入<br><span style="font-size:12px;color:#aaa">填入突破日 Close 作入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（突破日 Close）';
+      entryHint.textContent = '';
+    } else if (method === 'B') {
+      s6.style.background = '#2a1e00'; s6.style.borderColor = '#e8a840'; s6.style.color = '#e8a840';
+      s6.innerHTML = '⏳ <strong>手法B</strong> — ' + (waitMsg || '等再次突破') + '<br><span style="font-size:12px;color:#aaa">Alert 響（再次突破突破線）先填入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（再次突破嗰日 Close）';
+      entryHint.textContent = '⚠️ 唔係假突破嗰日Close！係Alert再次響嗰日Close';
+    } else if (method === 'C') {
+      s6.style.background = '#2a1e00'; s6.style.borderColor = '#e8a840'; s6.style.color = '#e8a840';
+      s6.innerHTML = '⏳ <strong>手法C</strong> — ' + (waitMsg || '等守住後放量向上') + '<br><span style="font-size:12px;color:#aaa">守住後放量向上嗰日先填入場價</span>';
+      entryWrap.style.display = 'block';
+      entryLabel.textContent = '入場價（放量向上嗰日 Close）';
+      entryHint.textContent = '⚠️ 唔係守住嗰日！係之後放量向上嗰日Close';
+    }
+    calcEntry();
+  }
+
+  function calcEntry() {
+    var a = parseFloat(document.getElementById('calc_a').value);
+    var b = parseFloat(document.getElementById('calc_b').value);
+    var bottom = parseFloat(document.getElementById('calc_bottom').value);
+    var entry = parseFloat(document.getElementById('calc_entry').value);
+    var res = document.getElementById('calcResult');
+
+    if (isNaN(a) || isNaN(b) || isNaN(bottom) || b <= a) {
+      res.style.borderColor = '#2a2d3a'; res.innerHTML = '— 填入 A點、B點、Buildup底部 —'; res.style.color = '#555';
+      return;
+    }
+
+    if (isNaN(entry)) {
+      res.style.borderColor = '#2a2d3a'; res.style.color = '#555';
+      if (entryMethod === 'B') {
+        res.innerHTML = '⏳ 等 Alert 響（再次突破突破線），填入嗰日 Close 作入場價';
+      } else if (entryMethod === 'C') {
+        res.innerHTML = '⏳ 等守住後放量向上，填入嗰日 Close 作入場價';
+      } else {
+        res.innerHTML = '— 填入入場價 —';
+      }
+      return;
+    }
+
+    // 止損
+    var stopBase = (altStopValue && !isNaN(altStopValue)) ? altStopValue : bottom;
+    var stopLoss = stopBase * 0.98;
+    var stopLabel = (entryMethod === 'B') ? '假突破最低Close × 0.98' :
+                    (entryMethod === 'C') ? '橫行最低Close × 0.98' : 'Buildup底部 × 0.98';
+
+    // T1、T2
+    var buildupHeight = b - bottom;
+    var impulseHeight = b - a;
+    var t1 = b + buildupHeight * 1.5;
+    var t2 = b + impulseHeight * 0.618;
+
+    // R:R
+    var risk = entry - stopLoss;
+    var rr1 = risk > 0 ? (t1 - entry) / risk : 0;
+    var rr2 = risk > 0 ? (t2 - entry) / risk : 0;
+    var rr1Color = rr1 >= 2 ? '#00c896' : rr1 >= 1 ? '#e8a840' : '#f07070';
+    var rr2Color = rr2 >= 2 ? '#00c896' : rr2 >= 1 ? '#e8a840' : '#f07070';
+    var methodLabel = entryMethod ? '手法' + entryMethod : '—';
+
+    res.style.borderColor = '#3a3d4a'; res.style.color = '#e8e8e8';
+    res.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:10px">' +
+      '<div><span style="color:#555;font-size:11px">入場手法</span><br><span style="color:#6aabf0;font-weight:700">' + methodLabel + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">入場價</span><br><span style="font-weight:700">$' + entry.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">止損（' + stopLabel + '）</span><br><span style="color:#f07070;font-weight:700">$' + stopLoss.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">風險</span><br><span style="color:#f07070;font-weight:700">$' + risk.toFixed(2) + ' / 股</span></div>' +
+      '</div>' +
+      '<div style="border-top:1px solid #2a2d3a;padding-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">' +
+      '<div><span style="color:#555;font-size:11px">T1（Buildup高度×1.5）</span><br><span style="color:#00c896;font-weight:700">$' + t1.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T1 R:R（參考）</span><br><span style="color:' + rr1Color + ';font-weight:700">' + rr1.toFixed(2) + 'x</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T2（推進浪×0.618）</span><br><span style="color:#00c896;font-weight:700">$' + t2.toFixed(2) + '</span></div>' +
+      '<div><span style="color:#555;font-size:11px">T2 R:R（參考）</span><br><span style="color:' + rr2Color + ';font-weight:700">' + rr2.toFixed(2) + 'x</span></div>' +
+      '</div>' +
+      '<div style="border-top:1px solid #2a2d3a;padding-top:8px;margin-top:4px;font-size:11px;color:#555">' +
+      '⚠️ R:R 係參考，唔係入場門檻。T1到達出一半倉，止損移至入場價（Risk Free）。</div>';
+  }
+
+  function setStreak(btn, level, hint) {
+    document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
+    btn.classList.add('active', level);
+    streakLevel = level;
+    document.getElementById('streakHint').textContent = hint;
+    update();
+  }
+
+  function validate52w() {
+    var el = document.getElementById('v_52w');
+    var v = parseFloat(el.value);
+    if (el.value === '') { el.className = 'val-input'; return; }
+    var ok = v >= -4 && v <= 0;
+    el.className = 'val-input ' + (ok ? 'ok' : 'warn');
+    document.getElementById('c1').checked = ok;
+    // also auto-check b5
+    var b5ok = v >= -2 && v <= 0;
+    document.getElementById('b5').checked = b5ok;
+  }
+
+  function validateRvol() {
+    var el = document.getElementById('v_rvol');
+    var v = parseFloat(el.value);
+    if (el.value === '') { el.className = 'val-input'; return; }
+    var ok = v < 0.75;
+    el.className = 'val-input ' + (ok ? 'ok' : 'warn');
+    document.getElementById('c3').checked = (v < 0.75);
+  }
+
+  function validate3m() {
+    var el = document.getElementById('v_3m');
+    var v = parseFloat(el.value);
+    if (el.value === '') { el.className = 'val-input'; return; }
+    var ok = v > 10;
+    el.className = 'val-input ' + (ok ? 'ok' : 'warn');
+    document.getElementById('c5').checked = ok;
+  }
+
+  function validateRsi() {
+    var el = document.getElementById('v_rsi');
+    var v = parseFloat(el.value);
+    if (el.value === '') { el.className = 'val-input'; return; }
+    var ok = v >= 50 && v <= 70;
+    el.className = 'val-input ' + (ok ? 'ok' : 'warn');
+    document.getElementById('b3').checked = ok;
+  }
+
+  function validate1w() {
+    var el = document.getElementById('v_1w');
+    var v = parseFloat(el.value);
+    if (el.value === '') { el.className = 'val-input'; return; }
+    var ok = v >= -3 && v <= 3;
+    el.className = 'val-input ' + (ok ? 'ok' : 'warn');
+    document.getElementById('b4').checked = ok;
+  }
+
+  function calcFib() {
+    var a = parseFloat(document.getElementById('v_a').value);
+    var b = parseFloat(document.getElementById('v_b').value);
+    var p = parseFloat(document.getElementById('v_price').value);
+    var fibEl = document.getElementById('fib236');
+    var resEl = document.getElementById('fibResult');
+
+    if (isNaN(a) || isNaN(b) || b <= a) {
+      fibEl.textContent = '—';
+      fibEl.style.color = '#555';
+      resEl.textContent = '— 輸入 A點、B點、現價 —';
+      resEl.style.color = '#555';
+      return;
+    }
+    var range = b - a;
+    var fib236 = b - (range * 0.236);
+    fibEl.textContent = '$' + fib236.toFixed(2);
+    fibEl.style.color = '#6aabf0';
+
+    if (isNaN(p)) {
+      resEl.textContent = '— 輸入現價確認 b6 —';
+      resEl.style.color = '#555';
+      return;
+    }
+    if (p > fib236) {
+      resEl.innerHTML = '✅ <strong style="color:#00c896">b6 Pass</strong> — 現價 $' + p.toFixed(2) + ' > 0.236線 $' + fib236.toFixed(2) + '，Buildup 位置正確';
+      resEl.style.color = '#00c896';
+    } else {
+      resEl.innerHTML = '❌ <strong style="color:#f07070">b6 Fail</strong> — 現價 $' + p.toFixed(2) + ' < 0.236線 $' + fib236.toFixed(2) + '，回調過深，Buildup 質素降低';
+      resEl.style.color = '#f07070';
+    }
+  }
+
+  var day1Choice = null;
+  var lowestClose = null; // 記低假突破最低Close
+
+  function setDay1(choice) {
+    day1Choice = choice;
+    document.getElementById('d1above').className = 'dec-btn' + (choice==='above' ? ' active-yes' : '');
+    document.getElementById('d1below').className = 'dec-btn' + (choice==='below' ? ' active-yes' : '');
+    document.getElementById('d2wrap').style.display = 'block';
+    document.getElementById('d3wrap').style.display = choice==='below' ? 'block' : 'none';
+    updateDaily();
+  }
+
+  function updateDaily() {
+    var res = document.getElementById('dailyResult');
+    if (!day1Choice) {
+      res.style.background='#12141d'; res.style.borderColor='#2a2d3a'; res.style.color='#555';
+      res.innerHTML = '— 選擇今日 Close 位置開始判斷 —';
+      return;
+    }
+
+    var vol = parseFloat(document.getElementById('v_daily_vol').value);
+    if (isNaN(vol) || document.getElementById('v_daily_vol').value==='') {
+      res.style.background='#12141d'; res.style.borderColor='#2a2d3a'; res.style.color='#555';
+      res.innerHTML = '— 填入今日 RelVol —';
+      return;
+    }
+
+    // 情況1：守住突破線
+    if (day1Choice === 'above') {
+      if (vol >= 1.5) {
+        res.style.background='#0d2a1e'; res.style.borderColor='#00c896'; res.style.color='#00c896';
+        res.innerHTML =
+          '<div style="font-weight:700;font-size:14px;margin-bottom:6px">🔥 放量突破／守住 — 手法A 或 手法C！</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x ✅<br>' +
+          '→ 突破第一日：手法A，今日 Close 即係入場價<br>' +
+          '→ 之後日子守住：手法C，今日 Close 即係入場價<br>' +
+          '→ 落 Step 6 填入今日 Close 作入場價</div>';
+        updateStep6('A', null, null, null);
+      } else if (vol >= 1.0) {
+        res.style.background='#2a1e00'; res.style.borderColor='#e8a840'; res.style.color='#e8a840';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">⚠️ 守住但量唔夠強 — 繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，守住突破線但量唔夠。<br>' +
+          '→ 明日繼續填 Step 5<br>' +
+          '→ 記低今日 Close 做止損參考</div>';
+      } else {
+        res.style.background='#1a2540'; res.style.borderColor='#6aabf0'; res.style.color='#6aabf0';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">➡️ 縮量守住 — 繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，縮量守住係健康整固。<br>' +
+          '→ 明日繼續填 Step 5<br>' +
+          '→ 記低今日 Close 做止損參考</div>';
+      }
+    }
+
+    // 情況2：跌穿突破線（假突破）
+    if (day1Choice === 'below') {
+      var todayClose = parseFloat(document.getElementById('v_daily_close').value);
+      if (vol >= 1.5) {
+        res.style.background='#2a1010'; res.style.borderColor='#f07070'; res.style.color='#f07070';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">📉 放量跌穿 — 假突破確認！等手法B</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，放量跌穿突破線。<br>' +
+          (isNaN(todayClose) ? '' : '→ 今日Close $' + todayClose.toFixed(2) + ' 記低（假突破最低Close）<br>') +
+          '→ Set Alert 保留喺突破線<br>' +
+          '→ 等再次放量突破（≥1.5x）→ 手法B入場<br>' +
+          '→ 落 Step 6 等待，Alert 響先填入場價</div>';
+        if (!isNaN(todayClose)) updateStep6('B', todayClose, null, '等再次突破突破線');
+      } else {
+        res.style.background='#2a1e00'; res.style.borderColor='#e8a840'; res.style.color='#e8a840';
+        res.innerHTML =
+          '<div style="font-weight:700;margin-bottom:4px">⚠️ 縮量跌穿 — 可能係假突破，繼續等</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
+          'RelVol ' + vol.toFixed(2) + 'x，縮量跌穿。<br>' +
+          (isNaN(todayClose) ? '' : '→ 今日Close $' + todayClose.toFixed(2) + ' 記低（止損參考）<br>') +
+          '→ 唔係強賣壓，可能只係輕微回調。<br>' +
+          '→ 明日繼續填 Step 5</div>';
+      }
+    }
+  }
+
+  function update() {
+    var req = ['c1','c2','c3','c4','c5'].filter(id => document.getElementById(id).checked).length;
+    var reqColor = req >= 4 ? '#00c896' : req >= 3 ? '#e8a840' : '#f07070';
+    document.getElementById('reqBar').style.width = (req/5*100) + '%';
+    document.getElementById('reqBar').style.background = reqColor;
+    document.getElementById('reqNum').textContent = req + ' / 5';
+    document.getElementById('reqNum').style.color = reqColor;
+
+    var bon = ['b1','b2','b3','b4','b5'].filter(id => document.getElementById(id).checked).length;
+    var bonColor = bon >= 4 ? '#00c896' : bon >= 3 ? '#e8a840' : '#f07070';
+    document.getElementById('bonBar').style.width = (bon/5*100) + '%';
+    document.getElementById('bonBar').style.background = bonColor;
+    document.getElementById('bonNum').textContent = bon + ' / 5';
+    document.getElementById('bonNum').style.color = bonColor;
+
+    var b5 = document.getElementById('b5').checked;
+    var c3 = document.getElementById('c3').checked;
+    var tip = document.getElementById('bonTip');
+    if (b5 && c3) { tip.textContent = '⭐ b5（極近高位）+ c3（極度縮量）同時 ✓ — 最佳 Buildup 狀態！'; tip.style.color = '#ffd700'; }
+    else if (b5 || c3) { tip.textContent = '→ b5 或 c3 其中一個 ✓，仲差一個達到最佳'; tip.style.color = '#888'; }
+    else { tip.textContent = ''; }
+
+    renderVerdict(req, bon);
+  }
+
+  function renderVerdict(req, bon) {
+    var box = document.getElementById('verdict');
+    var steps = document.getElementById('verdictSteps');
+
+    if (!streakLevel) {
+      box.className = 'verdict idle';
+      box.querySelector('.verdict-icon').textContent = '—';
+      box.querySelector('.verdict-title').textContent = '請先選擇 Playbook Scanner 連續日數';
+      steps.innerHTML = ''; return;
+    }
+
+    if (streakLevel === 's2') {
+      box.className = 'verdict notyet';
+      box.querySelector('.verdict-icon').textContent = '🛑';
+      box.querySelector('.verdict-title').textContent = '唔入 — 連續日數唔夠';
+      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>S3 行只有 1–2 日，Buildup 仲未確立。等夠 3日🔥 先開 S3 Scanner 詳細確認。</span></div>';
+      return;
+    }
+
+    if (req < 4) {
+      box.className = 'verdict notyet';
+      box.querySelector('.verdict-icon').textContent = '❌';
+      box.querySelector('.verdict-title').textContent = 'Required 未達標 — 唔入';
+      var missing = [];
+      if (!document.getElementById('c1').checked) missing.push('c1 距52W高≤4%');
+      if (!document.getElementById('c2').checked) missing.push('c2 Price>EMA50');
+      if (!document.getElementById('c3').checked) missing.push('c3 縮量');
+      if (!document.getElementById('c4').checked) missing.push('c4 ATR波幅收窄');
+      if (!document.getElementById('c5').checked) missing.push('c5 3M>10%');
+      steps.innerHTML = '<div class="verdict-step"><span class="arrow">✗</span><span>仲差：' + missing.join('、') + '</span></div>'
+        + '<div class="verdict-step"><span class="arrow">→</span><span>Required 需要 4/5 或以上。等條件符合先考慮。</span></div>';
+      return;
+    }
+
+    if (bon < 3) {
+      box.className = 'verdict partial';
+      box.querySelector('.verdict-icon').textContent = '⚠️';
+      box.querySelector('.verdict-title').textContent = 'Bonus 唔夠 — Setup 質素差，唔建議入';
+      steps.innerHTML = '<div class="verdict-step"><span class="arrow">→</span><span>Required 達標，但 Bonus 只有 ' + bon + '/5，Setup 質素唔夠好。</span></div>'
+        + '<div class="verdict-step"><span class="arrow">→</span><span>最少要 3/5，最好 b5（距高≤2%）+ c3（極度縮量）同時 ✓ 先入。繼續等。</span></div>';
+      return;
+    }
+
+    var b5c3 = document.getElementById('b5').checked && document.getElementById('c3').checked;
+    box.className = 'verdict ready';
+    box.querySelector('.verdict-icon').textContent = '✅';
+    box.querySelector('.verdict-title').textContent = 'READY — 進入等突破流程';
+    steps.innerHTML =
+      (b5c3 ? '<div class="verdict-step"><span class="arrow">⭐</span><span>b5 + c3 同時 ✓，最佳 Buildup 狀態！</span></div>' : '') +
+      '<div class="verdict-step"><span class="arrow">1</span><span>人手確認 b6：畫 Fib（A點→B點），確認現價 &gt; 0.236 線</span></div>' +
+      '<div class="verdict-step"><span class="arrow">2</span><span>記低 52W 高位，Set Alert 喺呢個價位（Price crossing above）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">3</span><span>之後唔需要再睇 Scanner！每日收市後只確認：Close &gt; 52W高位？</span></div>' +
+      '<div class="verdict-step"><span class="arrow">4</span><span>突破時睇成交量：放量（&gt;1.5x）→ 手法A｜縮量突破 → 等手法B｜突破後回測 → 手法C</span></div>' +
+      '<div class="verdict-step"><span class="arrow">4</span><span>突破時睇成交量：放量（&gt;1.5x）→ 手法A｜縮量突破 → 等手法B｜突破後回測守住 → 手法C（&gt;1.0x）</span></div>' +
+      '<div class="verdict-step"><span class="arrow">5</span><span>落 Step 6 計 T1、T2、止損、R:R（參考用，跟 Playbook 原版唔設門檻）</span></div>';
+  }
+
+  function resetAll() {
+    ['c1','c2','c3','c4','c5','b1','b2','b3','b4','b5'].forEach(id => document.getElementById(id).checked = false);
+    ['v_52w','v_rvol','v_3m','v_rsi','v_1w','v_vol','v_a','v_b','v_price'].forEach(id => {
+      var el = document.getElementById(id);
+      el.value = ''; el.className = 'val-input';
+    });
+    document.querySelectorAll('.streak-btn').forEach(b => b.classList.remove('active','s5','s4','s3','s2'));
+    streakLevel = null; priceDir = null;
+    document.getElementById('streakHint').textContent = '— 請選擇連續日數 —';
+    document.getElementById('bonTip').textContent = '';
+    document.getElementById('priceUp').style.background = '#12141d';
+    document.getElementById('priceUp').style.borderColor = '#2a5a35';
+    document.getElementById('priceDn').style.background = '#12141d';
+    document.getElementById('priceDn').style.borderColor = '#6a2a2a';
+    document.getElementById('volResult').style.background = '#12141d';
+    document.getElementById('volResult').style.borderColor = '#2a2d3a';
+    document.getElementById('volResult').style.color = '#555';
+    document.getElementById('volResult').innerHTML = '— 請選擇價格方向並輸入 RelVol —';
+    document.getElementById('fib236').textContent = '—';
+    document.getElementById('fib236').style.color = '#555';
+    document.getElementById('fibResult').textContent = '— 輸入 A點、B點、現價 —';
+    document.getElementById('fibResult').style.color = '#555';
+    document.getElementById('reqBar').style.width = '0%';
+    document.getElementById('reqBar').style.background = '#f07070';
+    document.getElementById('reqNum').textContent = '0 / 5';
+    document.getElementById('reqNum').style.color = '#f07070';
+    document.getElementById('bonBar').style.width = '0%';
+    document.getElementById('bonBar').style.background = '#e8a840';
+    document.getElementById('bonNum').textContent = '0 / 5';
+    document.getElementById('bonNum').style.color = '#e8a840';
+    var box = document.getElementById('verdict');
+    box.className = 'verdict idle';
+    box.querySelector('.verdict-icon').textContent = '—';
+    box.querySelector('.verdict-title').textContent = '填入條件先可以判斷';
+    document.getElementById('verdictSteps').innerHTML = '';
+  }
+</script>
+</body>
+</html>
