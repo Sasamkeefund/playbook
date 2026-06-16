@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S6 旗形整固 · Playbook</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+HK:wght@300;400;500;700&display=swap');
+  :root {
+    --bg: #0d0f14; --surface: #13161e; --surface2: #1a1e2a;
+    --border: #252a38; --green: #00c896; --orange: #ffb347;
+    --red: #ff4d4d; --white: #f0f2f8; --gray: #6b7280;
+    --green-dim: rgba(0,200,150,0.12); --orange-dim: rgba(255,179,71,0.12);
+    --red-dim: rgba(255,77,77,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--white); font-family: 'Noto Sans HK', sans-serif; font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #0d1f2d 0%, #0d0f14 60%); border-bottom: 1px solid var(--border); padding: 20px 24px; }
+  .header-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .header h1 { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .header-sub { font-size: 12px; color: var(--gray); }
+
+  .container { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* Progress */
+  .progress-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+  .progress-label { font-size: 12px; color: var(--gray); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .progress-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--green), #00e5b0); border-radius: 3px; width: 0%; transition: width 0.3s ease; }
+  .progress-count { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--green); }
+
+  /* Section */
+  .section { margin-bottom: 12px; }
+  .section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--gray); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .step-num { background: var(--surface2); border: 1px solid var(--border); color: var(--green); font-size: 10px; width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+
+  /* Check items */
+  .checklist { display: flex; flex-direction: column; gap: 6px; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.15s; user-select: none; }
+  .check-item:hover { border-color: var(--green); background: rgba(0,200,150,0.05); }
+  .check-item.checked { border-color: var(--green); background: var(--green-dim); }
+  .check-item.warn { border-color: var(--orange); background: var(--orange-dim); cursor: default; }
+  .check-item.red { border-color: var(--red); background: var(--red-dim); cursor: default; }
+  .check-box { width: 18px; height: 18px; border: 1.5px solid var(--gray); border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; transition: all 0.15s; font-size: 11px; }
+  .check-item.checked .check-box { background: var(--green); border-color: var(--green); color: #000; }
+  .check-item.warn .check-box { background: var(--orange-dim); border-color: var(--orange); color: var(--orange); font-size: 13px; }
+  .check-item.red .check-box { background: var(--red-dim); border-color: var(--red); color: var(--red); font-size: 13px; }
+  .check-label { font-size: 13px; font-weight: 600; color: var(--white); }
+  .check-sub { font-size: 11px; color: var(--gray); margin-top: 2px; }
+  .check-key { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* Tags */
+  .tag { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+  .tag-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,200,150,0.25); }
+  .tag-orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,179,71,0.25); }
+  .tag-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,77,0.25); }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+  /* Calculator */
+  .calc-card { background: var(--surface); border: 1px solid var(--green); border-radius: 10px; padding: 18px; }
+  .calc-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--green); letter-spacing: 1px; margin-bottom: 14px; }
+  .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .input-group { display: flex; flex-direction: column; gap: 4px; }
+  .input-group label { font-size: 10px; color: var(--gray); font-family: 'JetBrains Mono', monospace; }
+  .input-group label span { color: var(--green); }
+  .input-group input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--white); font-family: 'JetBrains Mono', monospace; font-size: 14px; width: 100%; transition: border-color 0.15s; }
+  .input-group input:focus { outline: none; border-color: var(--green); }
+  .input-group input::placeholder { color: var(--gray); }
+  .calc-btn { width: 100%; padding: 10px; background: var(--green); color: #000; border: none; border-radius: 7px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 14px; transition: opacity 0.15s; }
+  .calc-btn:hover { opacity: 0.85; }
+  .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .result-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; transition: all 0.3s; }
+  .result-item.active { border-color: var(--green); background: var(--green-dim); }
+  .result-item.warn-rr { border-color: var(--red); background: var(--red-dim); }
+  .r-label { font-size: 9px; color: var(--gray); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+  .r-value { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--green); }
+  .result-item.warn-rr .r-value { color: var(--red); }
+  .r-sub { font-size: 9px; color: var(--gray); margin-top: 2px; }
+  .rr-verdict { margin-top: 10px; padding: 9px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; display: none; text-align: center; }
+  .rr-verdict.show { display: block; }
+  .rr-verdict.pass { background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+  .rr-verdict.fail { background: var(--red-dim); border: 1px solid var(--red); color: var(--red); }
+
+  /* Reset */
+  .reset-btn { background: transparent; border: 1px solid var(--border); color: var(--gray); padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans HK', sans-serif; }
+  .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* Info box */
+  .info-box { background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.2); border-radius: 8px; padding: 9px 12px; font-size: 11px; color: #ffd700; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">投機十步曲 · Playbook</div>
+  <h1>S6 圖表形態（旗形整固）</h1>
+  <div class="header-sub">Bull Flag · 手法 A — 放量突破即入</div>
+</div>
+
+<div class="container">
+
+  <!-- Progress -->
+  <div class="progress-bar">
+    <div class="progress-label">
+      <span>今日完成進度</span>
+      <span class="progress-count" id="progressCount">0 / 0 步驟</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <!-- Step 1: 整固期間 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">1</span> 整固期間確認（Playbook Scanner 5日🔥停低）</div>
+    <div class="checklist">
+
+      <div class="check-item" onclick="toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">S6 連續 5日🔥 以上</div>
+          <div class="check-sub">6–15日 = 最理想 ｜ &gt;15日 ⚠️ 可能唔係旗形</div>
+        </div>
+      </div>
+
+      <div class="check-item warn">
+        <div class="check-box">⚠</div>
+        <div style="flex:1">
+          <div class="check-label" style="color:var(--orange)">b6 — 畫 Fib（A→B），旗形期間所有 Close ≥ 0.236 位</div>
+          <div class="check-sub">❌ 任何 Close 穿破 0.236 → 即刻跳過，唔需要再做其他步驟</div>
+        </div>
+      </div>
+
+      <div style="padding:4px 4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gray);letter-spacing:1px;">REQUIRED — 4/5 以上先符合</div>
+
+      <div class="check-item req-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c1 &nbsp;Price &gt; EMA20（短期趨勢向上）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c2 &nbsp;Price &gt; EMA50（中期趨勢向上）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c3 &nbsp;1M漲 &gt; 8%（旗杆存在）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c4 &nbsp;1W -5% 至 0%（參考用，浮動）</div></div>
+      </div>
+      <div class="check-item req-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">c5 🔑 &nbsp;RelVol &lt; 0.8x（縮量整固，最關鍵）</div></div>
+      </div>
+
+      <div style="padding:8px 4px 0;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gray);letter-spacing:1px;">BONUS — b1+b5 最重要，被震走風險最低</div>
+
+      <div class="check-item bonus-item" data-key="b1" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b1 🔑 &nbsp;旗形極緊（5日波幅 &lt; 4%）← 被震走風險低</div></div>
+      </div>
+      <div class="check-item bonus-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b2 &nbsp;Price &gt; EMA200（大趨勢向上）</div></div>
+      </div>
+      <div class="check-item bonus-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b3 &nbsp;距52W高 ≤ 15%</div></div>
+      </div>
+      <div class="check-item bonus-item" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b4 &nbsp;10日波幅 &lt; 7%</div></div>
+      </div>
+      <div class="check-item bonus-item" data-key="b5" onclick="toggleScored(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1"><div class="check-label">b5 🔑 &nbsp;3M漲 &gt; 15%（強勁旗杆）← 動力強</div></div>
+      </div>
+
+      <!-- 自動評級 -->
+      <div id="qualityBox" style="display:none;margin-top:4px;padding:12px 14px;border-radius:8px;border:1px solid;font-size:13px;font-weight:600;transition:all 0.3s;">
+        <div id="qualityScore" style="font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:4px;"></div>
+        <div id="qualityText"></div>
+        <div id="qualityAction" style="font-size:11px;margin-top:4px;font-weight:400;"></div>
+      </div>
+
+      <div class="check-item warn">
+        <div class="check-box">⚠</div>
+        <div style="flex:1">
+          <div class="check-label" style="color:var(--orange)">b7 — 搵 H1（旗形整固第一個高點）= 突破位</div>
+          <div class="check-sub">H1→H2→H3 連成一線，記低 H1 價位，Set Alert 喺 H1<br>
+          <b style="color:var(--red)">注意：突破位係 H1，唔係 B點！</b></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Step 2: 入場確認 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">2</span> 入場確認（Alert 響後）</div>
+
+    <!-- 決策流程 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);margin-bottom:10px;">📋 Alert 響後，收市後決策</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;line-height:2.2;">
+        RV &gt; 1.5x？<br>
+        <span style="color:var(--green);">→ 係：手法 A</span> — 當晚放 Limit Order @ <b style="color:var(--green);">今日 Close</b><br>
+        <span style="color:var(--orange);">→ 唔係：手法 C</span> — 當晚放 Limit Order @ <b style="color:var(--orange);">H1 原價</b>，等回測自動執行
+      </div>
+    </div>
+
+    <div class="checklist">
+      <div class="check-item" onclick="toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">手法 A：RV &gt; 1.5x → 當晚放 Limit Order @ 今日 Close</div>
+          <div class="check-sub" style="color:var(--red);">RV 必須 &gt; 1.5x，唔夠唔用手法 A ｜ 隔日 Gap Up 太多 → 取消，唔追</div>
+        </div>
+      </div>
+
+      <div class="check-item" onclick="toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">手法 C：RV &lt; 1.5x → 當晚放 Limit Order @ H1 原價</div>
+          <div class="check-sub" style="color:var(--green);">Order 放 H1，唔需要睇 RV ｜ 股票跌返 H1 自動執行</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- H1 Buffer Range 計算器 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:10px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--orange);margin-bottom:10px;">📍 手法 C — 監察用（唔係 Order 位置）</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="input-group">
+          <label><span>H1</span> — 旗形上邊界突破位</label>
+          <input type="number" id="inH1" placeholder="例：420.86" step="0.01" oninput="calcBuffer()">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:10px;color:var(--gray);font-family:'JetBrains Mono',monospace;">回測監察範圍（±1%）</div>
+          <div style="background:var(--surface2);border:1px solid var(--green);border-radius:6px;padding:8px 10px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);" id="bufferRange">— 至 —</div>
+            <div style="font-size:10px;color:var(--gray);margin-top:2px;">Order 放 H1 ｜ 此範圍用嚟監察假突破</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--gray);">
+        每日收市後確認：<br>
+        <span style="color:var(--green);">Close 喺範圍內或以上</span> → Order 執行或等待中，繼續持有<br>
+        <span style="color:var(--red);">Close 低過下限</span> → 假突破，取消 Order，跳過
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: 計算器 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">3</span> 計算止損 / T1 / T2 / R:R</div>
+    <div class="calc-card">
+      <div class="calc-title">📐 S6 旗形計算器</div>
+      <div class="input-grid">
+        <div class="input-group">
+          <label><span>A點</span> — 旗杆起點</label>
+          <input type="number" id="inA" placeholder="例：14.23" step="0.01">
+        </div>
+        <div class="input-group">
+          <label><span>B點</span> — 旗杆頂</label>
+          <input type="number" id="inB" placeholder="例：27.98" step="0.01">
+        </div>
+        <div class="input-group">
+          <label><span>旗形最低 Close</span></label>
+          <input type="number" id="inFlagLow" placeholder="例：26.41" step="0.01">
+        </div>
+        <div class="input-group">
+          <label><span>入場價</span> — 突破當日 Close</label>
+          <input type="number" id="inEntry" placeholder="例：27.86" step="0.01">
+        </div>
+      </div>
+      <button class="calc-btn" onclick="calculate()">▶ 計算</button>
+      <div class="results-grid">
+        <div class="result-item" id="res0236">
+          <div class="r-label">0.236 位</div>
+          <div class="r-value" id="val0236">—</div>
+          <div class="r-sub">旗形唔可穿破</div>
+        </div>
+        <div class="result-item" id="resStop">
+          <div class="r-label">止損</div>
+          <div class="r-value" id="valStop">—</div>
+          <div class="r-sub">旗形低 × 0.98</div>
+        </div>
+        <div class="result-item" id="resFlagH">
+          <div class="r-label">旗杆高度</div>
+          <div class="r-value" id="valFlagH">—</div>
+          <div class="r-sub">B − A</div>
+        </div>
+        <div class="result-item" id="resT1">
+          <div class="r-label">T1 目標</div>
+          <div class="r-value" id="valT1">—</div>
+          <div class="r-sub">旗形低 + 旗杆 × 0.618</div>
+        </div>
+        <div class="result-item" id="resT2">
+          <div class="r-label">T2 目標</div>
+          <div class="r-value" id="valT2">—</div>
+          <div class="r-sub">旗形低 + 旗杆高度</div>
+        </div>
+        <div class="result-item" id="resRR">
+          <div class="r-label">R:R（至T1）</div>
+          <div class="r-value" id="valRR">—</div>
+          <div class="r-sub">需要 ≥ 2:1</div>
+        </div>
+      </div>
+      <div class="rr-verdict" id="rrVerdict"></div>
+    </div>
+  </div>
+
+  <!-- Step 4: 入場後 -->
+  <div class="section">
+    <div class="section-title"><span class="step-num">4</span> 入場後管理</div>
+    <div class="checklist">
+
+      <div class="check-item" onclick="toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">止損管理：每日收市後人手確認 Close</div>
+          <div class="check-sub">Close &lt; 止損位 → 人手賣出 ｜ 唔放 Stop Market，睇收市價</div>
+        </div>
+      </div>
+
+      <div class="check-item" onclick="toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">T1 到達 → 出一半，止損移入場價（Risk Free）</div>
+          <div class="check-sub">餘下一半繼續持倉等 T2</div>
+        </div>
+      </div>
+
+      <div class="check-item" onclick="toggle(this)">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="check-label">T2 到達 → 餘下全出</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Reset -->
+  <div style="text-align:center; margin-top:12px;">
+    <button class="reset-btn" onclick="resetAll()">↺ 重置所有勾選</button>
+  </div>
+
+</div>
+
+<script>
+  function calcBuffer() {
+    const h1 = parseFloat(document.getElementById('inH1').value);
+    const el = document.getElementById('bufferRange');
+    if (isNaN(h1) || h1 <= 0) { el.textContent = '— 至 —'; return; }
+    const lower = (h1 * 0.99).toFixed(2);
+    const upper = (h1 * 1.01).toFixed(2);
+    el.textContent = '$' + lower + ' 至 $' + upper;
+  }
+
+  function toggle(el) {
+    if (el.classList.contains('warn') || el.classList.contains('red')) return;
+    el.classList.toggle('checked');
+    updateProgress();
+  }
+
+  function toggleScored(el) {
+    if (el.classList.contains('warn') || el.classList.contains('red')) return;
+    el.classList.toggle('checked');
+    updateProgress();
+    updateQuality();
+  }
+
+  function updateQuality() {
+    const reqItems = document.querySelectorAll('.req-item');
+    const bonusItems = document.querySelectorAll('.bonus-item');
+    const reqScore = document.querySelectorAll('.req-item.checked').length;
+    const bonusScore = document.querySelectorAll('.bonus-item.checked').length;
+    const b1checked = document.querySelector('.bonus-item[data-key="b1"]').classList.contains('checked');
+    const b5checked = document.querySelector('.bonus-item[data-key="b5"]').classList.contains('checked');
+
+    const box = document.getElementById('qualityBox');
+    const scoreEl = document.getElementById('qualityScore');
+    const textEl = document.getElementById('qualityText');
+    const actionEl = document.getElementById('qualityAction');
+
+    // 只有 tick 曬 c1-c5 同 b1-b5 先顯示
+    const totalTicked = reqScore + bonusScore;
+    if (totalTicked === 0) { box.style.display = 'none'; return; }
+
+    box.style.display = 'block';
+    scoreEl.textContent = 'Required ' + reqScore + '/5　Bonus ' + bonusScore + '/5';
+
+    if (reqScore < 4) {
+      box.style.background = 'rgba(255,77,77,0.1)';
+      box.style.borderColor = '#ff4d4d';
+      textEl.style.color = '#ff4d4d';
+      textEl.textContent = '❌ 唔符合 — Required 未夠 4/5';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 跳過此股，等下一個機會';
+    } else if (reqScore >= 4 && b1checked && b5checked) {
+      box.style.background = 'rgba(0,200,150,0.1)';
+      box.style.borderColor = '#00c896';
+      textEl.style.color = '#00c896';
+      textEl.textContent = '🔥 頂級 Setup — b1+b5 通過，被震走風險最低';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 優先入場，正常倉位';
+    } else if (reqScore >= 4 && (b1checked || b5checked)) {
+      box.style.background = 'rgba(0,200,150,0.08)';
+      box.style.borderColor = '#00c896';
+      textEl.style.color = '#00c896';
+      textEl.textContent = '✅ 良好 Setup — b1 或 b5 通過';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 正常入場，留意被震走風險';
+    } else if (reqScore >= 4 && bonusScore >= 3) {
+      box.style.background = 'rgba(255,179,71,0.08)';
+      box.style.borderColor = '#ffb347';
+      textEl.style.color = '#ffb347';
+      textEl.textContent = '⚠️ 一般 Setup — Bonus 3/5 但 b1 b5 都未過';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 考慮細倉入場，R:R 要 ≥ 3:1（唔係 2:1）';
+    } else {
+      box.style.background = 'rgba(255,77,77,0.12)';
+      box.style.borderColor = '#ff4d4d';
+      textEl.style.color = '#ff4d4d';
+      textEl.textContent = '❌ 直接跳過 — b1 b5 都 Fail，Bonus < 3';
+      actionEl.style.color = '#6b7280';
+      actionEl.textContent = '→ 唔入場，等下一個更好嘅 Setup';
+    }
+  }
+
+  function updateProgress() {
+    const all = document.querySelectorAll('.check-item:not(.warn):not(.red)');
+    const checked = document.querySelectorAll('.check-item.checked').length;
+    const pct = all.length > 0 ? Math.round((checked / all.length) * 100) : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressCount').textContent = checked + ' / ' + all.length + ' 步驟';
+  }
+
+  function resetAll() {
+    document.querySelectorAll('.check-item.checked').forEach(el => el.classList.remove('checked'));
+    document.getElementById('qualityBox').style.display = 'none';
+    updateProgress();
+    ['val0236','valStop','valFlagH','valT1','valT2','valRR'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    ['res0236','resStop','resFlagH','resT1','resT2','resRR'].forEach(id => {
+      document.getElementById(id).classList.remove('active','warn-rr');
+    });
+    document.getElementById('rrVerdict').className = 'rr-verdict';
+    ['inA','inB','inFlagLow','inEntry'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  function fmt(n) { return '$' + n.toFixed(2); }
+
+  function calculate() {
+    const A = parseFloat(document.getElementById('inA').value);
+    const B = parseFloat(document.getElementById('inB').value);
+    const flagLow = parseFloat(document.getElementById('inFlagLow').value);
+    const entry = parseFloat(document.getElementById('inEntry').value);
+    if ([A,B,flagLow,entry].some(isNaN)) { alert('請填寫全部四個數字'); return; }
+    if (B <= A) { alert('B點必須大於A點'); return; }
+    if (entry <= flagLow) { alert('入場價必須大於旗形低點'); return; }
+    const poleH = B - A;
+    const fib236 = B - poleH * 0.236;
+    const stop = flagLow * 0.98;
+    const t1 = flagLow + poleH * 0.618;
+    const t2 = flagLow + poleH;
+    const risk = entry - stop;
+    const rr = (t1 - entry) / risk;
+    document.getElementById('val0236').textContent = fmt(fib236);
+    document.getElementById('valStop').textContent = fmt(stop);
+    document.getElementById('valFlagH').textContent = fmt(poleH);
+    document.getElementById('valT1').textContent = fmt(t1);
+    document.getElementById('valT2').textContent = fmt(t2);
+    document.getElementById('valRR').textContent = rr.toFixed(2) + ' : 1';
+    ['res0236','resStop','resFlagH','resT1','resT2'].forEach(id => {
+      document.getElementById(id).classList.add('active');
+      document.getElementById(id).classList.remove('warn-rr');
+    });
+    const rrEl = document.getElementById('resRR');
+    const verdict = document.getElementById('rrVerdict');
+    if (rr >= 2) {
+      rrEl.classList.add('active'); rrEl.classList.remove('warn-rr');
+      verdict.textContent = '✅ R:R ' + rr.toFixed(2) + ':1 — 符合入場標準，可以放 Limit Order！';
+      verdict.className = 'rr-verdict show pass';
+    } else {
+      rrEl.classList.add('warn-rr'); rrEl.classList.remove('active');
+      verdict.textContent = '❌ R:R ' + rr.toFixed(2) + ':1 — 唔夠 2:1，跳過此股';
+      verdict.className = 'rr-verdict show fail';
+    }
+  }
+
+  updateProgress();
+</script>
+</body>
+</html>
