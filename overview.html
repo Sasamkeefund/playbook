@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>playbook · Market</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif; }
+    body { background: #fafaf8; color: #2c2c2a; line-height: 1.6; padding: 1rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+
+    header { margin-bottom: 1.5rem; }
+    header h1 { font-size: 28px; font-weight: 600; margin-bottom: 0.3rem; }
+    header p { font-size: 13px; color: #888780; }
+
+    .nav { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+    .nav a {
+      padding: 8px 16px; font-size: 14px; font-weight: 500; text-decoration: none;
+      background: #fff; border: 1px solid #d3d1c7; border-radius: 8px; color: #2c2c2a;
+    }
+    .nav a.active { background: #378add; color: white; border-color: #378add; }
+
+    /* 大市判斷 banner */
+    .verdict {
+      padding: 20px 24px; border-radius: 12px; margin-bottom: 1.5rem; border: 2px solid;
+    }
+    .verdict .label { font-size: 12px; text-transform: uppercase; opacity: 0.7; margin-bottom: 6px; }
+    .verdict .text { font-size: 20px; font-weight: 600; }
+    .verdict .vix { font-size: 14px; margin-top: 8px; opacity: 0.85; }
+    .verdict.green   { background: #e1f5ee; border-color: #1d9e75; color: #085041; }
+    .verdict.neutral { background: #f1efe8; border-color: #b4b2a9; color: #444441; }
+    .verdict.amber   { background: #faeeda; border-color: #ba7517; color: #633806; }
+    .verdict.red     { background: #fceaea; border-color: #e24b4a; color: #791f1f; }
+
+    /* 指數卡 */
+    .indices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .idx-card { background: white; border: 1px solid #d3d1c7; border-radius: 12px; padding: 16px; text-align: center; }
+    .idx-card .name { font-size: 13px; color: #888780; font-weight: 600; }
+    .idx-card .price { font-size: 22px; font-weight: 600; margin: 4px 0; }
+    .idx-card .chg { font-size: 15px; font-weight: 600; }
+    .idx-card .pre-tag { font-size: 10px; background: #e6f1fb; color: #0c447c; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+    .positive { color: #1d9e75; }
+    .negative { color: #e24b4a; }
+    .neutral-c { color: #888780; }
+
+    /* 策略總覽 */
+    .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    .strat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+    .strat-card { background: white; border: 1px solid #d3d1c7; border-radius: 12px; padding: 14px; text-decoration: none; color: #2c2c2a; transition: all 0.2s; }
+    .strat-card:hover { border-color: #378add; }
+    .strat-card .code { font-size: 18px; font-weight: 600; color: #378add; }
+    .strat-card .sname { font-size: 12px; color: #888780; }
+    .strat-card .count { font-size: 24px; font-weight: 600; margin-top: 6px; }
+    .strat-card .new-tag { font-size: 11px; color: #097f5f; font-weight: 600; }
+
+    .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d3d1c7; font-size: 12px; color: #888780; }
+    .loading { text-align: center; padding: 2rem; color: #888780; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>playbook</h1>
+      <p id="updated">讀緊…</p>
+    </header>
+
+    <div class="nav">
+      <a href="overview.html" class="active">Market</a>
+      <a href="dashboard.html">Scanner</a>
+    </div>
+
+    <div id="verdictBox"></div>
+    <div class="indices" id="indices"></div>
+
+    <div class="section-title">今日策略總覽</div>
+    <div class="strat-grid" id="stratGrid"></div>
+
+    <div class="footer">
+      <p id="marketTime">大市數據：…</p>
+      <p id="scanTime">掃描數據：…</p>
+    </div>
+  </div>
+
+  <script>
+    const STRATEGY_NAMES = {
+      S1: '順勢交易', S2: '趨勢終結', S3: '突破交易',
+      S4: '假突破', S5: '支持阻力', S6: '圖表形態',
+    };
+
+    async function load() {
+      let market = null, scan = null;
+      try {
+        const mr = await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t=' + Date.now());
+        market = await mr.json();
+      } catch (e) {}
+      try {
+        const sr = await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t=' + Date.now());
+        scan = await sr.json();
+      } catch (e) {}
+
+      renderMarket(market);
+      renderStrategies(scan);
+
+      document.getElementById('updated').textContent = '開市前大市檢查 · Limit Order 影響';
+      document.getElementById('marketTime').textContent = '大市數據：' + (market ? market.updated : '攞唔到');
+      document.getElementById('scanTime').textContent = '掃描數據：' + (scan ? scan.updated : '攞唔到');
+    }
+
+    function renderMarket(market) {
+      const vBox = document.getElementById('verdictBox');
+      const idx = document.getElementById('indices');
+
+      if (!market || !market.verdict) {
+        vBox.innerHTML = '<div class="verdict amber"><div class="text">— 攞唔到大市數據</div></div>';
+        idx.innerHTML = '';
+        return;
+      }
+
+      const v = market.verdict;
+      vBox.innerHTML = `
+        <div class="verdict ${v.color}">
+          <div class="label">大市判斷 · Limit Order</div>
+          <div class="text">${v.text}</div>
+          ${v.vix ? `<div class="vix">${v.vix}</div>` : ''}
+        </div>
+      `;
+
+      const card = (name, q) => {
+        if (!q) return `<div class="idx-card"><div class="name">${name}</div><div class="price">—</div></div>`;
+        const cls = q.chgPct > 0 ? 'positive' : q.chgPct < 0 ? 'negative' : 'neutral-c';
+        return `
+          <div class="idx-card">
+            <div class="name">${name}</div>
+            <div class="price">${q.price}</div>
+            <div class="chg ${cls}">${q.chgPct > 0 ? '+' : ''}${q.chgPct}%</div>
+            ${q.isPremarket ? '<div class="pre-tag">Pre-market</div>' : ''}
+          </div>
+        `;
+      };
+      idx.innerHTML = card('SPY', market.spy) + card('QQQ', market.qqq) + card('VIX', market.vix);
+    }
+
+    function renderStrategies(scan) {
+      const grid = document.getElementById('stratGrid');
+      if (!scan) { grid.innerHTML = '<div class="loading">攞唔到掃描數據</div>'; return; }
+
+      grid.innerHTML = Object.keys(STRATEGY_NAMES).map(s => {
+        const sum = scan.summary[s] || { count: 0, tickers: [] };
+        // 計新入榜數量
+        let newCount = 0;
+        if (scan.stocks) {
+          newCount = scan.stocks.filter(st => st.strategies[s] && st.strategies[s].isNew).length;
+        }
+        return `
+          <a class="strat-card" href="dashboard.html">
+            <div class="code">${s}</div>
+            <div class="sname">${STRATEGY_NAMES[s]}</div>
+            <div class="count">${sum.count}</div>
+            ${newCount > 0 ? `<div class="new-tag">+${newCount} NEW</div>` : ''}
+          </a>
+        `;
+      }).join('');
+    }
+
+    load();
+  </script>
+</body>
+</html>
