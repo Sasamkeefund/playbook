@@ -133,6 +133,12 @@ def highest(values, end_idx, length):
     return max(values[end_idx - length + 1: end_idx + 1])
 
 
+def lowest(values, end_idx, length):
+    if end_idx + 1 < length:
+        return None
+    return min(values[end_idx - length + 1: end_idx + 1])
+
+
 def pct_change(values, idx, lookback):
     if idx - lookback < 0:
         return None
@@ -173,6 +179,16 @@ def eval_strategies(idx, closes, highs, lows, volumes,
 
     a5, a14 = atr5a[idx], atr14a[idx]
 
+    # bonus 用：距 EMA 百分比、近期波幅（對齊 Cowork 獨立 scanner）
+    dist_ema50 = (close - e50) / e50 * 100
+    dist_ema200 = (close - e200) / e200 * 100
+    hl5_lo = lowest(lows, idx, 5)
+    hl5_hi = highest(highs, idx, 5)
+    hiLo5 = (hl5_hi - hl5_lo) / hl5_lo * 100 if (hl5_lo and hl5_hi) else None
+    hl10_lo = lowest(lows, idx, 10)
+    hl10_hi = highest(highs, idx, 10)
+    hiLo10 = (hl10_hi - hl10_lo) / hl10_lo * 100 if (hl10_lo and hl10_hi) else None
+
     res = {}
 
     # ── S1 順勢交易（Required 5/5, Bonus 5/5）──
@@ -188,7 +204,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         e50 > e200,
         (relvol is not None and relvol < 0.9),
         (perf1w is not None and -8 <= perf1w <= 0),
-        (pct_from_high is not None and pct_from_high >= -15),
+        (pct_from_high is not None and pct_from_high < 15),
     ]
     res["S1"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 5,
                  "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
@@ -201,14 +217,8 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (relvol is not None and relvol > 2.0),
         (r < 35),
     ]
-    b = [
-        e20 < e50,
-        e50 < e200,
-        (relvol is not None and relvol > 1.5),
-        (r < 30),
-        (perf1d is not None and perf1d < -2),
-    ]
-    res["S2"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+    b = []  # Cowork 冇定義 S2 bonus（未實戰）
+    res["S2"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": 0, "ready": sum(c) >= 4,
                  "keyvals": {"RSI": round(r, 1), "1D%": round(perf1d, 1) if perf1d is not None else None}}
 
     # ── S3 突破交易（Required 4/5, Bonus 5/5）──
@@ -220,11 +230,11 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (perf3m is not None and perf3m > 10),
     ]
     b = [
-        e20 > e50,
-        (relvol is not None and relvol < 0.6),
-        (a5 is not None and a14 is not None and a5 < a14 * 0.8),
-        (perf1w is not None and perf1w > -2),
-        (pct_from_high is not None and pct_from_high >= -2),
+        close > e20,
+        close > e200,
+        (50 <= r <= 70),
+        (perf1w is not None and -3 <= perf1w <= 3),
+        (pct_from_high is not None and pct_from_high <= 2),
     ]
     res["S3"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
                  "keyvals": {"距52W高%": round(-pct_from_high, 1) if pct_from_high is not None else None, "3M%": round(perf3m, 1) if perf3m is not None else None}}
@@ -236,13 +246,8 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (perf1w is not None and -4 <= perf1w <= 2),
         (perf1m is not None and abs(perf1m) < 8),
     ]
-    b = [
-        e20 > e50,
-        (relvol is not None and relvol < 1.0),
-        (r >= 50 and r <= 60),
-        (perf1d is not None and perf1d < 0),
-    ]
-    res["S4"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 3,
+    b = []  # Cowork 冇定義 S4 bonus（未實戰）
+    res["S4"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": 0, "ready": sum(c) >= 3,
                  "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
     # ── S5 支持阻力（Required 4/4, Bonus 4/4）──
@@ -253,10 +258,11 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (perf1m is not None and -20 <= perf1m <= -5),
     ]
     b = [
-        e20 > e50,
-        (perf1m is not None and perf1m >= -15),
-        (relvol is not None and relvol < 1.0),
-        (perf3m is not None and perf3m > 10),
+        (-3 <= dist_ema50 <= 5),
+        (0 <= dist_ema200 <= 15),
+        (relvol is not None and relvol < 0.8),
+        (perf1w is not None and -5 <= perf1w <= 0),
+        (perf3m is not None and perf3m > 0),
     ]
     res["S5"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 4,
                  "keyvals": {"RSI": round(r, 1), "1M%": round(perf1m, 1) if perf1m is not None else None}}
@@ -270,11 +276,11 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (relvol is not None and relvol < 0.8),
     ]
     b = [
-        e20 > e50,
+        (hiLo5 is not None and hiLo5 < 4.0),
+        close > e200,
+        (pct_from_high is not None and pct_from_high <= 15),
+        (hiLo10 is not None and hiLo10 < 7.0),
         (perf3m is not None and perf3m > 15),
-        (relvol is not None and relvol < 0.7),
-        (a5 is not None and a14 is not None and a5 < a14),
-        (perf1d is not None and perf1d >= -1),
     ]
     res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
                  "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
