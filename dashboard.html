@@ -4,93 +4,123 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>playbook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif; }
-    body { background: #fafaf8; color: #2c2c2a; line-height: 1.6; padding: 1rem; }
-    .container { max-width: 1400px; margin: 0 auto; }
-    
-    header { margin-bottom: 2rem; }
-    header h1 { font-size: 28px; font-weight: 600; margin-bottom: 0.5rem; }
-    header p { font-size: 13px; color: #888780; }
-    
-    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
-    .tab-btn {
-      padding: 10px 16px; font-size: 14px; font-weight: 500;
-      background: #fff; border: 1px solid #d3d1c7; border-radius: 8px;
-      cursor: pointer; transition: all 0.2s;
-      color: #2c2c2a;
+    :root{
+      --bg:#0a0b12; --surface:#13141f; --surface-2:#1a1c2b; --surface-3:#20233a;
+      --border:#262a3d; --border-2:#323754;
+      --text:#e6e8f0; --dim:#8a8fa3; --faint:#5b6075;
+      --accent:#7c5cff; --accent-2:#4d8dff;
+      --up:#2ee6a6; --down:#ff5d6c; --amber:#f5b945;
+      --glow:0 0 0 1px rgba(124,92,255,.4), 0 0 18px rgba(124,92,255,.25);
     }
-    .tab-btn:hover { border-color: #888780; background: #f1efe8; }
-    .tab-btn.active {
-      background: #378add; color: white; border-color: #378add;
-    }
-    
-    .controls { display: flex; gap: 12px; margin-bottom: 1.5rem; flex-wrap: wrap; }
-    input[type="text"], select {
-      padding: 8px 12px; border: 1px solid #d3d1c7; border-radius: 6px;
-      font-size: 13px; background: white;
-    }
-    input[type="text"] { flex: 1; min-width: 150px; }
-    select { min-width: 120px; }
-    
-    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
-    .summary-card {
-      background: white; border: 1px solid #d3d1c7; border-radius: 8px;
-      padding: 12px; text-align: center;
-    }
-    .summary-card label { font-size: 11px; color: #888780; text-transform: uppercase; }
-    .summary-card .value { font-size: 20px; font-weight: 600; color: #378add; margin-top: 4px; }
-    
-    table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #d3d1c7; border-radius: 8px; overflow: hidden; }
-    thead { background: #f1efe8; }
-    th { padding: 12px; text-align: left; font-size: 11px; font-weight: 600; color: #5f5e5a; text-transform: uppercase; }
-    td { padding: 12px; border-top: 1px solid #d3d1c7; font-size: 13px; }
-    tr:hover { background: #fafaf8; }
-    
-    .ticker-cell { font-weight: 600; color: #2c2c2a; }
-    .positive { color: #639922; }
-    .negative { color: #a32d2d; }
-    .score-badge {
-      display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;
-      background: #f1efe8; color: #5f5e5a;
-    }
-    .score-badge.perfect { background: #097f5f; color: white; }
-    
-    .cond-cell { color: #639922; font-size: 14px; }
-    .cond-cell.fail { color: #a32d2d; }
-    
-    .empty { text-align: center; padding: 2rem; color: #888780; }
-    .loading { text-align: center; padding: 2rem; color: #888780; }
-    
-    .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d3d1c7; font-size: 12px; color: #888780; }
-    
-    @media (max-width: 900px) {
-      table { font-size: 12px; }
-      th, td { padding: 8px; }
-    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+    body{background:var(--bg);color:var(--text);line-height:1.55;padding:1.25rem;
+      background-image:radial-gradient(900px 400px at 12% -8%, rgba(124,92,255,.10), transparent 60%),
+                       radial-gradient(800px 380px at 92% -10%, rgba(77,141,255,.08), transparent 60%);}
+    .mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+    .container{max-width:1440px;margin:0 auto}
+
+    header{margin-bottom:1.4rem}
+    header h1{font-size:30px;font-weight:700;letter-spacing:-.5px;
+      background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+    header .sub{font-size:12px;color:var(--dim);margin-top:2px;letter-spacing:.3px}
+    .toolbar{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+    .btn{padding:9px 15px;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;
+      border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);transition:.15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn:hover{border-color:var(--accent);background:var(--surface-3)}
+    .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:#fff;box-shadow:0 4px 16px rgba(124,92,255,.35)}
+    .btn.primary:hover{filter:brightness(1.08)}
+
+    .nav{display:flex;gap:8px;margin:18px 0}
+    .nav a{padding:8px 18px;font-size:14px;font-weight:600;text-decoration:none;border-radius:10px;
+      background:var(--surface);border:1px solid var(--border);color:var(--dim);transition:.15s}
+    .nav a:hover{color:var(--text);border-color:var(--border-2)}
+    .nav a.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;border:none;box-shadow:0 4px 16px rgba(124,92,255,.3)}
+
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.3rem}
+    .tab-btn{padding:9px 16px;font-size:13px;font-weight:600;background:var(--surface);
+      border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--dim);transition:.15s}
+    .tab-btn:hover{color:var(--text);border-color:var(--border-2)}
+    .tab-btn.active{background:var(--surface-3);color:#fff;border-color:var(--accent);box-shadow:var(--glow)}
+    .tab-btn .cnt{color:var(--accent);font-weight:700}
+
+    .controls{display:flex;gap:10px;margin-bottom:1.3rem;flex-wrap:wrap}
+    input[type=text],select{padding:10px 13px;border:1px solid var(--border);border-radius:10px;
+      font-size:13px;background:var(--surface);color:var(--text);font-family:inherit}
+    input[type=text]{flex:1;min-width:160px}
+    input[type=text]::placeholder{color:var(--faint)}
+    input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,.15)}
+    select{min-width:130px;cursor:pointer}
+
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.4rem}
+    .scard{background:linear-gradient(180deg,var(--surface),var(--surface));border:1px solid var(--border);
+      border-radius:14px;padding:16px 18px;position:relative;overflow:hidden}
+    .scard::before{content:'';position:absolute;left:0;top:0;height:100%;width:3px;background:linear-gradient(180deg,var(--accent),var(--accent-2))}
+    .scard label{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+    .scard .v{font-size:26px;font-weight:700;margin-top:5px;color:#fff}
+
+    .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow-x:auto}
+    table{width:100%;border-collapse:collapse}
+    thead{background:var(--surface-2)}
+    th{padding:13px 12px;text-align:left;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+    td{padding:12px;border-top:1px solid var(--border);font-size:13px;white-space:nowrap}
+    tbody tr{transition:background .12s}
+    tbody tr:hover{background:var(--surface-2)}
+
+    .tk a{color:var(--accent-2);text-decoration:none;font-weight:700;font-size:14px}
+    .tk a:hover{color:#8fb6ff}
+    .up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--dim)}
+    .c{text-align:center;font-weight:700;font-size:14px}
+    .c.ok{color:var(--up)} .c.no{color:var(--down)} .c.na{color:var(--faint)}
+    .emacell{color:var(--dim);font-size:11.5px}
+
+    .badge{display:inline-block;padding:4px 9px;border-radius:7px;font-size:12px;font-weight:700;
+      background:var(--surface-3);color:var(--dim)}
+    .badge.perfect{background:rgba(46,230,166,.14);color:var(--up);box-shadow:0 0 0 1px rgba(46,230,166,.3)}
+
+    .new-badge{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
+      padding:3px 7px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.5px;box-shadow:0 0 12px rgba(124,92,255,.5)}
+
+    .verdict{font-size:12.5px;font-weight:500}
+    .verdict.v-green{color:var(--up)} .verdict.v-amber{color:var(--amber)} .verdict.v-red{color:var(--down)}
+
+    .empty{text-align:center;padding:2.5rem;color:var(--dim)}
+    .footer{margin-top:1.6rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--faint)}
+    .footer a{color:var(--accent-2);text-decoration:none}
+
+    /* chart modal */
+    #chartModal{display:none;position:fixed;inset:0;background:rgba(5,6,12,.8);backdrop-filter:blur(4px);z-index:1000;padding:2vh 2vw}
+    .modal-inner{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;height:96vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border)}
+    .modal-close{font-size:20px;background:none;border:none;cursor:pointer;color:var(--dim);line-height:1}
+    .modal-close:hover{color:var(--text)}
+    @media(max-width:900px){th,td{padding:9px}}
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>playbook</h1>
-      <p id="updated">更新於 ...</p>
-      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button onclick="reloadData()" id="reloadBtn" style="padding:8px 14px; font-size:13px; font-weight:500; background:#378add; color:#fff; border:none; border-radius:8px; cursor:pointer;">🔄 重新載入數據</button>
-        <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/scan.yml" target="_blank" rel="noopener" style="padding:8px 14px; font-size:13px; font-weight:500; background:#fff; color:#2c2c2a; border:1px solid #d3d1c7; border-radius:8px; text-decoration:none;">⚙️ 去 GitHub 重新掃描</a>
+      <div class="sub" id="updated">更新於 …</div>
+      <div class="toolbar">
+        <button onclick="reloadData()" id="reloadBtn" class="btn primary">🔄 重新載入數據</button>
+        <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/scan.yml" target="_blank" rel="noopener" class="btn">⚙️ 去 GitHub 重新掃描</a>
       </div>
     </header>
-    
-    <div style="display:flex; gap:8px; margin-bottom:1.5rem;">
-      <a href="overview.html" style="padding:8px 16px; font-size:14px; font-weight:500; text-decoration:none; background:#fff; border:1px solid #d3d1c7; border-radius:8px; color:#2c2c2a;">Market</a>
-      <a href="dashboard.html" style="padding:8px 16px; font-size:14px; font-weight:500; text-decoration:none; background:#378add; border:1px solid #378add; border-radius:8px; color:#fff;">Scanner</a>
+
+    <div class="nav">
+      <a href="overview.html">Market</a>
+      <a href="dashboard.html" class="active">Scanner</a>
     </div>
 
     <div class="tabs" id="tabs"></div>
-    
+
     <div class="controls">
-      <input type="text" id="searchTicker" placeholder="搜尋 Ticker（例如 NVDA）...">
+      <input type="text" id="searchTicker" placeholder="搜尋 Ticker（例如 NVDA）…">
       <select id="filterScore">
         <option value="">所有 Score</option>
         <option value="5">Perfect (5/5)</option>
@@ -103,321 +133,175 @@
         <option value="10">≥ 10 日</option>
       </select>
     </div>
-    
+
     <div class="summary" id="summary"></div>
-    
-    <div style="overflow-x: auto;">
-      <table id="table">
+
+    <div class="tablewrap">
+      <table>
         <thead>
           <tr>
-            <th style="text-align:center;width:50px;">NEW</th>
-            <th>Ticker</th>
-            <th style="text-align: right;">Close</th>
-            <th style="text-align: right;">1D%</th>
-            <th style="text-align: right;">EMA</th>
-            <th style="text-align: right;">RSI</th>
-            <th style="text-align: center;">C1</th>
-            <th style="text-align: center;">C2</th>
-            <th style="text-align: center;">C3</th>
-            <th style="text-align: center;">C4</th>
-            <th style="text-align: center;">C5</th>
-            <th style="text-align: center;">Req</th>
-            <th style="text-align: center;">Bonus</th>
-            <th style="text-align: center;">Streak</th>
-            <th style="min-width: 200px;">入場建議</th>
+            <th>NEW</th><th>Ticker</th>
+            <th style="text-align:right">Close</th><th style="text-align:right">1D%</th>
+            <th style="text-align:right">EMA</th><th style="text-align:right">RSI</th>
+            <th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th>
+            <th style="text-align:center">Req</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th>
+            <th>入場建議</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
-    
-    <div class="footer">
-      <p>實時讀取：<a href="https://github.com/Sasamkeefund/playbook" target="_blank">GitHub data.json</a></p>
-    </div>
+
+    <div class="footer"><p>實時讀取：<a href="https://github.com/Sasamkeefund/playbook" target="_blank">GitHub data.json</a></p></div>
   </div>
 
   <!-- TradingView 圖 modal -->
-  <div id="chartModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; padding:2vh 2vw;">
-    <div style="background:#fff; border-radius:12px; height:96vh; display:flex; flex-direction:column; overflow:hidden;">
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid #d3d1c7;">
-        <div style="display:flex; gap:12px; align-items:center;">
-          <button onclick="closeChart()" style="font-size:13px; font-weight:500; background:#378add; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer;">← 返 dashboard</button>
-          <strong id="chartTitle" style="font-size:16px;">—</strong>
+  <div id="chartModal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <div style="display:flex;gap:12px;align-items:center">
+          <button onclick="closeChart()" class="btn primary" style="padding:7px 13px">← 返 Scanner</button>
+          <strong id="chartTitle" class="mono" style="font-size:16px">—</strong>
         </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <a id="chartOpenTV" href="#" target="_blank" rel="noopener" style="font-size:13px; color:#378add; text-decoration:none;">喺 TradingView 開 ↗</a>
-          <button onclick="closeChart()" style="font-size:20px; background:none; border:none; cursor:pointer; color:#888780; line-height:1;">✕</button>
+        <div style="display:flex;gap:12px;align-items:center">
+          <a id="chartOpenTV" href="#" target="_blank" rel="noopener" style="font-size:13px;color:var(--accent-2);text-decoration:none">喺 TradingView 開 ↗</a>
+          <button onclick="closeChart()" class="modal-close">✕</button>
         </div>
       </div>
-      <div id="chartContainer" style="flex:1;"></div>
+      <div id="chartContainer" style="flex:1"></div>
     </div>
   </div>
 
   <script>
-    function openChart(ticker) {
-      document.getElementById('chartTitle').textContent = ticker;
-      document.getElementById('chartOpenTV').href = 'https://www.tradingview.com/chart/?symbol=' + ticker;
-      const c = document.getElementById('chartContainer');
-      c.innerHTML = '';
+    const STRATEGY_NAMES={S1:'順勢交易',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態'};
+    let globalData=null, activeTab='S1';
 
-      // TradingView 官方嵌入結構
-      const container = document.createElement('div');
-      container.className = 'tradingview-widget-container';
-      container.style.height = '100%';
-      container.style.width = '100%';
-
-      const widgetDiv = document.createElement('div');
-      widgetDiv.className = 'tradingview-widget-container__widget';
-      widgetDiv.style.height = '100%';
-      widgetDiv.style.width = '100%';
-      container.appendChild(widgetDiv);
-
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-      script.async = true;
-      script.textContent = JSON.stringify({
-        autosize: true,
-        symbol: ticker,
-        interval: 'D',
-        timezone: 'Etc/UTC',
-        theme: 'light',
-        style: '1',
-        locale: 'en',
-        withdateranges: true,
-        allow_symbol_change: true,
-        studies: ['RSI@tv-basicstudies'],
-        support_host: 'https://www.tradingview.com'
-      });
-      container.appendChild(script);
-
-      c.appendChild(container);
-      document.getElementById('chartModal').style.display = 'block';
-    }
-    function closeChart() {
-      document.getElementById('chartModal').style.display = 'none';
-      document.getElementById('chartContainer').innerHTML = '';
-    }
-    document.getElementById('chartModal').addEventListener('click', function(e) {
-      if (e.target === this) closeChart();
-    });
-    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeChart(); });
-  </script>
-
-
-  <script>
-    const STRATEGY_NAMES = {
-      S1: { name: '順勢交易', dir: 'Long', thresh: '5/5' },
-      S2: { name: '趨勢終結', dir: 'Short', thresh: '4/5' },
-      S3: { name: '突破交易', dir: 'Long', thresh: '4/5' },
-      S4: { name: '假突破', dir: 'L/S', thresh: '3/4' },
-      S5: { name: '支持阻力', dir: 'Long', thresh: '4/4' },
-      S6: { name: '圖表形態', dir: 'Long', thresh: '4/5' },
-    };
-    
-    const COND_LABELS = {
-      S1: ['Price > EMA20', 'Price > EMA50', 'Price > EMA200↑', 'RSI 40-70', '3M>5% 1M<25%'],
-      S2: ['Close < EMA50', 'Close < EMA200', '1D% < -5%', 'RelVol > 2', 'RSI < 35'],
-      S3: ['距52W高≤4%', 'Close > EMA50', 'RelVol<0.75', 'ATR5<ATR14', '3M% > 10%'],
-      S4: ['距52W高≤8%', 'RSI 45-65', '1W% -4~2%', '1M% < ±8%', ''],
-      S5: ['Close > EMA50', 'Close > EMA200', 'RSI 30-55', '1M% -20~-5%', ''],
-      S6: ['Close > EMA20', 'Close > EMA50', '1M% > 8%', '1W% -5~0%', 'RelVol < 0.8'],
-    };
-    
-    // 入場建議邏輯 — 照返 playbook 每個策略嘅 bonus 規則
-    function getVerdict(tab, strat) {
-      const req = strat.score;
-      const bonus = strat.bonusScore;
-      const b = strat.bonus || [];
-      const reqMax = (tab === 'S4' || tab === 'S5') ? 4 : 5;
-
-      if (tab === 'S1') {
-        const b2 = b[1], b3 = b[2], b4 = b[3];
-        if (req < reqMax) return { text: '\ud83d\udc40 候選 — 等收市確認返上 EMA20', color: 'amber' };
-        if (bonus <= 2) return { text: '❌ Bonus 唔夠 — 唔入', color: 'red' };
-        if (!b2) return { text: '⚠️ b2 三線未齊 — 極細倉或唔入', color: 'amber' };
-        if (bonus >= 4) return { text: '\ud83d\udd25 高質候選 — 入場前用互動檢查表確認假突破', color: 'green' };
-        if (b3 && b4) return { text: '✅ 中質候選 — 縮量+回調中，互動檢查表確認', color: 'green' };
-        return { text: '⚠️ b3+b4 未同時過 — 等縮量回調', color: 'amber' };
-      }
-
-      if (tab === 'S6') {
-        const b1 = b[0], b5 = b[4];
-        if (req < reqMax) return { text: '— 未 ready', color: 'red' };
-        if (b1 && b5) return { text: '\ud83d\udd25 頂級 — 優先入場，正常倉', color: 'green' };
-        if (b1 || b5) return { text: '✅ 良好 — 正常入場', color: 'green' };
-        if (bonus >= 3) return { text: '⚠️ 一般 — 細倉，R:R ≥ 3:1', color: 'amber' };
-        return { text: '❌ 跳過 — b1 b5 都 Fail，Bonus < 3', color: 'red' };
-      }
-
-      if (tab === 'S3') {
-        if (req < reqMax) return { text: '— 未 ready', color: 'red' };
-        if (bonus >= 4) return { text: '\ud83d\udd25 高質 Buildup — Set Alert，突破用手法 A/B/C', color: 'green' };
-        if (bonus >= 2) return { text: '✅ Buildup 候選 — Set Alert 等突破（R:R 參考）', color: 'green' };
-        return { text: '⚠️ Buildup 質素偏低 — 留意縮量收窄', color: 'amber' };
-      }
-
-      if (tab === 'S5') {
-        if (req < reqMax) return { text: '— 未 ready', color: 'red' };
-        if (bonus >= 3) return { text: '✅ 可深入 — 人手確認 0.786 + 推進浪', color: 'green' };
-        return { text: '⚠️ 人手確認整理區 + 0.786 Fib', color: 'amber' };
-      }
-
-      if (req >= reqMax || strat.ready) return { text: '（未實戰）Bonus ' + bonus, color: 'amber' };
-      return { text: '—', color: 'red' };
+    function getVerdict(tab,strat){
+      const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
+      const reqMax=(tab==='S4'||tab==='S5')?4:5;
+      if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
+        if(req<reqMax)return{text:'👀 候選 — 等收市確認返上 EMA20',color:'amber'};
+        if(bonus<=2)return{text:'❌ Bonus 唔夠 — 唔入',color:'red'};
+        if(!b2)return{text:'⚠️ b2 三線未齊 — 極細倉或唔入',color:'amber'};
+        if(bonus>=4)return{text:'🔥 高質候選 — 入場前用互動檢查表確認假突破',color:'green'};
+        if(b3&&b4)return{text:'✅ 中質候選 — 縮量+回調中，互動檢查表確認',color:'green'};
+        return{text:'⚠️ b3+b4 未同時過 — 等縮量回調',color:'amber'};}
+      if(tab==='S6'){const b1=b[0],b5=b[4];
+        if(req<reqMax)return{text:'— 未 ready',color:'red'};
+        if(b1&&b5)return{text:'🔥 頂級 — 優先入場，正常倉',color:'green'};
+        if(b1||b5)return{text:'✅ 良好 — 正常入場',color:'green'};
+        if(bonus>=3)return{text:'⚠️ 一般 — 細倉，R:R ≥ 3:1',color:'amber'};
+        return{text:'❌ 跳過 — b1 b5 都 Fail，Bonus < 3',color:'red'};}
+      if(tab==='S3'){
+        if(req<reqMax)return{text:'— 未 ready',color:'red'};
+        if(bonus>=4)return{text:'🔥 高質 Buildup — Set Alert，突破用手法 A/B/C',color:'green'};
+        if(bonus>=2)return{text:'✅ Buildup 候選 — Set Alert 等突破（R:R 參考）',color:'green'};
+        return{text:'⚠️ Buildup 質素偏低 — 留意縮量收窄',color:'amber'};}
+      if(tab==='S5'){
+        if(req<reqMax)return{text:'— 未 ready',color:'red'};
+        if(bonus>=3)return{text:'✅ 可深入 — 人手確認 0.786 + 推進浪',color:'green'};
+        return{text:'⚠️ 人手確認整理區 + 0.786 Fib',color:'amber'};}
+      if(req>=reqMax||strat.ready)return{text:'（未實戰）Bonus '+bonus,color:'amber'};
+      return{text:'—',color:'red'};
     }
 
-    let globalData = null;
-    let activeTab = 'S1';
-    
-    async function loadData() {
-      try {
-        const url = 'https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t=' + Date.now();
-        const resp = await fetch(url);
-        const data = await resp.json();
-        globalData = data;
-        document.getElementById('updated').textContent = `更新於 ${data.updated}`;
+    async function loadData(){
+      try{
+        const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
+        globalData=await r.json();
+        document.getElementById('updated').textContent='更新於 '+globalData.updated;
         render();
-      } catch (e) {
-        document.getElementById('updated').textContent = '❌ 無法讀取 data.json';
-      }
+      }catch(e){document.getElementById('updated').textContent='❌ 無法讀取 data.json';}
+    }
+    async function reloadData(){
+      const b=document.getElementById('reloadBtn'),o=b.textContent;
+      b.textContent='⏳ 載入緊…';b.disabled=true;
+      await loadData();
+      b.textContent='✅ 已更新';setTimeout(()=>{b.textContent=o;b.disabled=false;},1500);
     }
 
-    async function reloadData() {
-      const btn = document.getElementById('reloadBtn');
-      const orig = btn.textContent;
-      btn.textContent = '⏳ 載入緊…';
-      btn.disabled = true;
-      await loadData();
-      btn.textContent = '✅ 已更新';
-      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+    function getFilteredStocks(){
+      if(!globalData)return[];
+      let s=globalData.stocks.filter(x=>x.strategies[activeTab].ready);
+      const q=document.getElementById('searchTicker').value.toUpperCase();
+      if(q)s=s.filter(x=>x.ticker.includes(q));
+      const sf=document.getElementById('filterScore').value;
+      if(sf)s=s.filter(x=>x.strategies[activeTab].score>=parseInt(sf));
+      const stf=document.getElementById('filterStreak').value;
+      if(stf)s=s.filter(x=>x.strategies[activeTab].streak>=parseInt(stf));
+      return s;
     }
-    
-    function getFilteredStocks() {
-      if (!globalData) return [];
-      let stocks = globalData.stocks.filter(s => s.strategies[activeTab].ready);
-      
-      const search = document.getElementById('searchTicker').value.toUpperCase();
-      if (search) {
-        stocks = stocks.filter(s => s.ticker.includes(search));
-      }
-      
-      const scoreFilter = document.getElementById('filterScore').value;
-      if (scoreFilter) {
-        const minScore = parseInt(scoreFilter);
-        stocks = stocks.filter(s => s.strategies[activeTab].score >= minScore);
-      }
-      
-      const streakFilter = document.getElementById('filterStreak').value;
-      if (streakFilter) {
-        const minStreak = parseInt(streakFilter);
-        stocks = stocks.filter(s => s.strategies[activeTab].streak >= minStreak);
-      }
-      
-      return stocks;
-    }
-    
-    function renderTabs() {
-      const tabsHtml = Object.entries(STRATEGY_NAMES).map(([key, val]) => {
-        const count = globalData.stocks.filter(s => s.strategies[key].ready).length;
-        const active = key === activeTab ? 'active' : '';
-        return `<button class="tab-btn ${active}" onclick="switchTab('${key}')">${key} <span style="opacity:0.6">(${count})</span></button>`;
+    function renderTabs(){
+      document.getElementById('tabs').innerHTML=Object.entries(STRATEGY_NAMES).map(([k])=>{
+        const c=globalData.stocks.filter(x=>x.strategies[k].ready).length;
+        return `<button class="tab-btn ${k===activeTab?'active':''}" onclick="switchTab('${k}')">${k} <span class="cnt">${c}</span></button>`;
       }).join('');
-      document.getElementById('tabs').innerHTML = tabsHtml;
     }
-    
-    function renderSummary() {
-      const meta = STRATEGY_NAMES[activeTab];
-      const stocks = globalData.stocks.filter(s => s.strategies[activeTab].ready);
-      const maxScore = activeTab === 'S5' ? 4 : activeTab === 'S4' ? 4 : 5;
-      const perfect = stocks.filter(s => s.strategies[activeTab].score === maxScore).length;
-      const avgBonus = stocks.length ? (stocks.reduce((a, s) => a + s.strategies[activeTab].bonusScore, 0) / stocks.length).toFixed(1) : 0;
-      
-      const html = `
-        <div class="summary-card">
-          <label>Ready</label>
-          <div class="value">${stocks.length}</div>
-        </div>
-        <div class="summary-card">
-          <label>Perfect</label>
-          <div class="value">${perfect}</div>
-        </div>
-        <div class="summary-card">
-          <label>Avg Bonus</label>
-          <div class="value">${avgBonus}</div>
-        </div>
-        <div class="summary-card">
-          <label>Max Streak</label>
-          <div class="value">${stocks.length ? Math.max(...stocks.map(s => s.strategies[activeTab].streak)) : 0}</div>
-        </div>
-      `;
-      document.getElementById('summary').innerHTML = html;
+    function renderSummary(){
+      const s=globalData.stocks.filter(x=>x.strategies[activeTab].ready);
+      const mx=(activeTab==='S5'||activeTab==='S4')?4:5;
+      const perfect=s.filter(x=>x.strategies[activeTab].score===mx).length;
+      const avgB=s.length?(s.reduce((a,x)=>a+x.strategies[activeTab].bonusScore,0)/s.length).toFixed(1):0;
+      const mxStreak=s.length?Math.max(...s.map(x=>x.strategies[activeTab].streak)):0;
+      document.getElementById('summary').innerHTML=
+        `<div class="scard"><label>Ready</label><div class="v">${s.length}</div></div>
+         <div class="scard"><label>Perfect</label><div class="v">${perfect}</div></div>
+         <div class="scard"><label>Avg Bonus</label><div class="v mono">${avgB}</div></div>
+         <div class="scard"><label>Max Streak</label><div class="v mono">${mxStreak}</div></div>`;
     }
-    
-    function renderTable() {
-      const stocks = getFilteredStocks();
-      const maxScore = activeTab === 'S5' ? 4 : activeTab === 'S4' ? 4 : 5;
-      const maxBonus = activeTab === 'S5' ? 4 : activeTab === 'S4' ? 4 : 5;
-      const condLabels = COND_LABELS[activeTab];
-      const c5Exist = condLabels[4];
-      
-      let html = '';
-      if (stocks.length === 0) {
-        html = `<tr><td colspan="15" class="empty">No stocks match filters</td></tr>`;
-      } else {
-        html = stocks.map(s => {
-          const strat = s.strategies[activeTab];
-          const chgClass = s.chgPct > 0 ? 'positive' : s.chgPct < 0 ? 'negative' : '';
-          const verdict = getVerdict(activeTab, strat);
-          
-          const cond1 = `<td style="text-align: center; color: ${strat.conds[0] ? '#639922' : '#a32d2d'};">` + (strat.conds[0] ? '✓' : '✗') + '</td>';
-          const cond2 = `<td style="text-align: center; color: ${strat.conds[1] ? '#639922' : '#a32d2d'};">` + (strat.conds[1] ? '✓' : '✗') + '</td>';
-          const cond3 = `<td style="text-align: center; color: ${strat.conds[2] ? '#639922' : '#a32d2d'};">` + (strat.conds[2] ? '✓' : '✗') + '</td>';
-          const cond4 = `<td style="text-align: center; color: ${strat.conds[3] ? '#639922' : '#a32d2d'};">` + (strat.conds[3] ? '✓' : '✗') + '</td>';
-          const cond5 = c5Exist ? `<td style="text-align: center; color: ${strat.conds[4] ? '#639922' : '#a32d2d'};">` + (strat.conds[4] ? '✓' : '✗') + '</td>' : '<td style="text-align: center;">–</td>';
-          
-          return `
-            <tr>
-              <td style="text-align:center;">${strat.isNew ? '<span style="background:#097f5f;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">NEW</span>' : ''}</td>
-              <td class="ticker-cell"><a href="#" onclick="openChart('${s.ticker}'); return false;" style="color:#378add;text-decoration:none;">${s.ticker} 📈</a></td>
-              <td style="text-align: right;">$${s.close.toFixed(2)}</td>
-              <td style="text-align: right;" class="${chgClass}">
-                ${s.chgPct > 0 ? '+' : ''}${s.chgPct.toFixed(2)}%
-              </td>
-              <td style="text-align: right; font-size: 11px; color: #888780;">
-                ${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}
-              </td>
-              <td style="text-align: right;">${s.rsi.toFixed(1)}</td>
-              ${cond1}${cond2}${cond3}${cond4}${cond5}
-              <td style="text-align: center;"><span class="score-badge ${strat.score === maxScore ? 'perfect' : ''}">${strat.score}/${maxScore}</span></td>
-              <td style="text-align: center;"><span class="score-badge ${strat.bonusScore >= 3 ? 'perfect' : ''}">${strat.bonusScore}/${maxBonus}</span></td>
-              <td style="text-align: center; font-weight: 600;">${strat.streak}</td>
-              <td style="font-size: 12px; color: ${verdict.color === 'green' ? '#097f5f' : verdict.color === 'amber' ? '#854f0b' : '#a32d2d'};">${verdict.text}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-      document.getElementById('tbody').innerHTML = html;
+    function renderTable(){
+      const stocks=getFilteredStocks();
+      const mx=(activeTab==='S5'||activeTab==='S4')?4:5, mxB=mx;
+      const c5Exist=!(activeTab==='S4'||activeTab==='S5');
+      const tb=document.getElementById('tbody');
+      if(!stocks.length){tb.innerHTML='<tr><td colspan="15" class="empty">No stocks match filters</td></tr>';return;}
+      tb.innerHTML=stocks.map(s=>{
+        const st=s.strategies[activeTab];
+        const ch=s.chgPct>0?'up':s.chgPct<0?'down':'flat';
+        const v=getVerdict(activeTab,st);
+        const cell=(i)=>{ if(i===4&&!c5Exist)return '<td class="c na">–</td>';
+          return `<td class="c ${st.conds[i]?'ok':'no'}">${st.conds[i]?'✓':'✗'}</td>`;};
+        return `<tr>
+          <td>${st.isNew?'<span class="new-badge">NEW</span>':''}</td>
+          <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a></td>
+          <td class="mono" style="text-align:right">$${s.close.toFixed(2)}</td>
+          <td class="mono ${ch}" style="text-align:right">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</td>
+          <td class="mono emacell" style="text-align:right">${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}</td>
+          <td class="mono" style="text-align:right">${s.rsi.toFixed(1)}</td>
+          ${cell(0)}${cell(1)}${cell(2)}${cell(3)}${cell(4)}
+          <td style="text-align:center"><span class="badge ${st.score===mx?'perfect':''}">${st.score}/${mx}</span></td>
+          <td style="text-align:center"><span class="badge ${st.bonusScore>=3?'perfect':''}">${st.bonusScore}/${mxB}</span></td>
+          <td class="mono" style="text-align:center;font-weight:700">${st.streak}</td>
+          <td class="verdict v-${v.color}">${v.text}</td>
+        </tr>`;
+      }).join('');
     }
-    
-    function switchTab(tab) {
-      activeTab = tab;
-      document.getElementById('searchTicker').value = '';
-      document.getElementById('filterScore').value = '';
-      document.getElementById('filterStreak').value = '';
-      render();
+    function switchTab(t){activeTab=t;
+      document.getElementById('searchTicker').value='';
+      document.getElementById('filterScore').value='';
+      document.getElementById('filterStreak').value='';
+      render();}
+    function render(){renderTabs();renderSummary();renderTable();}
+    document.getElementById('searchTicker').addEventListener('input',renderTable);
+    document.getElementById('filterScore').addEventListener('change',renderTable);
+    document.getElementById('filterStreak').addEventListener('change',renderTable);
+
+    function openChart(ticker){
+      document.getElementById('chartTitle').textContent=ticker;
+      document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol='+ticker;
+      const c=document.getElementById('chartContainer');c.innerHTML='';
+      const cont=document.createElement('div');cont.className='tradingview-widget-container';cont.style.height='100%';cont.style.width='100%';
+      const w=document.createElement('div');w.className='tradingview-widget-container__widget';w.style.height='100%';w.style.width='100%';cont.appendChild(w);
+      const sc=document.createElement('script');sc.type='text/javascript';
+      sc.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';sc.async=true;
+      sc.textContent=JSON.stringify({autosize:true,symbol:ticker,interval:'D',timezone:'Etc/UTC',theme:'dark',style:'1',locale:'en',withdateranges:true,allow_symbol_change:true,studies:['RSI@tv-basicstudies'],support_host:'https://www.tradingview.com'});
+      cont.appendChild(sc);c.appendChild(cont);
+      document.getElementById('chartModal').style.display='block';
     }
-    
-    function render() {
-      renderTabs();
-      renderSummary();
-      renderTable();
-    }
-    
-    document.getElementById('searchTicker').addEventListener('input', () => renderTable());
-    document.getElementById('filterScore').addEventListener('change', () => renderTable());
-    document.getElementById('filterStreak').addEventListener('change', () => renderTable());
-    
+    function closeChart(){document.getElementById('chartModal').style.display='none';document.getElementById('chartContainer').innerHTML='';}
+    document.getElementById('chartModal').addEventListener('click',function(e){if(e.target===this)closeChart();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')closeChart();});
+
     loadData();
   </script>
 </body>
