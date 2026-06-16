@@ -1,39 +1,35 @@
-name: Daily S1 Scanner
+name: Nightly S1-S6 Scan
 
 on:
   schedule:
     - cron: '0 21 * * 1-5'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   scan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
-      - name: Run S1 Scanner
-        env:
-          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
-        run: python scan_s1.py
+      - name: Install deps
+        run: pip install requests
+
+      - name: Run scanner
+        run: python scan.py
 
       - name: Commit data.json
         run: |
-          git config user.name "GitHub Actions"
+          git config user.name  "github-actions"
           git config user.email "actions@github.com"
           git add data.json
-          git stash
-          git pull --rebase origin main
-          git stash pop
-          git add data.json
-          git diff --staged --quiet || git commit -m "Auto: Update S1 scan $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git diff --staged --quiet || git commit -m "nightly scan $(date -u +%Y-%m-%d)"
           git push
