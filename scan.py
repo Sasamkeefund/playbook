@@ -409,9 +409,26 @@ def build_record(ticker, hist):
     }
 
 
+def load_previous_ready():
+    """讀返上次 data.json 入面每個策略 ready 嘅 list，用嚟比較邊隻係新入。"""
+    prev = {s: set() for s in STRATEGY_META}
+    try:
+        with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            old = json.load(f)
+        for s in STRATEGY_META:
+            tickers = old.get("summary", {}).get(s, {}).get("tickers", [])
+            prev[s] = set(tickers)
+        print(f"讀到上次 list（S1 上次 {len(prev['S1'])} 隻）")
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        print("冇上次 data.json（第一次跑），全部唔標 NEW")
+    return prev
+
+
 def main():
     tickers = get_sp500_tickers()
     print(f"掃描 {len(tickers)} 隻股…")
+
+    prev_ready = load_previous_ready()
 
     records = []
     ok = 0
@@ -430,6 +447,13 @@ def main():
     for s in STRATEGY_META:
         ready = [r["ticker"] for r in records if r["strategies"][s]["ready"]]
         summary[s] = {"count": len(ready), "tickers": ready}
+
+    # 標記每隻股每個策略係咪「新入」（上次唔 ready，今次 ready）
+    for r in records:
+        for s in STRATEGY_META:
+            is_ready_now = r["strategies"][s]["ready"]
+            was_ready = r["ticker"] in prev_ready[s]
+            r["strategies"][s]["isNew"] = bool(is_ready_now and not was_ready)
 
     output = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
