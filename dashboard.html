@@ -71,7 +71,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>投機十步曲 · S1–S6 掃描</h1>
+      <h1>playbook</h1>
       <p id="updated">更新於 ...</p>
     </header>
     
@@ -178,7 +178,7 @@
       const tabsHtml = Object.entries(STRATEGY_NAMES).map(([key, val]) => {
         const count = globalData.stocks.filter(s => s.strategies[key].ready).length;
         const active = key === activeTab ? 'active' : '';
-        return `<button class="tab-btn ${active}" onclick="switchTab('${key}')">${key} ${val.name} <span style="opacity:0.6">(${count})</span></button>`;
+        return `<button class="tab-btn ${active}" onclick="switchTab('${key}')">${key} <span style="opacity:0.6">(${count})</span></button>`;
       }).join('');
       document.getElementById('tabs').innerHTML = tabsHtml;
     }
