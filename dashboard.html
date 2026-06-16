@@ -156,7 +156,8 @@
       iframe.style.height = '100%';
       iframe.style.border = 'none';
       iframe.src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(ticker)
-        + '&interval=D&theme=light&style=1&hide_side_toolbar=0&studies=[]&withdateranges=1';
+        + '&interval=D&theme=light&style=1&hide_side_toolbar=0&withdateranges=1'
+        + '&studies=' + encodeURIComponent('["RSI@tv-basicstudies"]');
       c.appendChild(iframe);
       document.getElementById('chartModal').style.display = 'block';
     }
