@@ -24,9 +24,9 @@
     .mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
     .container{max-width:1440px;margin:0 auto}
 
-    .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
-      padding:11px 16px;margin-bottom:1.4rem;background:rgba(19,20,31,.92);backdrop-filter:blur(10px);
-      border:1px solid var(--border);border-radius:14px}
+    .topbar{position:sticky;top:0;z-index:50;background:rgba(19,20,31,.92);backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--border);margin:-1.25rem -1.25rem 1.4rem;padding:11px 1.25rem}
+    .topbar-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
     .brand{font-size:20px;font-weight:700;letter-spacing:-.3px;background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
     .topnav{display:flex;gap:6px}
     .topnav a{padding:7px 16px;font-size:14px;font-weight:600;text-decoration:none;border-radius:9px;color:var(--dim);transition:.15s}
@@ -113,8 +113,8 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="topbar">
+  <div class="topbar">
+    <div class="topbar-inner">
       <div class="brand">playbook</div>
       <nav class="topnav">
         <a href="overview.html">Market</a>
@@ -126,7 +126,9 @@
         <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/scan.yml" target="_blank" rel="noopener" class="btn" style="padding:7px 12px">⚙️ 掃描</a>
       </div>
     </div>
+  </div>
 
+  <div class="container">
     <div class="tabs" id="tabs"></div>
 
     <div class="controls">
