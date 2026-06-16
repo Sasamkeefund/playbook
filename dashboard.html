@@ -8,7 +8,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif; }
     body { background: #fafaf8; color: #2c2c2a; line-height: 1.6; padding: 1rem; }
-    .container { max-width: 1200px; margin: 0 auto; }
+    .container { max-width: 1400px; margin: 0 auto; }
     
     header { margin-bottom: 2rem; }
     header h1 { font-size: 28px; font-weight: 600; margin-bottom: 0.5rem; }
@@ -44,7 +44,7 @@
     
     table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #d3d1c7; border-radius: 8px; overflow: hidden; }
     thead { background: #f1efe8; }
-    th { padding: 12px; text-align: left; font-size: 12px; font-weight: 600; color: #5f5e5a; text-transform: uppercase; }
+    th { padding: 12px; text-align: left; font-size: 11px; font-weight: 600; color: #5f5e5a; text-transform: uppercase; }
     td { padding: 12px; border-top: 1px solid #d3d1c7; font-size: 13px; }
     tr:hover { background: #fafaf8; }
     
@@ -57,15 +57,18 @@
     }
     .score-badge.perfect { background: #097f5f; color: white; }
     
-    .conditions { font-size: 11px; }
-    .cond-item { display: inline-block; margin-right: 6px; padding: 2px 6px; background: #f1efe8; border-radius: 3px; }
-    .cond-item.pass { background: #ead7c3; color: #633806; }
-    .cond-item.fail { background: #f0d4d4; color: #712b13; }
+    .cond-cell { color: #639922; font-size: 14px; }
+    .cond-cell.fail { color: #a32d2d; }
     
     .empty { text-align: center; padding: 2rem; color: #888780; }
     .loading { text-align: center; padding: 2rem; color: #888780; }
     
     .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d3d1c7; font-size: 12px; color: #888780; }
+    
+    @media (max-width: 900px) {
+      table { font-size: 12px; }
+      th, td { padding: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -94,26 +97,29 @@
     
     <div class="summary" id="summary"></div>
     
-    <table id="table">
-      <thead>
-        <tr>
-          <th style="min-width: 60px;">Ticker</th>
-          <th style="text-align: right; min-width: 55px;">Close</th>
-          <th style="text-align: right; min-width: 45px;">1D%</th>
-          <th style="text-align: right; min-width: 120px;">EMA20/50/200</th>
-          <th style="text-align: right; min-width: 40px;">RSI</th>
-          <th style="min-width: 40px; text-align: center;" id="c1-header">C1</th>
-          <th style="min-width: 40px; text-align: center;" id="c2-header">C2</th>
-          <th style="min-width: 40px; text-align: center;" id="c3-header">C3</th>
-          <th style="min-width: 40px; text-align: center;" id="c4-header">C4</th>
-          <th style="min-width: 40px; text-align: center;" id="c5-header" style="display: none;">C5</th>
-          <th style="text-align: center; min-width: 60px;">Req</th>
-          <th style="text-align: center; min-width: 60px;">Bonus</th>
-          <th style="text-align: center; min-width: 50px;">Streak</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+    <div style="overflow-x: auto;">
+      <table id="table">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th style="text-align: right;">Close</th>
+            <th style="text-align: right;">1D%</th>
+            <th style="text-align: right;">EMA</th>
+            <th style="text-align: right;">RSI</th>
+            <th style="text-align: center;">C1</th>
+            <th style="text-align: center;">C2</th>
+            <th style="text-align: center;">C3</th>
+            <th style="text-align: center;">C4</th>
+            <th style="text-align: center;">C5</th>
+            <th style="text-align: center;">Req</th>
+            <th style="text-align: center;">Bonus</th>
+            <th style="text-align: center;">Streak</th>
+            <th style="min-width: 200px;">入場建議</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
     
     <div class="footer">
       <p>實時讀取：<a href="https://github.com/Sasamkeefund/playbook" target="_blank">GitHub data.json</a></p>
@@ -131,14 +137,57 @@
     };
     
     const COND_LABELS = {
-      S1: ['Close > EMA20', 'Close > EMA50', 'Close > EMA200\n(slope↑)', 'RSI 40-70', 'Perf: 3M>5%\n1M<25%'],
+      S1: ['Price > EMA20', 'Price > EMA50', 'Price > EMA200↑', 'RSI 40-70', '3M>5% 1M<25%'],
       S2: ['Close < EMA50', 'Close < EMA200', '1D% < -5%', 'RelVol > 2', 'RSI < 35'],
-      S3: ['距52W高≤4%', 'Close > EMA50', 'RelVol < 0.75\nVol下降', 'ATR5 < ATR14', '3M% > 10%'],
-      S4: ['距52W高≤8%', 'RSI 45-65', '1W% -4~2%', '1M% < ±8%', '–'],
-      S5: ['Close > EMA50', 'Close > EMA200', 'RSI 30-55', '1M% -20~-5%', '–'],
+      S3: ['距52W高≤4%', 'Close > EMA50', 'RelVol<0.75', 'ATR5<ATR14', '3M% > 10%'],
+      S4: ['距52W高≤8%', 'RSI 45-65', '1W% -4~2%', '1M% < ±8%', ''],
+      S5: ['Close > EMA50', 'Close > EMA200', 'RSI 30-55', '1M% -20~-5%', ''],
       S6: ['Close > EMA20', 'Close > EMA50', '1M% > 8%', '1W% -5~0%', 'RelVol < 0.8'],
     };
     
+    // 入場建議邏輯 — 照返 playbook 每個策略嘅 bonus 規則
+    function getVerdict(tab, strat) {
+      const req = strat.score;
+      const bonus = strat.bonusScore;
+      const b = strat.bonus || [];
+      const reqMax = (tab === 'S4' || tab === 'S5') ? 4 : 5;
+
+      if (tab === 'S1') {
+        const b2 = b[1], b3 = b[2], b4 = b[3];
+        if (req < reqMax) return { text: '\ud83d\udc40 假突破候選 — 等收市確認返上 EMA20', color: 'amber' };
+        if (bonus <= 2) return { text: '❌ Bonus 唔夠 — 唔入', color: 'red' };
+        if (!b2) return { text: '⚠️ b2 三線未齊 — 極細倉或唔入', color: 'amber' };
+        if (bonus >= 4) return { text: '\ud83d\udd25 高質 — 等假突破入場，正常倉', color: 'green' };
+        if (b3 && b4) return { text: '✅ 中質 — 可以入，正常倉', color: 'green' };
+        return { text: '⚠️ b3+b4 未同時過 — 等縮量回調', color: 'amber' };
+      }
+
+      if (tab === 'S6') {
+        const b1 = b[0], b5 = b[4];
+        if (req < reqMax) return { text: '— 未 ready', color: 'red' };
+        if (b1 && b5) return { text: '\ud83d\udd25 頂級 — 優先入場，正常倉', color: 'green' };
+        if (b1 || b5) return { text: '✅ 良好 — 正常入場', color: 'green' };
+        if (bonus >= 3) return { text: '⚠️ 一般 — 細倉，R:R ≥ 3:1', color: 'amber' };
+        return { text: '❌ 跳過 — b1 b5 都 Fail，Bonus < 3', color: 'red' };
+      }
+
+      if (tab === 'S3') {
+        if (req < reqMax) return { text: '— 未 ready', color: 'red' };
+        if (bonus >= 4) return { text: '\ud83d\udd25 高質突破 — 留意手法 A/B/C', color: 'green' };
+        if (bonus >= 2) return { text: '✅ 可考慮 — 確認 R:R 同手法', color: 'green' };
+        return { text: '⚠️ Bonus 偏低 — 確認 R:R', color: 'amber' };
+      }
+
+      if (tab === 'S5') {
+        if (req < reqMax) return { text: '— 未 ready', color: 'red' };
+        if (bonus >= 3) return { text: '✅ 可深入 — 人手確認 0.786 + 推進浪', color: 'green' };
+        return { text: '⚠️ 人手確認整理區 + 0.786 Fib', color: 'amber' };
+      }
+
+      if (req >= reqMax || strat.ready) return { text: '（未實戰）Bonus ' + bonus, color: 'amber' };
+      return { text: '—', color: 'red' };
+    }
+
     let globalData = null;
     let activeTab = 'S1';
     
@@ -193,6 +242,7 @@
       const stocks = globalData.stocks.filter(s => s.strategies[activeTab].ready);
       const maxScore = activeTab === 'S5' ? 4 : activeTab === 'S4' ? 4 : 5;
       const perfect = stocks.filter(s => s.strategies[activeTab].score === maxScore).length;
+      const avgBonus = stocks.length ? (stocks.reduce((a, s) => a + s.strategies[activeTab].bonusScore, 0) / stocks.length).toFixed(1) : 0;
       
       const html = `
         <div class="summary-card">
@@ -200,12 +250,12 @@
           <div class="value">${stocks.length}</div>
         </div>
         <div class="summary-card">
-          <label>Perfect (${maxScore}/${maxScore})</label>
+          <label>Perfect</label>
           <div class="value">${perfect}</div>
         </div>
         <div class="summary-card">
-          <label>Avg Streak</label>
-          <div class="value">${stocks.length ? (stocks.reduce((a, s) => a + s.strategies[activeTab].streak, 0) / stocks.length).toFixed(1) : 0}</div>
+          <label>Avg Bonus</label>
+          <div class="value">${avgBonus}</div>
         </div>
         <div class="summary-card">
           <label>Max Streak</label>
@@ -217,38 +267,42 @@
     
     function renderTable() {
       const stocks = getFilteredStocks();
-      const strat = globalData.stocks[0].strategies[activeTab];
       const maxScore = activeTab === 'S5' ? 4 : activeTab === 'S4' ? 4 : 5;
+      const maxBonus = activeTab === 'S5' ? 4 : activeTab === 'S4' ? 4 : 5;
       const condLabels = COND_LABELS[activeTab];
+      const c5Exist = condLabels[4];
       
       let html = '';
       if (stocks.length === 0) {
-        html = '<tr><td colspan="8" class="empty">No stocks match filters</td></tr>';
+        html = `<tr><td colspan="14" class="empty">No stocks match filters</td></tr>`;
       } else {
         html = stocks.map(s => {
           const strat = s.strategies[activeTab];
           const chgClass = s.chgPct > 0 ? 'positive' : s.chgPct < 0 ? 'negative' : '';
-          const scoreClass = strat.score === maxScore ? 'perfect' : '';
-          const condHtml = strat.conds.map((cond, i) => {
-            const cls = cond ? 'pass' : 'fail';
-            const label = condLabels[i] || `C${i+1}`;
-            return `<span class="cond-item ${cls}" title="${label}">${cond ? '✓' : '✗'}</span>`;
-          }).join('');
+          const verdict = getVerdict(activeTab, strat);
+          
+          const cond1 = `<td style="text-align: center; color: ${strat.conds[0] ? '#639922' : '#a32d2d'};">` + (strat.conds[0] ? '✓' : '✗') + '</td>';
+          const cond2 = `<td style="text-align: center; color: ${strat.conds[1] ? '#639922' : '#a32d2d'};">` + (strat.conds[1] ? '✓' : '✗') + '</td>';
+          const cond3 = `<td style="text-align: center; color: ${strat.conds[2] ? '#639922' : '#a32d2d'};">` + (strat.conds[2] ? '✓' : '✗') + '</td>';
+          const cond4 = `<td style="text-align: center; color: ${strat.conds[3] ? '#639922' : '#a32d2d'};">` + (strat.conds[3] ? '✓' : '✗') + '</td>';
+          const cond5 = c5Exist ? `<td style="text-align: center; color: ${strat.conds[4] ? '#639922' : '#a32d2d'};">` + (strat.conds[4] ? '✓' : '✗') + '</td>' : '<td style="text-align: center;">–</td>';
           
           return `
             <tr>
               <td class="ticker-cell">${s.ticker}</td>
               <td style="text-align: right;">$${s.close.toFixed(2)}</td>
-              <td style="text-align: right; " class="${chgClass}">
+              <td style="text-align: right;" class="${chgClass}">
                 ${s.chgPct > 0 ? '+' : ''}${s.chgPct.toFixed(2)}%
               </td>
-              <td style="text-align: right; font-size: 12px; color: #888780;">
-                ${s.ema20.toFixed(1)} / ${s.ema50.toFixed(1)} / ${s.ema200.toFixed(1)}
+              <td style="text-align: right; font-size: 11px; color: #888780;">
+                ${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}
               </td>
               <td style="text-align: right;">${s.rsi.toFixed(1)}</td>
-              <td style="text-align: center;"><span class="score-badge ${scoreClass}">${strat.score}/${maxScore}</span></td>
-              <td style="text-align: center; font-weight: 600;">${strat.streak} 日</td>
-              <td class="conditions">${condHtml}</td>
+              ${cond1}${cond2}${cond3}${cond4}${cond5}
+              <td style="text-align: center;"><span class="score-badge ${strat.score === maxScore ? 'perfect' : ''}">${strat.score}/${maxScore}</span></td>
+              <td style="text-align: center;"><span class="score-badge ${strat.bonusScore >= 3 ? 'perfect' : ''}">${strat.bonusScore}/${maxBonus}</span></td>
+              <td style="text-align: center; font-weight: 600;">${strat.streak}</td>
+              <td style="font-size: 12px; color: ${verdict.color === 'green' ? '#097f5f' : verdict.color === 'amber' ? '#854f0b' : '#a32d2d'};">${verdict.text}</td>
             </tr>
           `;
         }).join('');
