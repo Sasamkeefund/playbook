@@ -20,6 +20,17 @@
                        radial-gradient(800px 380px at 92% -10%, rgba(77,141,255,.08), transparent 60%);}
     .mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
     .container{max-width:960px;margin:0 auto}
+
+    .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+      padding:11px 16px;margin-bottom:1.4rem;background:rgba(19,20,31,.92);backdrop-filter:blur(10px);
+      border:1px solid var(--border);border-radius:14px}
+    .brand{font-size:20px;font-weight:700;letter-spacing:-.3px;background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .topnav{display:flex;gap:6px}
+    .topnav a{padding:7px 16px;font-size:14px;font-weight:600;text-decoration:none;border-radius:9px;color:var(--dim);transition:.15s}
+    .topnav a:hover{color:var(--text);background:var(--surface-2)}
+    .topnav a.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 4px 14px rgba(124,92,255,.3)}
+    .topactions{margin-left:auto;display:flex;align-items:center;gap:10px}
+    .topactions .sub{font-size:11px;color:var(--dim)}
     header h1{font-size:30px;font-weight:700;letter-spacing:-.5px;
       background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
     header .sub{font-size:12px;color:var(--dim);margin-top:2px}
@@ -62,14 +73,15 @@
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>playbook</h1>
-      <div class="sub" id="updated">讀緊…</div>
-    </header>
-
-    <div class="nav">
-      <a href="overview.html" class="active">Market</a>
-      <a href="dashboard.html">Scanner</a>
+    <div class="topbar">
+      <div class="brand">playbook</div>
+      <nav class="topnav">
+        <a href="overview.html" class="active">Market</a>
+        <a href="dashboard.html">Scanner</a>
+      </nav>
+      <div class="topactions">
+        <span class="sub" id="updated">讀緊…</span>
+      </div>
     </div>
 
     <div id="verdictBox"></div>
