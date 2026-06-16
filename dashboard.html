@@ -24,6 +24,17 @@
     .mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
     .container{max-width:1440px;margin:0 auto}
 
+    .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+      padding:11px 16px;margin-bottom:1.4rem;background:rgba(19,20,31,.92);backdrop-filter:blur(10px);
+      border:1px solid var(--border);border-radius:14px}
+    .brand{font-size:20px;font-weight:700;letter-spacing:-.3px;background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .topnav{display:flex;gap:6px}
+    .topnav a{padding:7px 16px;font-size:14px;font-weight:600;text-decoration:none;border-radius:9px;color:var(--dim);transition:.15s}
+    .topnav a:hover{color:var(--text);background:var(--surface-2)}
+    .topnav a.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 4px 14px rgba(124,92,255,.3)}
+    .topactions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .topactions .sub{font-size:11px;color:var(--dim)}
+
     header{margin-bottom:1.4rem}
     header h1{font-size:30px;font-weight:700;letter-spacing:-.5px;
       background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
@@ -103,18 +114,17 @@
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>playbook</h1>
-      <div class="sub" id="updated">更新於 …</div>
-      <div class="toolbar">
-        <button onclick="reloadData()" id="reloadBtn" class="btn primary">🔄 重新載入數據</button>
-        <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/scan.yml" target="_blank" rel="noopener" class="btn">⚙️ 去 GitHub 重新掃描</a>
+    <div class="topbar">
+      <div class="brand">playbook</div>
+      <nav class="topnav">
+        <a href="overview.html">Market</a>
+        <a href="dashboard.html" class="active">Scanner</a>
+      </nav>
+      <div class="topactions">
+        <span class="sub" id="updated">更新於 …</span>
+        <button onclick="reloadData()" id="reloadBtn" class="btn primary" style="padding:7px 12px">🔄 載入</button>
+        <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/scan.yml" target="_blank" rel="noopener" class="btn" style="padding:7px 12px">⚙️ 掃描</a>
       </div>
-    </header>
-
-    <div class="nav">
-      <a href="overview.html">Market</a>
-      <a href="dashboard.html" class="active">Scanner</a>
     </div>
 
     <div class="tabs" id="tabs"></div>
