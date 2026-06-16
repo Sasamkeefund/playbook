@@ -135,7 +135,10 @@
   <div id="chartModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; padding:2vh 2vw;">
     <div style="background:#fff; border-radius:12px; height:96vh; display:flex; flex-direction:column; overflow:hidden;">
       <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid #d3d1c7;">
-        <strong id="chartTitle" style="font-size:16px;">—</strong>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <button onclick="closeChart()" style="font-size:13px; font-weight:500; background:#378add; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer;">← 返 dashboard</button>
+          <strong id="chartTitle" style="font-size:16px;">—</strong>
+        </div>
         <div style="display:flex; gap:10px; align-items:center;">
           <a id="chartOpenTV" href="#" target="_blank" rel="noopener" style="font-size:13px; color:#378add; text-decoration:none;">喺 TradingView 開 ↗</a>
           <button onclick="closeChart()" style="font-size:20px; background:none; border:none; cursor:pointer; color:#888780; line-height:1;">✕</button>
