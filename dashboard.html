@@ -76,6 +76,10 @@
     <header>
       <h1>playbook</h1>
       <p id="updated">更新於 ...</p>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button onclick="reloadData()" id="reloadBtn" style="padding:8px 14px; font-size:13px; font-weight:500; background:#378add; color:#fff; border:none; border-radius:8px; cursor:pointer;">🔄 重新載入數據</button>
+        <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/scan.yml" target="_blank" rel="noopener" style="padding:8px 14px; font-size:13px; font-weight:500; background:#fff; color:#2c2c2a; border:1px solid #d3d1c7; border-radius:8px; text-decoration:none;">⚙️ 去 GitHub 重新掃描</a>
+      </div>
     </header>
     
     <div class="tabs" id="tabs"></div>
@@ -194,7 +198,7 @@
     
     async function loadData() {
       try {
-        const url = 'https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json';
+        const url = 'https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t=' + Date.now();
         const resp = await fetch(url);
         const data = await resp.json();
         globalData = data;
@@ -203,6 +207,16 @@
       } catch (e) {
         document.getElementById('updated').textContent = '❌ 無法讀取 data.json';
       }
+    }
+
+    async function reloadData() {
+      const btn = document.getElementById('reloadBtn');
+      const orig = btn.textContent;
+      btn.textContent = '⏳ 載入緊…';
+      btn.disabled = true;
+      await loadData();
+      btn.textContent = '✅ 已更新';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
     }
     
     function getFilteredStocks() {
