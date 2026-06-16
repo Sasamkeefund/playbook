@@ -189,6 +189,16 @@
     const STRATEGY_NAMES={S1:'順勢交易',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態'};
     let globalData=null, activeTab='S1';
 
+    function toHKT(s){
+      if(!s)return s;
+      const m=s.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+      if(!m)return s;
+      const d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]));
+      d.setUTCHours(d.getUTCHours()+8);
+      const p=n=>String(n).padStart(2,'0');
+      return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} HKT`;
+    }
+
     function getVerdict(tab,strat){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5')?4:5;
@@ -222,7 +232,7 @@
       try{
         const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
         globalData=await r.json();
-        document.getElementById('updated').textContent='更新於 '+globalData.updated;
+        document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated);
         render();
       }catch(e){document.getElementById('updated').textContent='❌ 無法讀取 data.json';}
     }
