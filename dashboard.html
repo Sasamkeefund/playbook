@@ -151,28 +151,39 @@
       document.getElementById('chartOpenTV').href = 'https://www.tradingview.com/chart/?symbol=' + ticker;
       const c = document.getElementById('chartContainer');
       c.innerHTML = '';
-      // 用 advanced-chart widget，明確指定 RSI，確保有獨立 panel
+
+      // TradingView 官方嵌入結構
+      const container = document.createElement('div');
+      container.className = 'tradingview-widget-container';
+      container.style.height = '100%';
+      container.style.width = '100%';
+
       const widgetDiv = document.createElement('div');
-      widgetDiv.style.width = '100%';
+      widgetDiv.className = 'tradingview-widget-container__widget';
       widgetDiv.style.height = '100%';
-      c.appendChild(widgetDiv);
+      widgetDiv.style.width = '100%';
+      container.appendChild(widgetDiv);
+
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
       script.async = true;
-      script.innerHTML = JSON.stringify({
+      script.textContent = JSON.stringify({
+        autosize: true,
         symbol: ticker,
         interval: 'D',
+        timezone: 'Etc/UTC',
         theme: 'light',
         style: '1',
         locale: 'en',
-        autosize: true,
         withdateranges: true,
         allow_symbol_change: true,
-        studies: ['STD;RSI'],
+        studies: ['RSI@tv-basicstudies'],
         support_host: 'https://www.tradingview.com'
       });
-      widgetDiv.appendChild(script);
+      container.appendChild(script);
+
+      c.appendChild(container);
       document.getElementById('chartModal').style.display = 'block';
     }
     function closeChart() {
