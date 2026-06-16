@@ -1,0 +1,35 @@
+name: Market Overview Scan
+
+on:
+  schedule:
+    - cron: '*/30 8-20 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  market:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Run market scan
+        run: python market_scan.py
+
+      - name: Commit market.json
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git add market.json
+          git diff --staged --quiet || git commit -m "market scan $(date -u +%Y-%m-%dT%H:%M)"
+          git push
