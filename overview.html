@@ -102,14 +102,23 @@
 
   <script>
     const STRATEGY_NAMES={S1:'順勢交易',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態'};
+    function toHKT(s){
+      if(!s)return s;
+      const m=s.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+      if(!m)return s;
+      const d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]));
+      d.setUTCHours(d.getUTCHours()+8);
+      const p=n=>String(n).padStart(2,'0');
+      return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} HKT`;
+    }
     async function load(){
       let market=null,scan=null;
       try{market=await(await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t='+Date.now())).json();}catch(e){}
       try{scan=await(await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now())).json();}catch(e){}
       renderMarket(market);renderStrategies(scan);
       document.getElementById('updated').textContent='開市前大市檢查 · Limit Order 影響';
-      document.getElementById('marketTime').textContent='大市數據：'+(market?market.updated:'攞唔到');
-      document.getElementById('scanTime').textContent='掃描數據：'+(scan?scan.updated:'攞唔到');
+      document.getElementById('marketTime').textContent='大市數據：'+(market?toHKT(market.updated):'攞唔到');
+      document.getElementById('scanTime').textContent='掃描數據：'+(scan?toHKT(scan.updated):'攞唔到');
     }
     function renderMarket(m){
       const vb=document.getElementById('verdictBox'),idx=document.getElementById('indices');
