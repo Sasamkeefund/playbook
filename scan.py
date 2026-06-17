@@ -191,6 +191,37 @@ def eval_strategies(idx, closes, highs, lows, volumes,
 
     res = {}
 
+    # ── EMA20 假突破偵測（參考用，可能同 TradingView 差 1 日）──
+    # daysBelow   = 最近一次連續「收市跌穿 EMA20」嘅日數
+    # daysRecover = 跌穿之後用咗幾多日 close 返上 EMA20（今日返到 = 1；仲喺下面 = 0）
+    days_below = 0
+    days_recover = 0
+    if e20 is not None:
+        if close < e20:
+            # 今日仲喺下面 → 數連續跌穿日數，未收復
+            j = idx
+            while j >= 0 and ema20a[j] is not None and closes[j] < ema20a[j]:
+                days_below += 1
+                j -= 1
+            days_recover = 0
+        else:
+            # 今日喺上面 → 數今日往前連續喺上面嘅日數（收復後日數）
+            j = idx
+            rec = 0
+            while j >= 0 and ema20a[j] is not None and closes[j] >= ema20a[j]:
+                rec += 1
+                j -= 1
+            # j 而家指住最近一個跌穿日（如有）
+            if j >= 0 and ema20a[j] is not None and closes[j] < ema20a[j]:
+                days_recover = rec
+                k = j
+                while k >= 0 and ema20a[k] is not None and closes[k] < ema20a[k]:
+                    days_below += 1
+                    k -= 1
+            else:
+                days_below = 0
+                days_recover = 0
+
     # ── S1 順勢交易（Required 5/5, Bonus 5/5）──
     c = [
         close > e20,
@@ -207,6 +238,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (pct_from_high is not None and pct_from_high < 15),
     ]
     res["S1"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 5,
+                 "daysBelow20": days_below, "daysRecover": days_recover,
                  "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
     # ── S2 趨勢終結（Required 4/5, Bonus 5/5）──
