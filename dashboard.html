@@ -186,6 +186,13 @@
         <option value="5">≥ 5 日</option>
         <option value="10">≥ 10 日</option>
       </select>
+      <select id="filterEma20">
+        <option value="">距 EMA20 不限</option>
+        <option value="1">± 1% 內（已觸線）</option>
+        <option value="2">± 2% 內（好近）</option>
+        <option value="3">± 3% 內（接近）</option>
+        <option value="5">± 5% 內</option>
+      </select>
       <button id="starFilter" onclick="toggleStarFilter()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">⭐ 只睇 Watchlist</button>
     </div>
 
@@ -314,6 +321,8 @@
       if(sf)s=s.filter(x=>x.strategies[activeTab].score>=parseInt(sf));
       const stf=document.getElementById('filterStreak').value;
       if(stf)s=s.filter(x=>x.strategies[activeTab].streak>=parseInt(stf));
+      const ef=document.getElementById('filterEma20').value;
+      if(ef)s=s.filter(x=>Math.abs((x.close-x.ema20)/x.ema20*100)<=parseFloat(ef));
       // 排序
       if(sortKey){
         const stratKeys=['score','bonusScore','streak'];
@@ -371,7 +380,7 @@
           <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a></td>
           <td class="mono" style="text-align:right">$${s.close.toFixed(2)}</td>
           <td class="mono ${ch}" style="text-align:right">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</td>
-          <td class="mono emacell" style="text-align:right">${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}</td>
+          <td class="mono emacell" style="text-align:right">${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}<br><span style="font-size:10px;color:${Math.abs((s.close-s.ema20)/s.ema20*100)<=1.5?'#f5b945':'var(--faint)'}">EMA20 ${((s.close-s.ema20)/s.ema20*100)>0?'+':''}${((s.close-s.ema20)/s.ema20*100).toFixed(1)}%</span></td>
           <td class="mono" style="text-align:right">${s.rsi.toFixed(1)}</td>
           ${cell(0)}${cell(1)}${cell(2)}${cell(3)}${cell(4)}
           <td style="text-align:center"><span class="badge ${st.score===mx?'perfect':''}">${st.score}/${mx}</span></td>
@@ -391,6 +400,7 @@
     document.getElementById('searchTicker').addEventListener('input',renderTable);
     document.getElementById('filterScore').addEventListener('change',renderTable);
     document.getElementById('filterStreak').addEventListener('change',renderTable);
+    document.getElementById('filterEma20').addEventListener('change',renderTable);
 
     let chartsCache=null, lwChart=null;
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
