@@ -525,10 +525,6 @@
       document.getElementById('fibA').addEventListener('input',()=>drawFib(ft.checked));
       document.getElementById('fibB').addEventListener('input',()=>drawFib(ft.checked));
       if(activeTab==='S6'){ft.checked=true;drawFib(true);}
-      }
-      const ft=document.getElementById('fibToggle');
-      ft.addEventListener('change',e=>drawFib(e.target.checked));
-      if(activeTab==='S6'){ft.checked=true;drawFib(true);}
     }
     function closeChart(){document.getElementById('chartModal').classList.remove('show');document.getElementById('chartContainer').innerHTML='';if(lwChart){lwChart.remove();lwChart=null;}}
     document.getElementById('chartModal').addEventListener('click',function(e){if(e.target===this)closeChart();});
