@@ -416,19 +416,21 @@
       chartsCache=await r.json();
       return chartsCache;
     }
+    let pendingAB={a:null,b:null};
     async function openChart(ticker){
       document.getElementById('chartTitle').textContent=ticker;
       document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol='+ticker;
       const c=document.getElementById('chartContainer');
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
       document.getElementById('chartModal').classList.add('show');
+      pendingAB={a:null,b:null};
       try{
         // 讀返 Google Sheet 嘅 A/B 值
         const abResp=await fetch(WL_API+'?ticker='+ticker);
         const ab=await abResp.json();
-        if(ab.a)document.getElementById('fibA').value=ab.a;
-        if(ab.b)document.getElementById('fibB').value=ab.b;
-        
+        pendingAB={a:ab.a||null,b:ab.b||null};
+      }catch(e){}
+      try{
         const all=await ensureCharts();
         const d=all[ticker];
         if(!d){c.innerHTML='<div style="padding:2rem;color:var(--dim)">呢隻股暫時冇圖數據</div>';return;}
@@ -450,13 +452,7 @@
           <button id="zoomAll" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">全部</button>
         </span>
         <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)"><input type="checkbox" id="fibToggle"> 黃金比例 (Fib)</label>
-        <div id="fibInputs" style="display:none;display:flex;gap:8px;align-items:center;margin-left:12px">
-          <label style="font-size:11px;color:var(--dim)">A:</label>
-          <input type="number" id="fibA" placeholder="高" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
-          <label style="font-size:11px;color:var(--dim)">B:</label>
-          <input type="number" id="fibB" placeholder="低" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
-        </div>
-        <div id="fibInputs" style="display:none;display:flex;gap:8px;align-items:center;margin-left:12px">
+        <div id="fibInputs" style="display:none;gap:8px;align-items:center;margin-left:12px">
           <label style="font-size:11px;color:var(--dim)">A:</label>
           <input type="number" id="fibA" placeholder="高" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
           <label style="font-size:11px;color:var(--dim)">B:</label>
@@ -533,15 +529,23 @@
         document.getElementById('fibInfo').innerHTML=`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`;
       }
       const ft=document.getElementById('fibToggle');
-      // 讀返上次儲存嘅 A/B 值
-      const savedA=localStorage.getItem('fib_a');
-      const savedB=localStorage.getItem('fib_b');
-      if(savedA)document.getElementById('fibA').value=savedA;
-      if(savedB)document.getElementById('fibB').value=savedB;
+      // 填返 Google Sheet 嘅 A/B 值（drawChart 重建咗 input 後先填）
+      if(pendingAB.a)document.getElementById('fibA').value=pendingAB.a;
+      if(pendingAB.b)document.getElementById('fibB').value=pendingAB.b;
       ft.addEventListener('change',e=>drawFib(e.target.checked));
-      document.getElementById('fibA').addEventListener('change',()=>{localStorage.setItem('fib_a',document.getElementById('fibA').value);drawFib(ft.checked);});
-      document.getElementById('fibB').addEventListener('change',()=>{localStorage.setItem('fib_b',document.getElementById('fibB').value);drawFib(ft.checked);});
-      if(activeTab==='S6'){ft.checked=true;drawFib(true);}
+      // A/B 改變 → 寫返 Google Sheet（公司電腦零痕跡）
+      const saveAB=()=>{
+        const a=document.getElementById('fibA').value;
+        const b=document.getElementById('fibB').value;
+        if(wlSet.has(ticker.toUpperCase())){
+          try{fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'ab',ticker,a:parseFloat(a)||'',b:parseFloat(b)||''})});}catch(e){}
+        }
+        drawFib(ft.checked);
+      };
+      document.getElementById('fibA').addEventListener('change',saveAB);
+      document.getElementById('fibB').addEventListener('change',saveAB);
+      // S6 或者已經有 A/B → 自動開 Fib
+      if(activeTab==='S6'||pendingAB.a){ft.checked=true;drawFib(true);}
     }
     function closeChart(){document.getElementById('chartModal').classList.remove('show');document.getElementById('chartContainer').innerHTML='';if(lwChart){lwChart.remove();lwChart=null;}}
     document.getElementById('chartModal').addEventListener('click',function(e){if(e.target===this)closeChart();});
