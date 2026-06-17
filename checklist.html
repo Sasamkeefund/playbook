@@ -63,6 +63,8 @@
     .stab:hover{color:var(--text);border-color:var(--border-2)}
     .stab.active{background:var(--surface-3);color:#fff;border-color:var(--accent);box-shadow:0 0 0 1px rgba(124,92,255,.4),0 0 18px rgba(124,92,255,.25)}
     .frame-box{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:70vh}
+    /* 返工 Mode：把 iframe 內嘅深色 checklist 反白 + 去色，變淡色報表樣 */
+    body.work #clFrame{filter:invert(0.92) hue-rotate(180deg) saturate(0.25)}
     iframe{width:100%;height:100%;border:none;display:block}
   </style>
 </head>
