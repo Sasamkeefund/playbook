@@ -438,6 +438,10 @@ def build_record(ticker, hist):
             "bonus": today[s]["bonus"],
             "keyvals": today[s]["keyvals"],
         }
+        # S1 假突破偵測（參考用）
+        if s == "S1":
+            strategies[s]["daysBelow20"] = today[s].get("daysBelow20", 0)
+            strategies[s]["daysRecover"] = today[s].get("daysRecover", 0)
 
     # K 線 + EMA 圖數據（最近 120 根，畀 app 內畫圖）
     times = hist.get("time", [])
