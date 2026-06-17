@@ -217,6 +217,8 @@
             <th class="sortable" style="text-align:center" onclick="sortBy('score')">Req <span class="sarr" data-k="score"></span></th>
             <th class="sortable" style="text-align:center" onclick="sortBy('bonusScore')">Bonus <span class="sarr" data-k="bonusScore"></span></th>
             <th class="sortable" style="text-align:center" onclick="sortBy('streak')">Streak <span class="sarr" data-k="streak"></span></th>
+            <th class="sortable" style="text-align:center" onclick="sortBy('daysBelow20')" title="收市跌穿 EMA20 連續日數（S1）">跌穿 <span class="sarr" data-k="daysBelow20"></span></th>
+            <th class="sortable" style="text-align:center" onclick="sortBy('daysRecover')" title="跌穿後升返 EMA20 用咗幾多日（S1）">升返 <span class="sarr" data-k="daysRecover"></span></th>
             <th>入場建議</th>
             <th style="text-align:center">⭐</th>
           </tr>
@@ -342,7 +344,7 @@
       }
       // 排序
       if(sortKey){
-        const stratKeys=['score','bonusScore','streak'];
+        const stratKeys=['score','bonusScore','streak','daysBelow20','daysRecover'];
         s=s.slice().sort((a,b)=>{
           let va,vb;
           if(stratKeys.includes(sortKey)){va=a.strategies[activeTab][sortKey];vb=b.strategies[activeTab][sortKey];}
@@ -385,7 +387,7 @@
       const mx=(activeTab==='S5'||activeTab==='S4')?4:5, mxB=mx;
       const c5Exist=!(activeTab==='S4'||activeTab==='S5');
       const tb=document.getElementById('tbody');
-      if(!stocks.length){tb.innerHTML='<tr><td colspan="16" class="empty">No stocks match filters</td></tr>';return;}
+      if(!stocks.length){tb.innerHTML='<tr><td colspan="18" class="empty">No stocks match filters</td></tr>';return;}
       tb.innerHTML=stocks.map(s=>{
         const st=s.strategies[activeTab];
         const ch=s.chgPct>0?'up':s.chgPct<0?'down':'flat';
@@ -403,6 +405,7 @@
           <td style="text-align:center"><span class="badge ${st.score===mx?'perfect':''}">${st.score}/${mx}</span></td>
           <td style="text-align:center"><span class="badge ${st.bonusScore>=3?'perfect':''}">${st.bonusScore}/${mxB}</span></td>
           <td class="mono" style="text-align:center;font-weight:700">${st.streak}</td>
+          ${activeTab==='S1'?`<td class="mono" style="text-align:center;color:${(st.daysBelow20||0)>0&&(st.daysRecover||0)===0?'#ff5d6c':'var(--dim)'}">${st.daysBelow20||0}</td><td class="mono" style="text-align:center;color:${(st.daysRecover||0)>=1&&(st.daysRecover||0)<=2&&(st.daysBelow20||0)<=3?'#2ee6a6':'var(--dim)'};font-weight:${(st.daysRecover||0)>=1&&(st.daysRecover||0)<=2?'700':'400'}">${st.daysRecover||0}</td>`:'<td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td>'}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
           <td style="text-align:center"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button></td>
         </tr>`;
