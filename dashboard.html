@@ -105,8 +105,9 @@
     .footer a{color:var(--accent-2);text-decoration:none}
 
     /* chart modal */
-    #chartModal{display:none;position:fixed;inset:0;background:rgba(5,6,12,.8);backdrop-filter:blur(4px);z-index:1000;padding:2vh 2vw}
-    .modal-inner{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;height:96vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+    #chartModal{display:none;position:fixed;inset:0;background:rgba(5,6,12,.8);backdrop-filter:blur(4px);z-index:1000;padding:5vh 5vw;display:none}
+    #chartModal.show{display:flex;align-items:center;justify-content:center}
+    .modal-inner{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;width:100%;max-width:1100px;height:75vh;max-height:680px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
     .modal-head{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border)}
     .modal-close{font-size:20px;background:none;border:none;cursor:pointer;color:var(--dim);line-height:1}
     .modal-close:hover{color:var(--text)}
@@ -322,7 +323,7 @@
       document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol='+ticker;
       const c=document.getElementById('chartContainer');
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
-      document.getElementById('chartModal').style.display='block';
+      document.getElementById('chartModal').classList.add('show');
       try{
         const all=await ensureCharts();
         const d=all[ticker];
@@ -384,7 +385,7 @@
       ft.addEventListener('change',e=>drawFib(e.target.checked));
       if(activeTab==='S6'){ft.checked=true;drawFib(true);}
     }
-    function closeChart(){document.getElementById('chartModal').style.display='none';document.getElementById('chartContainer').innerHTML='';if(lwChart){lwChart.remove();lwChart=null;}}
+    function closeChart(){document.getElementById('chartModal').classList.remove('show');document.getElementById('chartContainer').innerHTML='';if(lwChart){lwChart.remove();lwChart=null;}}
     document.getElementById('chartModal').addEventListener('click',function(e){if(e.target===this)closeChart();});
     document.addEventListener('keydown',function(e){if(e.key==='Escape')closeChart();});
 
