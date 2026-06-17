@@ -368,10 +368,14 @@
     }
     function drawChart(c,ticker,d){
       c.innerHTML='';
+      const work=document.body.classList.contains('work');
+      const col=work
+        ? {up:'#888',down:'#c8c8c8',wickUp:'#888',wickDown:'#c8c8c8',e20:'#333',e50:'#888',e200:'#c0c0c0',grid:'#eee',txt:'#555',border:'#ccc'}
+        : {up:'#2ee6a6',down:'#ff5d6c',wickUp:'#2ee6a6',wickDown:'#ff5d6c',e20:'#00c896',e50:'#ffb347',e200:'#ff4d4d',grid:'#1a1c2b',txt:'#8a8fa3',border:'#262a3d'};
       // 控制列：S6 Fib toggle
       const bar=document.createElement('div');
       bar.style.cssText='display:flex;gap:14px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap';
-      bar.innerHTML=`<span style="color:#00c896">━ EMA20</span><span style="color:#ffb347">━ EMA50</span><span style="color:#ff4d4d">━ EMA200</span>
+      bar.innerHTML=`<span style="color:${col.e20}">━ EMA20</span><span style="color:${col.e50}">━ EMA50</span><span style="color:${col.e200}">━ EMA200</span>
         <span style="display:flex;gap:6px;margin-left:14px">
           <button id="zoomRecent" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border-2);background:var(--surface-3);color:var(--text);cursor:pointer">近期</button>
           <button id="zoomAll" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">全部</button>
@@ -383,21 +387,21 @@
       c.style.display='flex';c.style.flexDirection='column';
 
       const chart=LightweightCharts.createChart(box,{
-        layout:{background:{color:'transparent'},textColor:'#8a8fa3'},
-        grid:{vertLines:{color:'#1a1c2b'},horzLines:{color:'#1a1c2b'}},
-        rightPriceScale:{borderColor:'#262a3d',autoScale:true,scaleMargins:{top:0.1,bottom:0.1}},
-        timeScale:{borderColor:'#262a3d',timeVisible:false},
+        layout:{background:{color:'transparent'},textColor:col.txt},
+        grid:{vertLines:{color:col.grid},horzLines:{color:col.grid}},
+        rightPriceScale:{borderColor:col.border,autoScale:true,scaleMargins:{top:0.1,bottom:0.1}},
+        timeScale:{borderColor:col.border,timeVisible:false},
         handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},
         handleScale:{axisPressedMouseMove:{time:true,price:true},mouseWheel:true,pinch:true},
         crosshair:{mode:0},autoSize:true,
       });
       lwChart=chart;
-      const cs=chart.addCandlestickSeries({upColor:'#2ee6a6',downColor:'#ff5d6c',wickUpColor:'#2ee6a6',wickDownColor:'#ff5d6c',borderVisible:false});
+      const cs=chart.addCandlestickSeries({upColor:col.up,downColor:col.down,wickUpColor:col.wickUp,wickDownColor:col.wickDown,borderVisible:false});
       const candles=d.t.map((t,i)=>({time:t,open:d.o[i],high:d.h[i],low:d.l[i],close:d.c[i]}));
       cs.setData(candles);
       const line=(arr,color)=>{const s=chart.addLineSeries({color,lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
         s.setData(d.t.map((t,i)=>arr[i]==null?null:({time:t,value:arr[i]})).filter(Boolean));return s;};
-      line(d.e20,'#00c896');line(d.e50,'#ffb347');line(d.e200,'#ff4d4d');
+      line(d.e20,col.e20);line(d.e50,col.e50);line(d.e200,col.e200);
       const nbars=d.t.length;
       const showRecent=()=>{chart.timeScale().setVisibleLogicalRange({from:Math.max(0,nbars-50),to:nbars});
         document.getElementById('zoomRecent').style.background='var(--surface-3)';document.getElementById('zoomRecent').style.color='var(--text)';
