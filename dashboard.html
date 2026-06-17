@@ -197,6 +197,7 @@
             <th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th>
             <th style="text-align:center">Req</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th>
             <th>入場建議</th>
+            <th style="text-align:center">⭐</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -317,7 +318,7 @@
       const mx=(activeTab==='S5'||activeTab==='S4')?4:5, mxB=mx;
       const c5Exist=!(activeTab==='S4'||activeTab==='S5');
       const tb=document.getElementById('tbody');
-      if(!stocks.length){tb.innerHTML='<tr><td colspan="15" class="empty">No stocks match filters</td></tr>';return;}
+      if(!stocks.length){tb.innerHTML='<tr><td colspan="16" class="empty">No stocks match filters</td></tr>';return;}
       tb.innerHTML=stocks.map(s=>{
         const st=s.strategies[activeTab];
         const ch=s.chgPct>0?'up':s.chgPct<0?'down':'flat';
@@ -336,7 +337,7 @@
           <td style="text-align:center"><span class="badge ${st.bonusScore>=3?'perfect':''}">${st.bonusScore}/${mxB}</span></td>
           <td class="mono" style="text-align:center;font-weight:700">${st.streak}</td>
           <td class="verdict v-${v.color}">${v.text}</td>
-          <td style="text-align:center"><button onclick="addToWatchlist('${s.ticker}')" style="padding:4px 8px;font-size:11px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;transition:.15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">⭐ Add</button></td>
+          <td style="text-align:center"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button></td>
         </tr>`;
       }).join('');
     }
@@ -351,18 +352,25 @@
     document.getElementById('filterStreak').addEventListener('change',renderTable);
 
     let chartsCache=null, lwChart=null;
-    function addToWatchlist(ticker){
-      const WL_KEY='playbook_watchlist';
-      const wl=JSON.parse(localStorage.getItem(WL_KEY)||'{"tickers":[]}');
-      if(wl.tickers.find(x=>x.ticker===ticker)){
-        alert(ticker+' 已經喺 Watchlist');
-        return;
-      }
-      const d=new Date();
-      const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      wl.tickers.push({ticker,dateAdded:dateStr,note:''});
-      localStorage.setItem(WL_KEY,JSON.stringify(wl));
-      alert('✅ '+ticker+' 已加入 Watchlist');
+    const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
+    let wlSet=new Set();
+    async function loadWatchlist(){
+      try{
+        const r=await fetch(WL_API);
+        const d=await r.json();
+        wlSet=new Set((d.watchlist||[]).map(x=>x.ticker.toUpperCase()));
+      }catch(e){wlSet=new Set();}
+      if(globalData)renderTable();
+    }
+    async function toggleStar(ticker,btn){
+      ticker=ticker.toUpperCase();
+      const on=wlSet.has(ticker);
+      // 即時 UI 反應
+      if(on){wlSet.delete(ticker);}else{wlSet.add(ticker);}
+      if(btn){btn.textContent=wlSet.has(ticker)?'⭐':'☆';btn.style.color=wlSet.has(ticker)?'#f5b945':'var(--dim)';}
+      try{
+        await fetch(WL_API,{method:'POST',body:JSON.stringify({action:on?'remove':'add',ticker})});
+      }catch(e){/* 寫去 Google，唔阻 UI */}
     }
     async function ensureCharts(){
       if(chartsCache)return chartsCache;
@@ -477,6 +485,7 @@
     (function(){try{if(/workmode=1/.test(document.cookie))setWork(true);}catch(e){}})();
 
     loadData();
-  </script>
+    loadWatchlist();
+  </script></script>
 </body>
 </html>
