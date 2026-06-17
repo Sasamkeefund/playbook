@@ -239,8 +239,10 @@
     function getVerdict(tab,strat){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5')?4:5;
-      if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
+      if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];const streak=strat.streak||0;
         if(req<reqMax)return{text:'👀 候選 — 等收市確認返上 EMA20',color:'amber'};
+        if(streak<3)return{text:'🛑 連續<3日 — 大趨勢未確認，唔入',color:'red'};
+        if(streak<7)return{text:'⚠️ 連續 '+streak+'日(<7)— 趨勢未夠強，保守/觀察',color:'amber'};
         if(bonus<=2)return{text:'❌ Bonus 唔夠 — 唔入',color:'red'};
         if(!b2)return{text:'⚠️ b2 三線未齊 — 極細倉或唔入',color:'amber'};
         if(bonus>=4)return{text:'🔥 高質候選 — 入場前用互動檢查表確認假突破',color:'green'};
