@@ -20,18 +20,37 @@
     /* 返工 Mode：淡色樸素，似 Excel/文件 */
     body.work{
       --bg:#ffffff; --surface:#ffffff; --surface-2:#f3f3f3; --surface-3:#e9e9e9;
-      --border:#d9d9d9; --border-2:#c4c4c4;
-      --text:#222; --dim:#777; --faint:#999;
-      --accent:#5a5a5a; --accent-2:#5a5a5a;
-      --up:#217346; --down:#b00020; --amber:#8a6d00;
+      --border:#d0d0d0; --border-2:#bcbcbc;
+      --text:#1a1a1a; --dim:#555; --faint:#888;
+      --accent:#444; --accent-2:#444;
+      --up:#177245; --down:#b00020; --amber:#7a5c00;
       --glow:none;
       background-image:none !important;
     }
+    body.work{color:#1a1a1a}
     body.work .brand{background:none;-webkit-text-fill-color:#333;color:#333;font-weight:600}
     body.work h1{background:none;-webkit-text-fill-color:#333;color:#333}
-    body.work .topnav a.active,body.work .tab-btn.active,body.work .btn.primary{background:#e0e0e0 !important;color:#222 !important;box-shadow:none !important;border:1px solid #c4c4c4 !important}
-    body.work .scard::before,body.work .new-badge{background:#999 !important;box-shadow:none !important}
-    body.work .badge.perfect{background:#e8e8e8;color:#217346;box-shadow:none}
+    body.work .topbar{background:#f3f3f3 !important}
+    body.work .topnav a{color:#555}
+    body.work .topnav a.active,body.work .tab-btn.active,body.work .btn.primary,body.work #workBtn{background:#dcdcdc !important;color:#1a1a1a !important;box-shadow:none !important;border:1px solid #bcbcbc !important}
+    body.work .tab-btn{color:#555}
+    body.work .tab-btn .cnt{color:#444}
+    body.work .scard,body.work .tablewrap,body.work .idx,body.work table,body.work thead{background:#fff !important}
+    body.work th{color:#555}
+    body.work td{color:#1a1a1a}
+    body.work .scard .v,body.work .scard .cnt,body.work .idx .price{color:#1a1a1a !important}
+    body.work .scard label,body.work th,body.work .sub{color:#666 !important}
+    body.work .scard::before{background:#bbb !important}
+    body.work .new-badge{background:#888 !important;color:#fff !important;box-shadow:none !important}
+    body.work .badge{background:#eee;color:#444}
+    body.work .badge.perfect{background:#e3f2e8;color:#177245;box-shadow:none}
+    body.work .tk a{color:#1a4fa0 !important}
+    body.work .emacell{color:#777 !important}
+    body.work .up{color:#177245 !important} body.work .down{color:#b00020 !important}
+    body.work .c.ok{color:#177245 !important} body.work .c.no{color:#b00020 !important}
+    body.work .verdict.v-green{color:#177245 !important} body.work .verdict.v-amber{color:#7a5c00 !important} body.work .verdict.v-red{color:#b00020 !important}
+    body.work input,body.work select{background:#fff !important;color:#1a1a1a !important;border-color:#ccc !important}
+    body.work .modal-inner{background:#fff !important}
     *{margin:0;padding:0;box-sizing:border-box}
     html{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
     body{background:var(--bg);color:var(--text);line-height:1.55;padding:1.25rem;
