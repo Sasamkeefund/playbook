@@ -326,11 +326,13 @@ def fetch_history(ticker):
                 continue
             r0 = result[0]
             q = r0["indicators"]["quote"][0]
+            raw_t = r0.get("timestamp", [])
+            raw_o = q.get("open", [])
             raw_c = q.get("close", [])
             raw_h = q.get("high", [])
             raw_l = q.get("low", [])
             raw_v = q.get("volume", [])
-            closes, highs, lows, vols = [], [], [], []
+            closes, highs, lows, vols, times, opens = [], [], [], [], [], []
             for i in range(len(raw_c)):
                 if None in (raw_c[i], raw_h[i], raw_l[i], raw_v[i]):
                     continue
@@ -338,9 +340,11 @@ def fetch_history(ticker):
                 highs.append(raw_h[i])
                 lows.append(raw_l[i])
                 vols.append(raw_v[i])
+                times.append(raw_t[i] if i < len(raw_t) else 0)
+                opens.append(raw_o[i] if (i < len(raw_o) and raw_o[i] is not None) else raw_c[i])
             if len(closes) < 64:
                 return None
-            return {"close": closes, "high": highs, "low": lows, "volume": vols}
+            return {"close": closes, "high": highs, "low": lows, "volume": vols, "time": times, "open": opens}
         except Exception as e:
             continue
     return None
@@ -403,6 +407,22 @@ def build_record(ticker, hist):
             "keyvals": today[s]["keyvals"],
         }
 
+    # K 線 + EMA 圖數據（最近 120 根，畀 app 內畫圖）
+    times = hist.get("time", [])
+    opens = hist.get("open", closes)
+    CB = 120
+    start = max(0, last - CB + 1)
+    chart = {
+        "t": [times[i] if i < len(times) else 0 for i in range(start, last + 1)],
+        "o": [round(opens[i], 2) for i in range(start, last + 1)],
+        "h": [round(highs[i], 2) for i in range(start, last + 1)],
+        "l": [round(lows[i], 2) for i in range(start, last + 1)],
+        "c": [round(closes[i], 2) for i in range(start, last + 1)],
+        "e20": [round(ema20a[i], 2) if ema20a[i] is not None else None for i in range(start, last + 1)],
+        "e50": [round(ema50a[i], 2) if ema50a[i] is not None else None for i in range(start, last + 1)],
+        "e200": [round(ema200a[i], 2) if ema200a[i] is not None else None for i in range(start, last + 1)],
+    }
+
     return {
         "ticker": ticker,
         "close": round(closes[last], 2),
@@ -412,6 +432,7 @@ def build_record(ticker, hist):
         "ema200": round(ema200a[last], 2),
         "rsi": round(rsia[last], 1),
         "strategies": strategies,
+        "chart": chart,
     }
 
 
@@ -461,6 +482,13 @@ def main():
             was_ready = r["ticker"] in prev_ready[s]
             r["strategies"][s]["isNew"] = bool(is_ready_now and not was_ready)
 
+    # 把 K 線圖數據抽出嚟，寫去 charts.json（keep data.json 細，app 開圖先 load）
+    charts = {}
+    for r in records:
+        ch = r.pop("chart", None)
+        if ch is not None:
+            charts[r["ticker"]] = ch
+
     output = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "strategyMeta": STRATEGY_META,
@@ -471,7 +499,10 @@ def main():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
 
-    print(f"\n✅ 寫好 {OUTPUT_FILE}（{len(records)} 隻成功）")
+    with open("charts.json", "w", encoding="utf-8") as f:
+        json.dump(charts, f, ensure_ascii=False, separators=(",", ":"))
+
+    print(f"\n✅ 寫好 {OUTPUT_FILE} + charts.json（{len(records)} 隻成功）")
     for s in STRATEGY_META:
         print(f"  {s} {STRATEGY_META[s]['name']}: {summary[s]['count']} 隻 ready")
 
