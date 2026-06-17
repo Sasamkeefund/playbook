@@ -156,6 +156,7 @@
         <a href="overview.html">📊 Market</a>
         <a href="dashboard.html" class="active">🔍 Screener</a>
         <a href="checklist.html">✅ Checklist</a>
+        <a href="watchlist.html">📋 Watchlist</a>
       </nav>
       <div class="topactions">
         <button onclick="toggleWork()" id="workBtn" class="btn" style="padding:7px 12px">🕶 返工 Mode</button>
@@ -335,6 +336,7 @@
           <td style="text-align:center"><span class="badge ${st.bonusScore>=3?'perfect':''}">${st.bonusScore}/${mxB}</span></td>
           <td class="mono" style="text-align:center;font-weight:700">${st.streak}</td>
           <td class="verdict v-${v.color}">${v.text}</td>
+          <td style="text-align:center"><button onclick="addToWatchlist('${s.ticker}')" style="padding:4px 8px;font-size:11px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer;transition:.15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">⭐ Add</button></td>
         </tr>`;
       }).join('');
     }
@@ -349,6 +351,19 @@
     document.getElementById('filterStreak').addEventListener('change',renderTable);
 
     let chartsCache=null, lwChart=null;
+    function addToWatchlist(ticker){
+      const WL_KEY='playbook_watchlist';
+      const wl=JSON.parse(localStorage.getItem(WL_KEY)||'{"tickers":[]}');
+      if(wl.tickers.find(x=>x.ticker===ticker)){
+        alert(ticker+' 已經喺 Watchlist');
+        return;
+      }
+      const d=new Date();
+      const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      wl.tickers.push({ticker,dateAdded:dateStr,note:''});
+      localStorage.setItem(WL_KEY,JSON.stringify(wl));
+      alert('✅ '+ticker+' 已加入 Watchlist');
+    }
     async function ensureCharts(){
       if(chartsCache)return chartsCache;
       const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/charts.json?t='+Date.now());
