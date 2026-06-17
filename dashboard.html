@@ -222,6 +222,8 @@
         <div style="display:flex;gap:12px;align-items:center">
           <button onclick="closeChart()" class="btn primary" style="padding:7px 13px">← 返 Scanner</button>
           <strong id="chartTitle" class="mono" style="font-size:16px">—</strong>
+          <button onclick="navChart(-1)" title="上一隻 (←)" style="padding:5px 11px;font-size:14px;border-radius:8px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);cursor:pointer">‹</button>
+          <button onclick="navChart(1)" title="下一隻 (→)" style="padding:5px 11px;font-size:14px;border-radius:8px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);cursor:pointer">›</button>
         </div>
         <div style="display:flex;gap:12px;align-items:center">
           <a id="chartOpenTV" href="#" target="_blank" rel="noopener" style="font-size:13px;color:var(--accent-2);text-decoration:none">喺 TradingView 開 ↗</a>
@@ -547,9 +549,35 @@
       // S6 或者已經有 A/B → 自動開 Fib
       if(activeTab==='S6'||pendingAB.a){ft.checked=true;drawFib(true);}
     }
+    function navChart(dir){
+      const stocks=getFilteredStocks();
+      const cur=document.getElementById('chartTitle').textContent;
+      let idx=stocks.findIndex(s=>s.ticker===cur);
+      if(idx<0)return;
+      idx+=dir;
+      if(idx<0)idx=stocks.length-1;
+      if(idx>=stocks.length)idx=0;
+      openChart(stocks[idx].ticker);
+    }
     function closeChart(){document.getElementById('chartModal').classList.remove('show');document.getElementById('chartContainer').innerHTML='';if(lwChart){lwChart.remove();lwChart=null;}}
     document.getElementById('chartModal').addEventListener('click',function(e){if(e.target===this)closeChart();});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape')closeChart();});
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape')closeChart();
+      // 圖開住時，→ / ← 跳去 list 下一隻/上一隻
+      if(document.getElementById('chartModal').classList.contains('show')){
+        if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+          e.preventDefault();
+          const stocks=getFilteredStocks();
+          const cur=document.getElementById('chartTitle').textContent;
+          let idx=stocks.findIndex(s=>s.ticker===cur);
+          if(idx<0)return;
+          idx += (e.key==='ArrowRight'?1:-1);
+          if(idx<0)idx=stocks.length-1;
+          if(idx>=stocks.length)idx=0;
+          openChart(stocks[idx].ticker);
+        }
+      }
+    });
 
 
     function setWork(on){
