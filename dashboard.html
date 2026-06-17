@@ -183,6 +183,7 @@
         <option value="5">≥ 5 日</option>
         <option value="10">≥ 10 日</option>
       </select>
+      <button id="starFilter" onclick="toggleStarFilter()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">⭐ 只睇 Watchlist</button>
     </div>
 
     <div class="summary" id="summary"></div>
@@ -284,9 +285,19 @@
       b.textContent='✅ 已更新';setTimeout(()=>{b.textContent=o;b.disabled=false;},1500);
     }
 
+    let starOnly=false;
+    function toggleStarFilter(){
+      starOnly=!starOnly;
+      const b=document.getElementById('starFilter');
+      b.style.background=starOnly?'var(--accent)':'var(--surface)';
+      b.style.color=starOnly?'#fff':'var(--dim)';
+      b.style.borderColor=starOnly?'var(--accent)':'var(--border)';
+      renderTable();
+    }
     function getFilteredStocks(){
       if(!globalData)return[];
       let s=globalData.stocks.filter(x=>x.strategies[activeTab].ready);
+      if(starOnly)s=s.filter(x=>wlSet.has(x.ticker.toUpperCase()));
       const q=document.getElementById('searchTicker').value.toUpperCase();
       if(q)s=s.filter(x=>x.ticker.includes(q));
       const sf=document.getElementById('filterScore').value;
