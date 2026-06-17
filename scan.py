@@ -440,8 +440,25 @@ def build_record(ticker, hist):
         }
         # S1 假突破偵測（參考用）
         if s == "S1":
-            strategies[s]["daysBelow20"] = today[s].get("daysBelow20", 0)
-            strategies[s]["daysRecover"] = today[s].get("daysRecover", 0)
+            db = today[s].get("daysBelow20", 0)
+            dr = today[s].get("daysRecover", 0)
+            strategies[s]["daysBelow20"] = db
+            strategies[s]["daysRecover"] = dr
+            # 跌穿前 S1 連續 5/5 日數（s1_ready streak before the dip）
+            streak_before = 0
+            if db > 0:
+                dip_start = last - dr - db + 1   # 跌穿段第一日
+                j = dip_start - 1                # 跌穿前一日
+                guard = 0
+                while j >= 63 and guard < STREAK_LOOKBACK:
+                    ev = eval_strategies(j, closes, highs, lows, volumes,
+                                         ema20a, ema50a, ema200a, rsia, atr5a, atr14a)
+                    if ev is None or not ev["S1"]["ready"]:
+                        break
+                    streak_before += 1
+                    j -= 1
+                    guard += 1
+            strategies[s]["streakBefore"] = streak_before
 
     # K 線 + EMA 圖數據（最近 120 根，畀 app 內畫圖）
     times = hist.get("time", [])
