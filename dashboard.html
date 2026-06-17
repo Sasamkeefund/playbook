@@ -113,6 +113,9 @@
     table{width:100%;border-collapse:collapse}
     thead{background:var(--surface-2)}
     th{padding:13px 12px;text-align:left;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+    th.sortable{cursor:pointer;user-select:none}
+    th.sortable:hover{color:var(--text)}
+    .sarr{font-size:9px;color:var(--accent)}
     td{padding:12px;border-top:1px solid var(--border);font-size:13px;white-space:nowrap}
     tbody tr{transition:background .12s}
     tbody tr:hover{background:var(--surface-2)}
@@ -192,11 +195,15 @@
       <table>
         <thead>
           <tr>
-            <th>NEW</th><th>Ticker</th>
-            <th style="text-align:right">Close</th><th style="text-align:right">1D%</th>
-            <th style="text-align:right">EMA</th><th style="text-align:right">RSI</th>
+            <th>NEW</th><th class="sortable" onclick="sortBy('ticker')">Ticker <span class="sarr" data-k="ticker"></span></th>
+            <th class="sortable" style="text-align:right" onclick="sortBy('close')">Close <span class="sarr" data-k="close"></span></th>
+            <th class="sortable" style="text-align:right" onclick="sortBy('chgPct')">1D% <span class="sarr" data-k="chgPct"></span></th>
+            <th style="text-align:right">EMA</th>
+            <th class="sortable" style="text-align:right" onclick="sortBy('rsi')">RSI <span class="sarr" data-k="rsi"></span></th>
             <th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th>
-            <th style="text-align:center">Req</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th>
+            <th class="sortable" style="text-align:center" onclick="sortBy('score')">Req <span class="sarr" data-k="score"></span></th>
+            <th class="sortable" style="text-align:center" onclick="sortBy('bonusScore')">Bonus <span class="sarr" data-k="bonusScore"></span></th>
+            <th class="sortable" style="text-align:center" onclick="sortBy('streak')">Streak <span class="sarr" data-k="streak"></span></th>
             <th>入場建議</th>
             <th style="text-align:center">⭐</th>
           </tr>
@@ -304,7 +311,27 @@
       if(sf)s=s.filter(x=>x.strategies[activeTab].score>=parseInt(sf));
       const stf=document.getElementById('filterStreak').value;
       if(stf)s=s.filter(x=>x.strategies[activeTab].streak>=parseInt(stf));
+      // 排序
+      if(sortKey){
+        const stratKeys=['score','bonusScore','streak'];
+        s=s.slice().sort((a,b)=>{
+          let va,vb;
+          if(stratKeys.includes(sortKey)){va=a.strategies[activeTab][sortKey];vb=b.strategies[activeTab][sortKey];}
+          else if(sortKey==='ticker'){va=a.ticker;vb=b.ticker;}
+          else{va=a[sortKey];vb=b[sortKey];}
+          if(typeof va==='string')return sortDir*va.localeCompare(vb);
+          return sortDir*((va||0)-(vb||0));
+        });
+      }
       return s;
+    }
+    let sortKey=null, sortDir=-1; // -1 = 大到細, 1 = 細到大
+    function sortBy(key){
+      if(sortKey===key){sortDir=-sortDir;}else{sortKey=key;sortDir=(key==='ticker')?1:-1;}
+      document.querySelectorAll('.sarr').forEach(el=>{
+        el.textContent = el.dataset.k===sortKey ? (sortDir===1?'▲':'▼') : '';
+      });
+      renderTable();
     }
     function renderTabs(){
       document.getElementById('tabs').innerHTML=Object.entries(STRATEGY_NAMES).map(([k])=>{
