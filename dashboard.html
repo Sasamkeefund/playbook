@@ -335,7 +335,7 @@
       // 控制列：S6 Fib toggle
       const bar=document.createElement('div');
       bar.style.cssText='display:flex;gap:14px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap';
-      bar.innerHTML=`<span style="color:#26a69a">━ EMA20</span><span style="color:#fb8c00">━ EMA50</span><span style="color:#ab47bc">━ EMA200</span>
+      bar.innerHTML=`<span style="color:#00c896">━ EMA20</span><span style="color:#ffb347">━ EMA50</span><span style="color:#ff4d4d">━ EMA200</span>
         <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)"><input type="checkbox" id="fibToggle"> 黃金比例 (Fib)</label>
         <span id="fibInfo" style="color:var(--amber)"></span>`;
       c.appendChild(bar);
@@ -354,7 +354,7 @@
       cs.setData(candles);
       const line=(arr,color)=>{const s=chart.addLineSeries({color,lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
         s.setData(d.t.map((t,i)=>arr[i]==null?null:({time:t,value:arr[i]})).filter(Boolean));return s;};
-      line(d.e20,'#26a69a');line(d.e50,'#fb8c00');line(d.e200,'#ab47bc');
+      line(d.e20,'#00c896');line(d.e50,'#ffb347');line(d.e200,'#ff4d4d');
       chart.timeScale().fitContent();
 
       // S6 黃金比例：用最近 swing high → swing low 自動畫 Fib
