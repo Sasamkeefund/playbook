@@ -75,9 +75,9 @@
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>Ticker</th><th style="text-align:right">加入日期</th><th>筆記</th><th style="text-align:center">移除</th></tr>
+          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>
         </thead>
-        <tbody id="tbody"><tr><td colspan="4" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="5" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -89,9 +89,18 @@
     (function(){try{if(/workmode=1/.test(document.cookie))setWork(true);}catch(e){}})();
 
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
-    let list=[];
+    const STRAT={S1:'順勢',S2:'趨結',S3:'突破',S4:'假突',S5:'支阻',S6:'圖表'};
+    let list=[], dataMap={};
+    async function loadData(){
+      try{
+        const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
+        const d=await r.json();
+        (d.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
+      }catch(e){}
+    }
     async function loadList(){
-      document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊 Google Sheet…';
+      document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊…';
+      await loadData();
       try{
         const r=await fetch(WL_API);
         const d=await r.json();
@@ -102,13 +111,27 @@
       }
       render();
     }
+    function stratBadges(ticker){
+      const s=dataMap[ticker.toUpperCase()];
+      if(!s)return '<span style="color:var(--faint);font-size:11px">—</span>';
+      const ready=Object.keys(STRAT).filter(k=>s.strategies[k]&&s.strategies[k].ready);
+      if(!ready.length)return '<span style="color:var(--faint);font-size:11px">冇 ready</span>';
+      return ready.map(k=>`<span style="display:inline-block;padding:2px 7px;margin:1px;border-radius:6px;background:rgba(124,92,255,.15);color:var(--accent);font-size:11px;font-weight:700">${k}</span>`).join('');
+    }
+    function priceCell(ticker){
+      const s=dataMap[ticker.toUpperCase()];
+      if(!s)return '<span style="color:var(--faint)">—</span>';
+      const ch=s.chgPct>0?'#2ee6a6':s.chgPct<0?'#ff5d6c':'var(--dim)';
+      return `<span class="mono">$${s.close.toFixed(2)}</span> <span class="mono" style="color:${ch};font-size:11px">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</span>`;
+    }
     function render(){
       const tb=document.getElementById('tbody');
-      if(!list.length){tb.innerHTML='<tr><td colspan="4" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
+      if(!list.length){tb.innerHTML='<tr><td colspan="5" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
       tb.innerHTML=list.map(item=>`<tr>
         <td class="ticker">${item.ticker}</td>
-        <td class="mono" style="text-align:right;color:var(--dim);font-size:12px">${item.dateAdded||''}</td>
-        <td><input type="text" class="note-input" value="${(item.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${item.ticker}',this.value)" placeholder="加筆記（例如 等 EMA20 回調）"></td>
+        <td style="text-align:right">${priceCell(item.ticker)}</td>
+        <td>${stratBadges(item.ticker)}</td>
+        <td><input type="text" class="note-input" value="${(item.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${item.ticker}',this.value)" placeholder="加筆記"></td>
         <td style="text-align:center"><button class="del-btn" onclick="removeStock('${item.ticker}')">🗑️</button></td>
       </tr>`).join('');
     }
@@ -117,8 +140,7 @@
       document.getElementById('status').textContent='共 '+list.length+' 隻';
       render();
       try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'remove',ticker})});}catch(e){}
-    }
-    async function saveNote(ticker,note){
+    }    async function saveNote(ticker,note){
       const it=list.find(x=>x.ticker===ticker);if(it)it.note=note;
       try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'note',ticker,note})});}catch(e){}
     }
