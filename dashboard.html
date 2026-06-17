@@ -527,9 +527,14 @@
         document.getElementById('fibInfo').innerHTML=`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`;
       }
       const ft=document.getElementById('fibToggle');
+      // 讀返上次儲存嘅 A/B 值
+      const savedA=localStorage.getItem('fib_a');
+      const savedB=localStorage.getItem('fib_b');
+      if(savedA)document.getElementById('fibA').value=savedA;
+      if(savedB)document.getElementById('fibB').value=savedB;
       ft.addEventListener('change',e=>drawFib(e.target.checked));
-      document.getElementById('fibA').addEventListener('input',()=>drawFib(ft.checked));
-      document.getElementById('fibB').addEventListener('input',()=>drawFib(ft.checked));
+      document.getElementById('fibA').addEventListener('change',()=>{localStorage.setItem('fib_a',document.getElementById('fibA').value);drawFib(ft.checked);});
+      document.getElementById('fibB').addEventListener('change',()=>{localStorage.setItem('fib_b',document.getElementById('fibB').value);drawFib(ft.checked);});
       if(activeTab==='S6'){ft.checked=true;drawFib(true);}
     }
     function closeChart(){document.getElementById('chartModal').classList.remove('show');document.getElementById('chartContainer').innerHTML='';if(lwChart){lwChart.remove();lwChart=null;}}
