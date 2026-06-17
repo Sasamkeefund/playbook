@@ -230,6 +230,7 @@
           <button onclick="closeChart()" class="modal-close">✕</button>
         </div>
       </div>
+      <div id="chartInfo" style="display:flex;gap:18px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12.5px;flex-wrap:wrap;background:var(--surface-2)"></div>
       <div id="chartContainer" style="flex:1"></div>
     </div>
   </div>
@@ -418,10 +419,32 @@
       chartsCache=await r.json();
       return chartsCache;
     }
+    function fillChartInfo(ticker){
+      const box=document.getElementById('chartInfo');
+      if(!globalData){box.innerHTML='';return;}
+      const s=globalData.stocks.find(x=>x.ticker===ticker);
+      if(!s){box.innerHTML='';return;}
+      const st=s.strategies[activeTab];
+      const v=getVerdict(activeTab,st);
+      const chCol=s.chgPct>0?'#2ee6a6':s.chgPct<0?'#ff5d6c':'var(--dim)';
+      const vCol=v.color==='green'?'#2ee6a6':v.color==='amber'?'#f5b945':'#ff5d6c';
+      const b=st.bonus||[];
+      const cks=b.map((x,i)=>`<span style="color:${x?'#2ee6a6':'#ff5d6c'}">C${i+1}${x?'✓':'✗'}</span>`).join(' ');
+      box.innerHTML=`
+        <span><b class="mono" style="font-size:14px">${activeTab}</b></span>
+        <span class="mono">$${s.close.toFixed(2)} <span style="color:${chCol}">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</span></span>
+        <span style="color:var(--dim)">RSI <span class="mono" style="color:var(--text)">${s.rsi.toFixed(1)}</span></span>
+        <span style="display:flex;gap:7px">${cks}</span>
+        <span style="color:var(--dim)">REQ <b class="mono" style="color:var(--text)">${st.score}</b></span>
+        <span style="color:var(--dim)">Bonus <b class="mono" style="color:var(--text)">${st.bonusScore}/5</b></span>
+        <span style="color:var(--dim)">Streak <b class="mono" style="color:var(--text)">${st.streak}</b></span>
+        <span style="margin-left:auto;color:${vCol};font-weight:600">${v.text}</span>`;
+    }
     let pendingAB={a:null,b:null};
     async function openChart(ticker){
       document.getElementById('chartTitle').textContent=ticker;
       document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol='+ticker;
+      fillChartInfo(ticker);
       const c=document.getElementById('chartContainer');
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
       document.getElementById('chartModal').classList.add('show');
