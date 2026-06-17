@@ -267,14 +267,27 @@
     function getVerdict(tab,strat){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5')?4:5;
-      if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];const streak=strat.streak||0;
-        if(req<reqMax)return{text:'👀 候選 — 等收市確認返上 EMA20',color:'amber'};
-        if(streak<3)return{text:'🛑 連續<3日 — 大趨勢未確認，唔入',color:'red'};
-        if(streak<7)return{text:'⚠️ 連續 '+streak+'日(<7)— 趨勢未夠強，保守/觀察',color:'amber'};
+      if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
+        const db=strat.daysBelow20||0, dr=strat.daysRecover||0, sb=strat.streakBefore;
+        // 跟 Checklist 邏輯：跌穿前 streak（sb）+ 跌穿日數（db）+ 升返
+        if(req<reqMax){
+          if(db>0&&dr===0)return{text:'⬇ 跌穿 EMA20 '+db+'日 — 等收市返上確認',color:'amber'};
+          return{text:'👀 未 ready — 等回調觸 EMA20',color:'amber'};
+        }
+        // req=5（已喺 EMA20 上）
+        if(db===0&&dr===0)return{text:'📈 EMA20 上方未回調 — 等回調觸線',color:'amber'};
+        if(db>=4)return{text:'❌ 跌穿 EMA20 '+db+'日（≥4）— 真跌穿，唔係假突破',color:'red'};
+        // 有假突破（跌穿 1-3 日後升返）→ 睇跌穿前 streak
+        if(sb!==undefined){
+          if(sb<3)return{text:'🛑 跌穿前只 '+sb+'日(<3)— 大趨勢未確認，唔入',color:'red'};
+          if(sb<7)return{text:'⚠️ 跌穿前 '+sb+'日(3-6)— 趨勢轉弱，保守/唔建議',color:'amber'};
+        }
+        // 跌穿前 ≥7日 → 睇 Bonus / b2
         if(bonus<=2)return{text:'❌ Bonus 唔夠 — 唔入',color:'red'};
         if(!b2)return{text:'⚠️ b2 三線未齊 — 極細倉或唔入',color:'amber'};
-        if(bonus>=4)return{text:'🔥 高質候選 — 入場前用互動檢查表確認假突破',color:'green'};
-        if(b3&&b4)return{text:'✅ 中質候選 — 縮量+回調中，互動檢查表確認',color:'green'};
+        if(dr>2)return{text:'⏰ 升返已 '+dr+'日 — 假突破過咗，追入已遲',color:'amber'};
+        if(bonus>=4)return{text:'🔥 高質候選 — 跌穿前'+sb+'日 ✓ 入場前確認假突破',color:'green'};
+        if(b3&&b4)return{text:'✅ 中質候選 — 縮量+回調，互動檢查表確認',color:'green'};
         return{text:'⚠️ b3+b4 未同時過 — 等縮量回調',color:'amber'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
