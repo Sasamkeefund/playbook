@@ -423,6 +423,12 @@
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
       document.getElementById('chartModal').classList.add('show');
       try{
+        // 讀返 Google Sheet 嘅 A/B 值
+        const abResp=await fetch(WL_API+'?ticker='+ticker);
+        const ab=await abResp.json();
+        if(ab.a)document.getElementById('fibA').value=ab.a;
+        if(ab.b)document.getElementById('fibB').value=ab.b;
+        
         const all=await ensureCharts();
         const d=all[ticker];
         if(!d){c.innerHTML='<div style="padding:2rem;color:var(--dim)">呢隻股暫時冇圖數據</div>';return;}
