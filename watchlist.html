@@ -75,9 +75,9 @@
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>
+          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>
         </thead>
-        <tbody id="tbody"><tr><td colspan="5" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="7" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -124,12 +124,26 @@
       const ch=s.chgPct>0?'#2ee6a6':s.chgPct<0?'#ff5d6c':'var(--dim)';
       return `<span class="mono">$${s.close.toFixed(2)}</span> <span class="mono" style="color:${ch};font-size:11px">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</span>`;
     }
+    function ema20Cell(ticker){
+      const s=dataMap[ticker.toUpperCase()];
+      if(!s)return '<span style="color:var(--faint)">—</span>';
+      const dist=((s.close-s.ema20)/s.ema20*100);
+      const col=Math.abs(dist)<=1.5?'#f5b945':(dist>0?'var(--dim)':'#ff5d6c'); // 近 EMA20(±1.5%)=黃，回調觸線
+      return `<span class="mono" style="font-size:12px">${s.ema20.toFixed(1)}</span><br><span class="mono" style="color:${col};font-size:11px">${dist>0?'+':''}${dist.toFixed(1)}%</span>`;
+    }
+    function rsiCell(ticker){
+      const s=dataMap[ticker.toUpperCase()];
+      if(!s)return '<span style="color:var(--faint)">—</span>';
+      return `<span class="mono" style="font-size:12px">${s.rsi.toFixed(1)}</span>`;
+    }
     function render(){
       const tb=document.getElementById('tbody');
-      if(!list.length){tb.innerHTML='<tr><td colspan="5" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
+      if(!list.length){tb.innerHTML='<tr><td colspan="7" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
       tb.innerHTML=list.map(item=>`<tr>
         <td class="ticker">${item.ticker}</td>
         <td style="text-align:right">${priceCell(item.ticker)}</td>
+        <td style="text-align:right">${ema20Cell(item.ticker)}</td>
+        <td style="text-align:right">${rsiCell(item.ticker)}</td>
         <td>${stratBadges(item.ticker)}</td>
         <td><input type="text" class="note-input" value="${(item.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${item.ticker}',this.value)" placeholder="加筆記"></td>
         <td style="text-align:center"><button class="del-btn" onclick="removeStock('${item.ticker}')">🗑️</button></td>
