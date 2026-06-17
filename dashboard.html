@@ -346,7 +346,10 @@
       const chart=LightweightCharts.createChart(box,{
         layout:{background:{color:'transparent'},textColor:'#8a8fa3'},
         grid:{vertLines:{color:'#1a1c2b'},horzLines:{color:'#1a1c2b'}},
-        rightPriceScale:{borderColor:'#262a3d'},timeScale:{borderColor:'#262a3d',timeVisible:false},
+        rightPriceScale:{borderColor:'#262a3d',autoScale:true,scaleMargins:{top:0.1,bottom:0.1}},
+        timeScale:{borderColor:'#262a3d',timeVisible:false},
+        handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},
+        handleScale:{axisPressedMouseMove:{time:true,price:true},mouseWheel:true,pinch:true},
         crosshair:{mode:0},autoSize:true,
       });
       lwChart=chart;
