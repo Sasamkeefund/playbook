@@ -10,18 +10,17 @@
   <style>
     :root{--bg:#0a0b12;--surface:#13141f;--surface-2:#1a1c2b;--surface-3:#20233a;
       --border:#262a3d;--border-2:#323754;--text:#e6e8f0;--dim:#8a8fa3;--faint:#5b6075;
-      --accent:#7c5cff;--accent-2:#4d8dff;}
-    /* 返工 Mode */
+      --accent:#7c5cff;--accent-2:#4d8dff;--down:#ff5d6c;--amber:#f5b945;}
     body.work{--bg:#ffffff;--surface:#ffffff;--surface-2:#f3f3f3;--surface-3:#e9e9e9;
       --border:#d0d0d0;--border-2:#bcbcbc;--text:#1a1a1a;--dim:#555;--faint:#888;
-      --accent:#444;--accent-2:#444;background-image:none !important;}
+      --accent:#444;--accent-2:#444;--down:#b00020;--amber:#7a5c00;background-image:none !important;}
     *{margin:0;padding:0;box-sizing:border-box}
-    html,body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh}
+    html,body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh}
     body{padding:1.25rem;background-image:radial-gradient(900px 400px at 12% -8%,rgba(124,92,255,.10),transparent 60%),radial-gradient(800px 380px at 92% -10%,rgba(77,141,255,.08),transparent 60%);}
     body.work{background-image:none}
     .topbar{position:sticky;top:0;z-index:50;background:rgba(19,20,31,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);margin:-1.25rem -1.25rem 1.4rem;padding:11px 1.25rem}
     body.work .topbar{background:#f3f3f3 !important}
-    .topbar-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    .topbar-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
     .brand{font-size:20px;font-weight:700;background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fb0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
     body.work .brand{background:none;-webkit-text-fill-color:#333;color:#333}
     .topnav{display:flex;gap:6px}
@@ -31,32 +30,27 @@
     body.work .topnav a{color:#555}
     body.work .topnav a.active{background:#dcdcdc !important;color:#1a1a1a !important;box-shadow:none !important}
     .topactions{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .btn{padding:9px 15px;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);transition:.15s;text-decoration:none}
-    .btn:hover{border-color:var(--accent);background:var(--surface-3)}
-    .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:#fff;box-shadow:0 4px 16px rgba(124,92,255,.35)}
-    .btn.primary:hover{filter:brightness(1.08)}
+    .btn{padding:7px 12px;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);transition:.15s}
+    .btn:hover{border-color:var(--accent)}
     body.work .btn{background:#e9e9e9;color:#1a1a1a;border-color:#ccc}
-    body.work .btn.primary{background:#dcdcdc;color:#1a1a1a;box-shadow:none}
-    .container{max-width:1000px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
-    .wrap{flex:1;display:flex;flex-direction:column}
-    .section-title{font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
-    .add-form{display:flex;gap:8px;margin-bottom:1.4rem;flex-wrap:wrap}
-    input[type=text]{padding:10px 13px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;flex:1;min-width:120px}
-    input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,92,255,.15)}
-    body.work input{background:#fff;color:#1a1a1a;border-color:#ccc}
-    body.work input:focus{box-shadow:none}
-    .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow-x:auto;flex:1}
+    .container{max-width:1100px;margin:0 auto;width:100%;flex:1;display:flex;flex-direction:column}
+    .section-title{font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+    .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow-x:auto}
     table{width:100%;border-collapse:collapse}
     thead{background:var(--surface-2)}
     th{padding:13px 12px;text-align:left;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
     td{padding:12px;border-top:1px solid var(--border);font-size:13px}
     tbody tr:hover{background:var(--surface-2)}
-    .ticker{font-weight:700;color:var(--accent-2)}
-    .note-cell{color:var(--dim);font-size:12px;max-width:200px}
-    .note-input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;font-family:inherit}
-    .del-btn{padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--down);cursor:pointer;transition:.15s}
-    .del-btn:hover{background:rgba(255,93,108,.15);border-color:var(--down)}
-    .empty{text-align:center;padding:2rem;color:var(--dim)}
+    .ticker{font-weight:700;color:var(--accent-2);font-size:15px}
+    .note-input{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:12px;font-family:inherit}
+    body.work .note-input{background:#fff;color:#1a1a1a;border-color:#ccc}
+    .note-input:focus{outline:none;border-color:var(--accent)}
+    .del-btn{padding:4px 9px;font-size:14px;border-radius:6px;border:none;background:transparent;color:var(--down);cursor:pointer}
+    .del-btn:hover{background:rgba(255,93,108,.15)}
+    .empty{text-align:center;padding:2.5rem;color:var(--dim)}
+    .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+    .dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--accent);animation:pulse 1.2s infinite}
+    @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
   </style>
 </head>
 <body>
@@ -70,115 +64,65 @@
         <a href="watchlist.html" class="active">📋 Watchlist</a>
       </nav>
       <div class="topactions">
-        <button onclick="toggleWork()" id="workBtn" style="padding:7px 12px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);cursor:pointer">🕶 返工 Mode</button>
-        <button onclick="saveToGitHub()" class="btn primary">💾 Save to GitHub</button>
+        <button onclick="toggleWork()" id="workBtn" class="btn">🕶 返工 Mode</button>
+        <button onclick="loadList()" class="btn">🔄 刷新</button>
       </div>
     </div>
   </div>
 
   <div class="container">
-    <div class="wrap">
-      <div class="section-title">📌 My Watchlist</div>
-      
-      <div class="add-form">
-        <input type="text" id="addTicker" placeholder="例如 AAPL" maxlength="10">
-        <input type="text" id="addNote" placeholder="筆記（選填）" style="flex:0.8">
-        <button onclick="addToWatchlist()" class="btn primary">➕ 加入</button>
-      </div>
-
-      <div class="tablewrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Ticker</th>
-              <th style="text-align:right">Date</th>
-              <th>筆記</th>
-              <th style="text-align:center">Delete</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-          </tbody>
-        </table>
-      </div>
+    <div class="section-title">📌 My Watchlist <span id="status" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)"></span></div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Ticker</th><th style="text-align:right">加入日期</th><th>筆記</th><th style="text-align:center">移除</th></tr>
+        </thead>
+        <tbody id="tbody"><tr><td colspan="4" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
+      </table>
     </div>
   </div>
 
   <script>
-    function setWork(on){
-      document.body.classList.toggle('work',on);
-      const b=document.getElementById('workBtn');
-      if(b)b.textContent=on?'🌙 Trader Mode':'🕶 返工 Mode';
-      try{document.cookie='workmode='+(on?'1':'0')+';path=/;max-age=31536000';}catch(e){}
-    }
+    function setWork(on){document.body.classList.toggle('work',on);const b=document.getElementById('workBtn');if(b)b.textContent=on?'🌙 Trader Mode':'🕶 返工 Mode';try{document.cookie='workmode='+(on?'1':'0')+';path=/;max-age=31536000';}catch(e){}}
     function toggleWork(){setWork(!document.body.classList.contains('work'));}
     document.addEventListener('keydown',function(e){if(e.key==='`'){e.preventDefault();toggleWork();}});
     (function(){try{if(/workmode=1/.test(document.cookie))setWork(true);}catch(e){}})();
 
-    const WL_KEY='playbook_watchlist';
-    function loadWL(){
-      const s=localStorage.getItem(WL_KEY);
-      return s?JSON.parse(s):{tickers:[]};
-    }
-    function saveWL(wl){
-      localStorage.setItem(WL_KEY,JSON.stringify(wl));
+    const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
+    let list=[];
+    async function loadList(){
+      document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊 Google Sheet…';
+      try{
+        const r=await fetch(WL_API);
+        const d=await r.json();
+        list=d.watchlist||[];
+        document.getElementById('status').textContent='共 '+list.length+' 隻';
+      }catch(e){
+        document.getElementById('status').textContent='❌ 讀取失敗';
+      }
       render();
     }
-    function addToWatchlist(){
-      const ticker=document.getElementById('addTicker').value.toUpperCase().trim();
-      const note=document.getElementById('addNote').value.trim();
-      if(!ticker)return alert('請輸入 Ticker');
-      const wl=loadWL();
-      if(wl.tickers.find(x=>x.ticker===ticker))return alert('已經喺 Watchlist');
-      const d=new Date();
-      const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      wl.tickers.push({ticker,dateAdded:dateStr,note});
-      saveWL(wl);
-      document.getElementById('addTicker').value='';
-      document.getElementById('addNote').value='';
-    }
-    function deleteWL(ticker){
-      const wl=loadWL();
-      wl.tickers=wl.tickers.filter(x=>x.ticker!==ticker);
-      saveWL(wl);
-    }
-    function updateNote(ticker,note){
-      const wl=loadWL();
-      const item=wl.tickers.find(x=>x.ticker===ticker);
-      if(item)item.note=note;
-      localStorage.setItem(WL_KEY,JSON.stringify(wl));
-    }
     function render(){
-      const wl=loadWL();
       const tb=document.getElementById('tbody');
-      if(!wl.tickers.length){tb.innerHTML='<tr><td colspan="4" class="empty">冇嘢喺度，去 Screener 加股票</td></tr>';return;}
-      tb.innerHTML=wl.tickers.map(item=>`<tr>
+      if(!list.length){tb.innerHTML='<tr><td colspan="4" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
+      tb.innerHTML=list.map(item=>`<tr>
         <td class="ticker">${item.ticker}</td>
-        <td style="text-align:right;font-size:12px;color:var(--dim)">${item.dateAdded}</td>
-        <td><input type="text" class="note-input" value="${item.note}" onchange="updateNote('${item.ticker}',this.value)" placeholder="加筆記"></td>
-        <td style="text-align:center"><button class="del-btn" onclick="deleteWL('${item.ticker}')">🗑️</button></td>
+        <td class="mono" style="text-align:right;color:var(--dim);font-size:12px">${item.dateAdded||''}</td>
+        <td><input type="text" class="note-input" value="${(item.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${item.ticker}',this.value)" placeholder="加筆記（例如 等 EMA20 回調）"></td>
+        <td style="text-align:center"><button class="del-btn" onclick="removeStock('${item.ticker}')">🗑️</button></td>
       </tr>`).join('');
     }
-    async function saveToGitHub(){
-      const wl=loadWL();
-      if(!wl.tickers.length){alert('Watchlist 係空嘅');return;}
-      const json=JSON.stringify({updated:new Date().toISOString(),watchlist:wl.tickers},null,2);
-      // 複製到 clipboard
-      try{
-        await navigator.clipboard.writeText(json);
-        alert('✅ JSON 已複製到剪貼板\n\n去 GitHub repo → 新建 watchlist.json 或編輯現有檔案 → paste 呢個內容 → commit');
-      }catch(e){
-        // fallback: 顯示 modal
-        const modal=document.createElement('div');
-        modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px';
-        modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:600px;color:var(--text)">
-          <p style="margin-bottom:12px;font-size:14px">複製下面嘅 JSON，去 GitHub 新建 <strong>watchlist.json</strong> 或編輯現有檔案：</p>
-          <textarea readonly style="width:100%;height:200px;padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:monospace;font-size:11px">${json}</textarea>
-          <button onclick="this.closest('div').parentElement.remove()" style="margin-top:12px;padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer">關閉</button>
-        </div>`;
-        document.body.appendChild(modal);
-      }
+    async function removeStock(ticker){
+      list=list.filter(x=>x.ticker!==ticker);
+      document.getElementById('status').textContent='共 '+list.length+' 隻';
+      render();
+      try{await fetch(WL_API,{method:'POST',body:JSON.stringify({action:'remove',ticker})});}catch(e){}
     }
-    render();
+    async function saveNote(ticker,note){
+      const it=list.find(x=>x.ticker===ticker);if(it)it.note=note;
+      try{await fetch(WL_API,{method:'POST',body:JSON.stringify({action:'note',ticker,note})});}catch(e){}
+    }
+    loadList();
   </script>
 </body>
 </html>
