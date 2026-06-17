@@ -13,6 +13,21 @@
       --border:#262a3d; --border-2:#323754; --text:#e6e8f0; --dim:#8a8fa3; --faint:#5b6075;
       --accent:#7c5cff; --accent-2:#4d8dff; --up:#2ee6a6; --down:#ff5d6c; --amber:#f5b945;
     }
+    /* 返工 Mode：淡色樸素，似 Excel/文件 */
+    body.work{
+      --bg:#ffffff; --surface:#ffffff; --surface-2:#f3f3f3; --surface-3:#e9e9e9;
+      --border:#d9d9d9; --border-2:#c4c4c4;
+      --text:#222; --dim:#777; --faint:#999;
+      --accent:#5a5a5a; --accent-2:#5a5a5a;
+      --up:#217346; --down:#b00020; --amber:#8a6d00;
+      --glow:none;
+      background-image:none !important;
+    }
+    body.work .brand{background:none;-webkit-text-fill-color:#333;color:#333;font-weight:600}
+    body.work h1{background:none;-webkit-text-fill-color:#333;color:#333}
+    body.work .topnav a.active,body.work .tab-btn.active,body.work .btn.primary{background:#e0e0e0 !important;color:#222 !important;box-shadow:none !important;border:1px solid #c4c4c4 !important}
+    body.work .scard::before,body.work .new-badge{background:#999 !important;box-shadow:none !important}
+    body.work .badge.perfect{background:#e8e8e8;color:#217346;box-shadow:none}
     *{margin:0;padding:0;box-sizing:border-box}
     html{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
     body{background:var(--bg);color:var(--text);line-height:1.55;padding:1.25rem;
@@ -81,6 +96,7 @@
         <a href="checklist.html">✅ Checklist</a>
       </nav>
       <div class="topactions">
+        <button onclick="toggleWork()" id="workBtn" style="padding:7px 12px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);cursor:pointer">🕶 返工 Mode</button>
         <span class="sub" id="updated">讀緊…</span>
       </div>
     </div>
@@ -139,6 +155,15 @@
         return `<a class="scard" href="dashboard.html"><div class="code">${s}</div><div class="nm">${STRATEGY_NAMES[s]}</div><div class="cnt">${sum.count}</div>${nc>0?`<div class="new">+${nc} NEW</div>`:''}</a>`;
       }).join('');
     }
+    function setWork(on){
+      document.body.classList.toggle('work',on);
+      const b=document.getElementById('workBtn');
+      if(b)b.textContent = on ? '🌙 Trader Mode' : '🕶 返工 Mode';
+      try{document.cookie='workmode='+(on?'1':'0')+';path=/;max-age=31536000';}catch(e){}
+    }
+    function toggleWork(){setWork(!document.body.classList.contains('work'));}
+    document.addEventListener('keydown',function(e){if(e.key==='`'){e.preventDefault();toggleWork();}});
+    (function(){try{if(/workmode=1/.test(document.cookie))setWork(true);}catch(e){}})();
     load();
   </script>
 </body>
