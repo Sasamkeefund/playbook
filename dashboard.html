@@ -337,6 +337,10 @@
       const bar=document.createElement('div');
       bar.style.cssText='display:flex;gap:14px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap';
       bar.innerHTML=`<span style="color:#00c896">━ EMA20</span><span style="color:#ffb347">━ EMA50</span><span style="color:#ff4d4d">━ EMA200</span>
+        <span style="display:flex;gap:6px;margin-left:14px">
+          <button id="zoomRecent" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border-2);background:var(--surface-3);color:var(--text);cursor:pointer">近期</button>
+          <button id="zoomAll" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">全部</button>
+        </span>
         <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)"><input type="checkbox" id="fibToggle"> 黃金比例 (Fib)</label>
         <span id="fibInfo" style="color:var(--amber)"></span>`;
       c.appendChild(bar);
@@ -359,7 +363,16 @@
       const line=(arr,color)=>{const s=chart.addLineSeries({color,lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
         s.setData(d.t.map((t,i)=>arr[i]==null?null:({time:t,value:arr[i]})).filter(Boolean));return s;};
       line(d.e20,'#00c896');line(d.e50,'#ffb347');line(d.e200,'#ff4d4d');
-      chart.timeScale().fitContent();
+      const nbars=d.t.length;
+      const showRecent=()=>{chart.timeScale().setVisibleLogicalRange({from:Math.max(0,nbars-50),to:nbars});
+        document.getElementById('zoomRecent').style.background='var(--surface-3)';document.getElementById('zoomRecent').style.color='var(--text)';
+        document.getElementById('zoomAll').style.background='var(--surface)';document.getElementById('zoomAll').style.color='var(--dim)';};
+      const showAll=()=>{chart.timeScale().fitContent();
+        document.getElementById('zoomAll').style.background='var(--surface-3)';document.getElementById('zoomAll').style.color='var(--text)';
+        document.getElementById('zoomRecent').style.background='var(--surface)';document.getElementById('zoomRecent').style.color='var(--dim)';};
+      document.getElementById('zoomRecent').addEventListener('click',showRecent);
+      document.getElementById('zoomAll').addEventListener('click',showAll);
+      showRecent(); // 預設聚焦近期
 
       // S6 黃金比例：用最近 swing high → swing low 自動畫 Fib
       const n=d.c.length;
