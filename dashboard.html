@@ -444,6 +444,12 @@
           <button id="zoomAll" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">全部</button>
         </span>
         <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)"><input type="checkbox" id="fibToggle"> 黃金比例 (Fib)</label>
+        <div id="fibInputs" style="display:none;display:flex;gap:8px;align-items:center;margin-left:12px">
+          <label style="font-size:11px;color:var(--dim)">A:</label>
+          <input type="number" id="fibA" placeholder="高" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <label style="font-size:11px;color:var(--dim)">B:</label>
+          <input type="number" id="fibB" placeholder="低" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+        </div>
         <span id="fibInfo" style="color:var(--amber)"></span>`;
       c.appendChild(bar);
       const box=document.createElement('div');box.style.cssText='flex:1;width:100%';box.id='lwbox';c.appendChild(box);
@@ -487,17 +493,38 @@
       let fibSeries=[];
       function drawFib(on){
         fibSeries.forEach(s=>chart.removeSeries(s));fibSeries=[];
-        if(!on)return;
+        const fibInputs=document.getElementById('fibInputs');
+        if(!on){fibInputs.style.display='none';return;}
+        fibInputs.style.display='flex';
+        // 用手動輸入或自動偵測
+        const aInput=parseFloat(document.getElementById('fibA').value);
+        const bInput=parseFloat(document.getElementById('fibB').value);
+        let hi,swingLo;
+        if(!isNaN(aInput)&&!isNaN(bInput)){
+          hi=aInput; swingLo=bInput;
+        }else{
+          hi=Math.max(...d.h); 
+          const hiIdx=d.h.indexOf(hi);
+          swingLo=hiIdx<n-1?Math.min(...d.l.slice(hiIdx)):Math.min(...d.l);
+          document.getElementById('fibA').placeholder='高 ('+(hi.toFixed(2))+')';
+          document.getElementById('fibB').placeholder='低 ('+(swingLo.toFixed(2))+')';
+        }
         const range=hi-swingLo;
         fibLevels.forEach(([lv,col])=>{
           const price=hi-range*lv;
-          const s=chart.addLineSeries({color:col,lineWidth:lv===0.236?2:1,lineStyle:lv===0.236?0:2,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:lv===0?'高':lv===1?'低':lv.toFixed(3)});
-          s.setData([{time:d.t[Math.max(0,hiIdx)],value:price},{time:d.t[n-1],value:price}]);
+          const s=chart.addLineSeries({color:col,lineWidth:lv===0.236?2:1,lineStyle:lv===0.236?0:2,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:lv===0?'A':lv===1?'B':lv.toFixed(3)});
+          s.setData([{time:d.t[0],value:price},{time:d.t[n-1],value:price}]);
           fibSeries.push(s);
         });
         const f236=(hi-range*0.236);
         const broke=d.c[n-1]<f236;
         document.getElementById('fibInfo').innerHTML=`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`;
+      }
+      const ft=document.getElementById('fibToggle');
+      ft.addEventListener('change',e=>drawFib(e.target.checked));
+      document.getElementById('fibA').addEventListener('input',()=>drawFib(ft.checked));
+      document.getElementById('fibB').addEventListener('input',()=>drawFib(ft.checked));
+      if(activeTab==='S6'){ft.checked=true;drawFib(true);}
       }
       const ft=document.getElementById('fibToggle');
       ft.addEventListener('change',e=>drawFib(e.target.checked));
