@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     :root{--bg:#0a0b12;--surface:#13141f;--surface-2:#1a1c2b;--surface-3:#20233a;
       --border:#262a3d;--border-2:#323754;--text:#e6e8f0;--dim:#8a8fa3;--faint:#5b6075;
@@ -49,6 +50,17 @@
     .del-btn:hover{background:rgba(255,93,108,.15)}
     .empty{text-align:center;padding:2.5rem;color:var(--dim)}
     .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+    .ticker-link{cursor:pointer;text-decoration:none}
+    .ticker-link:hover{text-decoration:underline}
+    /* chart modal */
+    #chartModal{display:none;position:fixed;inset:0;background:rgba(5,6,12,.8);backdrop-filter:blur(4px);z-index:1000;padding:3vh 4vw}
+    #chartModal.show{display:flex;align-items:center;justify-content:center}
+    .modal-inner{background:var(--surface);border:1px solid var(--border-2);border-radius:14px;width:100%;max-width:1200px;height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border)}
+    .modal-close{font-size:20px;background:none;border:none;cursor:pointer;color:var(--dim);line-height:1}
+    .modal-close:hover{color:var(--text)}
+    .mbtn{padding:7px 13px;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;border:none;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
+    body.work .modal-inner{background:#fff}
     .dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--accent);animation:pulse 1.2s infinite}
     @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
   </style>
@@ -79,6 +91,22 @@
         </thead>
         <tbody id="tbody"><tr><td colspan="9" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
       </table>
+    </div>
+  </div>
+
+  <div id="chartModal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <div style="display:flex;gap:12px;align-items:center">
+          <button onclick="closeChart()" class="mbtn">← 返 Watchlist</button>
+          <strong id="chartTitle" class="mono" style="font-size:16px">—</strong>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <a id="chartOpenTV" href="#" target="_blank" rel="noopener" style="font-size:13px;color:var(--accent-2);text-decoration:none">喺 TradingView 開 ↗</a>
+          <button onclick="closeChart()" class="modal-close">✕</button>
+        </div>
+      </div>
+      <div id="chartContainer" style="flex:1"></div>
     </div>
   </div>
 
@@ -140,7 +168,7 @@
       const tb=document.getElementById('tbody');
       if(!list.length){tb.innerHTML='<tr><td colspan="9" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
       tb.innerHTML=list.map(item=>`<tr>
-        <td class="ticker">${item.ticker}</td>
+        <td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${item.ticker}');return false;">${item.ticker} 📈</a></td>
         <td style="text-align:right">${priceCell(item.ticker)}</td>
         <td style="text-align:right">${ema20Cell(item.ticker)}</td>
         <td style="text-align:right">${rsiCell(item.ticker)}</td>
@@ -163,6 +191,131 @@
       const it=list.find(x=>x.ticker===ticker);if(it)it.note=note;
       try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'note',ticker,note})});}catch(e){}
     }
+    // ========== Chart Modal ==========
+    let chartsCache=null, lwChart=null, pendingAB={a:null,b:null};
+    async function ensureCharts(){
+      if(chartsCache)return chartsCache;
+      const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/charts.json?t='+Date.now());
+      chartsCache=await r.json();
+      return chartsCache;
+    }
+    async function openChart(ticker){
+      document.getElementById('chartTitle').textContent=ticker;
+      document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol='+ticker;
+      const c=document.getElementById('chartContainer');
+      c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
+      document.getElementById('chartModal').classList.add('show');
+      // 由已載入嘅 watchlist 攞 A/B（已經有，唔使再 fetch）
+      const it=list.find(x=>x.ticker.toUpperCase()===ticker.toUpperCase());
+      pendingAB={a:it&&it.a?it.a:null,b:it&&it.b?it.b:null};
+      try{
+        const all=await ensureCharts();
+        const d=all[ticker];
+        if(!d){c.innerHTML='<div style="padding:2rem;color:var(--dim)">呢隻股暫時冇圖數據</div>';return;}
+        drawChart(c,ticker,d);
+      }catch(e){c.innerHTML='<div style="padding:2rem;color:var(--down)">圖表載入失敗</div>';}
+    }
+    function drawChart(c,ticker,d){
+      c.innerHTML='';
+      const work=document.body.classList.contains('work');
+      const col=work
+        ? {up:'#888',down:'#c8c8c8',wickUp:'#888',wickDown:'#c8c8c8',e20:'#333',e50:'#888',e200:'#c0c0c0',grid:'#eee',txt:'#555',border:'#ccc'}
+        : {up:'#2ee6a6',down:'#ff5d6c',wickUp:'#2ee6a6',wickDown:'#ff5d6c',e20:'#00c896',e50:'#ffb347',e200:'#ff4d4d',grid:'#1a1c2b',txt:'#8a8fa3',border:'#262a3d'};
+      const bar=document.createElement('div');
+      bar.style.cssText='display:flex;gap:14px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap';
+      bar.innerHTML=`<span style="color:${col.e20}">━ EMA20</span><span style="color:${col.e50}">━ EMA50</span><span style="color:${col.e200}">━ EMA200</span>
+        <span style="display:flex;gap:6px;margin-left:14px">
+          <button id="zoomRecent" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border-2);background:var(--surface-3);color:var(--text);cursor:pointer">近期</button>
+          <button id="zoomAll" style="padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">全部</button>
+        </span>
+        <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)"><input type="checkbox" id="fibToggle"> 黃金比例 (Fib)</label>
+        <div id="fibInputs" style="display:none;gap:8px;align-items:center;margin-left:12px">
+          <label style="font-size:11px;color:var(--dim)">A:</label>
+          <input type="number" id="fibA" placeholder="高" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <label style="font-size:11px;color:var(--dim)">B:</label>
+          <input type="number" id="fibB" placeholder="低" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+        </div>
+        <span id="fibInfo" style="color:var(--amber)"></span>`;
+      c.appendChild(bar);
+      const box=document.createElement('div');box.style.cssText='flex:1;width:100%';box.id='lwbox';c.appendChild(box);
+      c.style.display='flex';c.style.flexDirection='column';
+      const chart=LightweightCharts.createChart(box,{
+        layout:{background:{color:'transparent'},textColor:col.txt},
+        grid:{vertLines:{color:col.grid},horzLines:{color:col.grid}},
+        rightPriceScale:{borderColor:col.border,autoScale:true,scaleMargins:{top:0.1,bottom:0.1}},
+        timeScale:{borderColor:col.border,timeVisible:false},
+        handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},
+        handleScale:{axisPressedMouseMove:{time:true,price:true},mouseWheel:true,pinch:true},
+        crosshair:{mode:0},autoSize:true,
+      });
+      lwChart=chart;
+      const cs=chart.addCandlestickSeries({upColor:col.up,downColor:col.down,wickUpColor:col.wickUp,wickDownColor:col.wickDown,borderVisible:false});
+      const candles=d.t.map((t,i)=>({time:t,open:d.o[i],high:d.h[i],low:d.l[i],close:d.c[i]}));
+      cs.setData(candles);
+      const line=(arr,color)=>{const s=chart.addLineSeries({color,lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+        s.setData(d.t.map((t,i)=>arr[i]==null?null:({time:t,value:arr[i]})).filter(Boolean));return s;};
+      line(d.e20,col.e20);line(d.e50,col.e50);line(d.e200,col.e200);
+      const nbars=d.t.length;
+      const showRecent=()=>{chart.timeScale().setVisibleLogicalRange({from:Math.max(0,nbars-50),to:nbars});
+        document.getElementById('zoomRecent').style.background='var(--surface-3)';document.getElementById('zoomRecent').style.color='var(--text)';
+        document.getElementById('zoomAll').style.background='var(--surface)';document.getElementById('zoomAll').style.color='var(--dim)';};
+      const showAll=()=>{chart.timeScale().fitContent();
+        document.getElementById('zoomAll').style.background='var(--surface-3)';document.getElementById('zoomAll').style.color='var(--text)';
+        document.getElementById('zoomRecent').style.background='var(--surface)';document.getElementById('zoomRecent').style.color='var(--dim)';};
+      document.getElementById('zoomRecent').addEventListener('click',showRecent);
+      document.getElementById('zoomAll').addEventListener('click',showAll);
+      showRecent();
+      const n=d.c.length;
+      const fibLevels=[[0,'#5b6075'],[0.236,'#f5b945'],[0.382,'#888'],[0.5,'#888'],[0.618,'#888'],[0.786,'#4d8dff'],[1,'#5b6075']];
+      let fibSeries=[];
+      function drawFib(on){
+        fibSeries.forEach(s=>chart.removeSeries(s));fibSeries=[];
+        const fibInputs=document.getElementById('fibInputs');
+        if(!on){fibInputs.style.display='none';return;}
+        fibInputs.style.display='flex';
+        const aInput=parseFloat(document.getElementById('fibA').value);
+        const bInput=parseFloat(document.getElementById('fibB').value);
+        let hi,swingLo;
+        if(!isNaN(aInput)&&!isNaN(bInput)){hi=aInput;swingLo=bInput;}
+        else{
+          hi=Math.max(...d.h);const hiIdx=d.h.indexOf(hi);
+          swingLo=hiIdx<n-1?Math.min(...d.l.slice(hiIdx)):Math.min(...d.l);
+          document.getElementById('fibA').placeholder='高 ('+(hi.toFixed(2))+')';
+          document.getElementById('fibB').placeholder='低 ('+(swingLo.toFixed(2))+')';
+        }
+        const range=hi-swingLo;
+        fibLevels.forEach(([lv,fcol])=>{
+          const price=hi-range*lv;
+          const s=chart.addLineSeries({color:fcol,lineWidth:lv===0.236?2:1,lineStyle:lv===0.236?0:2,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:lv===0?'A':lv===1?'B':lv.toFixed(3)});
+          s.setData([{time:d.t[0],value:price},{time:d.t[n-1],value:price}]);
+          fibSeries.push(s);
+        });
+        const f236=(hi-range*0.236);
+        const broke=d.c[n-1]<f236;
+        document.getElementById('fibInfo').innerHTML=`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`;
+      }
+      const ft=document.getElementById('fibToggle');
+      if(pendingAB.a)document.getElementById('fibA').value=pendingAB.a;
+      if(pendingAB.b)document.getElementById('fibB').value=pendingAB.b;
+      ft.addEventListener('change',e=>drawFib(e.target.checked));
+      const saveABc=()=>{
+        const a=document.getElementById('fibA').value;
+        const b=document.getElementById('fibB').value;
+        try{fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'ab',ticker,a:parseFloat(a)||'',b:parseFloat(b)||''})});}catch(e){}
+        // 更新本地 list
+        const it=list.find(x=>x.ticker.toUpperCase()===ticker.toUpperCase());
+        if(it){it.a=parseFloat(a)||'';it.b=parseFloat(b)||'';}
+        drawFib(ft.checked);
+      };
+      document.getElementById('fibA').addEventListener('change',saveABc);
+      document.getElementById('fibB').addEventListener('change',saveABc);
+      // 有 A/B 就自動開 Fib
+      if(pendingAB.a){ft.checked=true;drawFib(true);}
+    }
+    function closeChart(){document.getElementById('chartModal').classList.remove('show');document.getElementById('chartContainer').innerHTML='';if(lwChart){lwChart.remove();lwChart=null;}render();}
+    document.getElementById('chartModal').addEventListener('click',function(e){if(e.target===this)closeChart();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')closeChart();});
+
     loadList();
   </script>
 </body>
