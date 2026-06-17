@@ -451,12 +451,12 @@
       return chartsCache;
     }
     function fakeoutBadge(st){
-      const db=st.daysBelow20||0, dr=st.daysRecover||0;
+      const db=st.daysBelow20||0, dr=st.daysRecover||0, sb=st.streakBefore;
+      const sbTxt=(sb!==undefined&&db>0)?` ｜ 跌穿前著 ${sb}日${sb>=7?' ✓':sb>=3?' ⚠️':' 🛑'}`:'';
       if(db===0&&dr===0)return '<span style="color:var(--faint)">EMA20 上方（未跌穿）</span>';
-      if(dr===0)return `<span style="color:#ff5d6c">⬇ 跌穿 EMA20 ${db}日（仲喺下面）</span>`;
-      // dr>=1 = 已升返
+      if(dr===0)return `<span style="color:#ff5d6c">⬇ 跌穿 EMA20 ${db}日（仲喺下面）${sbTxt}</span>`;
       const fresh=(dr<=2&&db<=3);
-      return `<span style="color:${fresh?'#2ee6a6':'var(--dim)'}">↩ 跌穿${db}日→升返第${dr}日${fresh?' 🔥假突破確認':''}</span>`;
+      return `<span style="color:${fresh?'#2ee6a6':'var(--dim)'}">↩ 跌穿${db}日→升返第${dr}日${fresh?' 🔥':''}${sbTxt}</span>`;
     }
     function fillChartInfo(ticker){
       const box=document.getElementById('chartInfo');
