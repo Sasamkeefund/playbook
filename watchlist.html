@@ -75,9 +75,9 @@
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>
+          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th style="text-align:center">A點</th><th style="text-align:center">B點</th><th>筆記</th><th style="text-align:center">移除</th></tr>
         </thead>
-        <tbody id="tbody"><tr><td colspan="7" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="9" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -138,16 +138,21 @@
     }
     function render(){
       const tb=document.getElementById('tbody');
-      if(!list.length){tb.innerHTML='<tr><td colspan="7" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
+      if(!list.length){tb.innerHTML='<tr><td colspan="9" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
       tb.innerHTML=list.map(item=>`<tr>
         <td class="ticker">${item.ticker}</td>
         <td style="text-align:right">${priceCell(item.ticker)}</td>
         <td style="text-align:right">${ema20Cell(item.ticker)}</td>
         <td style="text-align:right">${rsiCell(item.ticker)}</td>
         <td>${stratBadges(item.ticker)}</td>
+        <td style="text-align:center"><input type="number" class="note-input" value="${(item.a||'').toString().replace(/"/g,'&quot;')}" step="0.01" onchange="saveAB('${item.ticker}',this.value,'${item.b||''}')" style="width:70px" placeholder="A高"></td>
+        <td style="text-align:center"><input type="number" class="note-input" value="${(item.b||'').toString().replace(/"/g,'&quot;')}" step="0.01" onchange="saveAB('${item.ticker}','${item.a||''}',this.value)" style="width:70px" placeholder="B低"></td>
         <td><input type="text" class="note-input" value="${(item.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${item.ticker}',this.value)" placeholder="加筆記"></td>
         <td style="text-align:center"><button class="del-btn" onclick="removeStock('${item.ticker}')">🗑️</button></td>
       </tr>`).join('');
+    }
+    async function saveAB(ticker,a,b){
+      try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'ab',ticker,a:parseFloat(a)||'',b:parseFloat(b)||''})});}catch(e){}
     }
     async function removeStock(ticker){
       list=list.filter(x=>x.ticker!==ticker);
