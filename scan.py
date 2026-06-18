@@ -241,13 +241,12 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                  "daysBelow20": days_below, "daysRecover": days_recover,
                  "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
-    # ── S1 回調形態偵測（用 low 觸 EMA20，比 close 穿更穩健）──
-    # pullbackTouch = 過去 6 日內，有冇一日 low 觸到/穿 EMA20（回調探線）
-    # pullbackDaysAgo = 最近一次 low 觸 EMA20 係幾多日前（今日=0）
-    # aboveNow = 今日 close 喺 EMA20 上（企返穩）
-    # = 「健康趨勢 + 啱啱回調探 EMA20 + 企返上」嘅形態
+    # ── S1 回調形態偵測（用收市 close 跌穿 EMA20，唔睇下影線）──
+    # pullbackTouch = 過去 6 日內，有冇一日 close 收市跌穿 EMA20（夠深，加 0.3% buffer 減少鋸齒誤判）
+    # pullbackDaysAgo = 最近一次收市跌穿 EMA20 係幾多日前（今日=0）
+    # aboveNow = 今日 close 企返 EMA20 上
     pullback_touch = False
-    pullback_days_ago = None
+    pullback_days_ago = -1
     above_now = (e20 is not None and close >= e20)
     if e20 is not None:
         for back in range(0, 6):
@@ -256,13 +255,13 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 break
             if ema20a[k] is None:
                 continue
-            # low 觸到或穿 EMA20（容許 0.5% buffer，因為 EMA 有差異）
-            if lows[k] <= ema20a[k] * 1.005:
+            # 收市 close 跌穿 EMA20（低過 0.3% buffer 先算，避免線上下鋸齒）
+            if closes[k] < ema20a[k] * 0.997:
                 pullback_touch = True
-                if pullback_days_ago is None:
+                if pullback_days_ago < 0:
                     pullback_days_ago = back
     res["S1"]["pullbackTouch"] = pullback_touch
-    res["S1"]["pullbackDaysAgo"] = pullback_days_ago if pullback_days_ago is not None else -1
+    res["S1"]["pullbackDaysAgo"] = pullback_days_ago
     res["S1"]["aboveNow"] = above_now
 
     # ── S2 趨勢終結（Required 4/5, Bonus 5/5）──
