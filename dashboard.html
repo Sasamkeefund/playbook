@@ -195,9 +195,9 @@
       </select>
       <select id="filterFakeout" title="只 S1 有效">
         <option value="">回調形態 不限</option>
-        <option value="fresh">🔥 啱啱探線企返（0-2日）</option>
-        <option value="touched">探過 EMA20（近6日）</option>
-        <option value="below">探線但仲喺下面</option>
+        <option value="fresh">🔥 啱啱收市跌穿後企返（0-2日）</option>
+        <option value="touched">收市跌穿過（近6日）</option>
+        <option value="below">收市跌穿但仲喺下面</option>
       </select>
       <button id="starFilter" onclick="toggleStarFilter()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">⭐ 只睇 Watchlist</button>
     </div>
@@ -218,7 +218,7 @@
             <th class="sortable" style="text-align:center" onclick="sortBy('bonusScore')">Bonus <span class="sarr" data-k="bonusScore"></span></th>
             <th class="sortable" style="text-align:center" onclick="sortBy('streak')">Streak <span class="sarr" data-k="streak"></span></th>
             <th class="sortable" style="text-align:center" onclick="sortBy('recentMaxStreak')" title="過去20日內最高連續 5/5 日數（趨勢健康度）">趨勢 <span class="sarr" data-k="recentMaxStreak"></span></th>
-            <th class="sortable" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次 low 觸 EMA20 係幾多日前">探線 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
+            <th class="sortable" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次收市 close 跌穿 EMA20 係幾多日前">跌穿 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
             <th style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
             <th>入場建議</th>
             <th style="text-align:center">⭐</th>
@@ -273,18 +273,18 @@
         // 趨勢健康度（過去20日最高連續5/5）
         if(rms<3)return{text:'🛑 近期趨勢弱（最高連'+rms+'日）— 唔入',color:'red'};
         // 未回調探線
-        if(!touch)return{text:'📈 近6日未探 EMA20 — 等回調',color:'amber'};
+        if(!touch)return{text:'📈 近6日收市未跌穿 EMA20 — 等回調',color:'amber'};
         // 探咗線但仲喺下面
-        if(!above)return{text:'⬇ '+ago+'日前探 EMA20，等收市企返上',color:'amber'};
+        if(!above)return{text:'⬇ '+ago+'日前收市跌穿，等收市企返上',color:'amber'};
         // 探咗線 + 企返上 = 似 setup
-        if(ago>2)return{text:'⏰ '+ago+'日前探線，回調已過幾日 — 留意是否太遲',color:'amber'};
+        if(ago>2)return{text:'⏰ '+ago+'日前跌穿，回調已過幾日 — 留意是否太遲',color:'amber'};
         // 啱啱探線企返（ago 0-2）→ 睇趨勢健康 + Bonus
-        if(rms<7)return{text:'⚠️ 探線企返，但近期最高連'+rms+'日(<7) — 趨勢未夠強，保守',color:'amber'};
+        if(rms<7)return{text:'⚠️ 收市跌穿後企返，但近期最高連'+rms+'日(<7) — 趨勢未夠強，保守',color:'amber'};
         if(bonus<=2)return{text:'⚠️ 探線企返 + 趨勢健康，但 Bonus 唔夠 — TradingView 確認',color:'amber'};
         if(!b2)return{text:'⚠️ b2 三線未齊 — 極細倉，TradingView 確認',color:'amber'};
-        if(bonus>=4)return{text:'🔥 似 setup：探線企返 + 趨勢健康 + Bonus高 — TradingView confirm',color:'green'};
-        if(b3&&b4)return{text:'✅ 似 setup：探線企返 + 縮量回調 — TradingView confirm',color:'green'};
-        return{text:'✅ 似 setup：探線企返 — TradingView confirm 假突破',color:'green'};}
+        if(bonus>=4)return{text:'🔥 似 setup：收市跌穿後企返 + 趨勢健康 + Bonus高 — TradingView confirm',color:'green'};
+        if(b3&&b4)return{text:'✅ 似 setup：收市跌穿後企返 + 縮量回調 — TradingView confirm',color:'green'};
+        return{text:'✅ 似 setup：收市跌穿後企返 — TradingView confirm 假突破',color:'green'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
         if(b1&&b5)return{text:'🔥 頂級 — 優先入場，正常倉',color:'green'};
@@ -473,11 +473,11 @@
     function fakeoutBadge(st){
       const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.recentMaxStreak;
       const trendTxt=rms!==undefined?`（近期最高連 ${rms}日${rms>=7?' ✓健康':rms>=3?' ⚠️':' 🛑弱'}）`:'';
-      if(!touch)return `<span style="color:var(--faint)">近6日未探 EMA20 ${trendTxt}</span>`;
-      if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前探 EMA20，今日仲喺下面 ${trendTxt}</span>`;
+      if(!touch)return `<span style="color:var(--faint)">近6日收市未跌穿 EMA20 ${trendTxt}</span>`;
+      if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，今日仲喺下面 ${trendTxt}</span>`;
       // 探過 + 企返上
       const fresh=(ago<=2);
-      return `<span style="color:${fresh?'#2ee6a6':'var(--dim)'}">${fresh?'🔥 ':''}${ago===0?'今日':ago+'日前'}探 EMA20 後企返上 ${trendTxt}</span>`;
+      return `<span style="color:${fresh?'#2ee6a6':'var(--dim)'}">${fresh?'🔥 ':''}${ago===0?'今日':ago+'日前'}收市跌穿後企返上 ${trendTxt}</span>`;
     }
     function fillChartInfo(ticker){
       const box=document.getElementById('chartInfo');
