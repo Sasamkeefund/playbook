@@ -286,9 +286,14 @@
         return{text:'⚠️ setup（低質細注）：升返第'+(ago+1)+'日'+tail,color:'amber'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
-        if(b1&&b5)return{text:'🔥 頂級 — 優先入場，正常倉',color:'green'};
-        if(b1||b5)return{text:'✅ 良好 — 正常入場',color:'green'};
-        if(bonus>=3)return{text:'⚠️ 一般 — 細倉，R:R ≥ 3:1',color:'amber'};
+        const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1;
+        const h1txt=h1?(' ｜ H1≈$'+h1+(pth!==null?'('+(pth>0?'+':'')+pth+'%)':'')):'';
+        if(broke)return{text:'🔥 突破 H1 + 放量！突破入場（手法A）'+h1txt+' ｜ TradingView 畫旗形確認',color:'green'};
+        const quality=b1&&b5?'頂級':b1||b5?'良好':bonus>=3?'一般':'偏弱';
+        if(pth!==null&&pth<0&&pth>=-5)return{text:'⏳ 旗形整固中（'+quality+'）等突破 H1'+h1txt+' ｜ 畫旗形 + 0.236',color:'amber'};
+        if(b1&&b5)return{text:'🔥 頂級旗形 — 等突破 H1'+h1txt+' ｜ TradingView 確認',color:'green'};
+        if(b1||b5)return{text:'✅ 良好旗形 — 等突破 H1'+h1txt+' ｜ TradingView 確認',color:'green'};
+        if(bonus>=3)return{text:'⚠️ 一般 — 細倉，R:R ≥ 3:1'+h1txt,color:'amber'};
         return{text:'❌ 跳過 — b1 b5 都 Fail，Bonus < 3',color:'red'};}
       if(tab==='S3'){
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
