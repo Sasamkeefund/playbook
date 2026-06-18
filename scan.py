@@ -48,6 +48,7 @@ STRATEGY_META = {
     "S4": {"name": "假突破",    "dir": "Long/Short", "live": False, "reqMax": 4, "bonusMax": 4},
     "S5": {"name": "支持阻力",  "dir": "Long",       "live": True,  "reqMax": 4, "bonusMax": 4},
     "S6": {"name": "圖表形態",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
+    "S7": {"name": "52週新高動能", "dir": "Long",    "live": True,  "reqMax": 5, "bonusMax": 5},
 }
 
 
@@ -340,6 +341,27 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
                  "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
+    # ── S7 52週新高動能（Required 5/5, Bonus 5/5）──
+    # 機械式：買最強、買新高、趨勢健康 + 放量推動
+    today_high = highs[idx] if idx < len(highs) else None
+    c = [
+        (pct_from_high is not None and pct_from_high <= 2),          # C1 距52週高 ≤2%（新高或即將）
+        close > e50,                                                  # C2 中期趨勢向上
+        (e50 is not None and e200 is not None and e50 > e200),        # C3 長期趨勢健康
+        (relvol is not None and relvol > 1.3),                        # C4 放量推動
+        (50 <= r <= 80),                                              # C5 動能區（未極度超買）
+    ]
+    b = [
+        (today_high is not None and close >= today_high * 0.985),     # b1 收市接近全日高（強燭）
+        (e20 is not None and e50 is not None and e20 > e50),          # b2 短期都向上（三線排列）
+        (pct_from_high is not None and pct_from_high <= 0.2),         # b3 真正當日新高（距高位≈0）
+        (perf1m is not None and perf1m > 10),                         # b4 1個月動能強
+        (ema200_slope is not None and ema200_slope > 0),              # b5 200日線升緊
+    ]
+    res["S7"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 5,
+                 "pctFromHigh": round(pct_from_high, 1) if pct_from_high is not None else None,
+                 "keyvals": {"距52高%": round(pct_from_high, 1) if pct_from_high is not None else None, "1M%": round(perf1m, 1) if perf1m is not None else None}}
+
     return res
 
 
@@ -502,6 +524,9 @@ def build_record(ticker, hist):
                 else:
                     run = 0
             strategies[s]["recentMaxStreak"] = recent_max
+        # S7 距52週高
+        if s == "S7":
+            strategies[s]["pctFromHigh"] = today[s].get("pctFromHigh")
 
     # K 線 + EMA 圖數據（最近 120 根，畀 app 內畫圖）
     times = hist.get("time", [])
