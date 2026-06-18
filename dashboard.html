@@ -252,7 +252,7 @@
   </div>
 
   <script>
-    const STRATEGY_NAMES={S1:'順勢交易',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態'};
+    const STRATEGY_NAMES={S1:'順勢交易',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態',S7:'52週新高'};
     let globalData=null, activeTab='S1';
 
     function toHKT(s){
@@ -300,6 +300,13 @@
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
         if(bonus>=3)return{text:'✅ 可深入 — 人手確認 0.786 + 推進浪',color:'green'};
         return{text:'⚠️ 人手確認整理區 + 0.786 Fib',color:'amber'};}
+      if(tab==='S7'){const b3=b[2];const pfh=strat.pctFromHigh;
+        if(req<reqMax)return{text:'👀 未齊條件 — 等突破/放量',color:'amber'};
+        // ready：5/5
+        if(b3||(pfh!==null&&pfh<=0.2))return{text:'🔥 創 52週新高 + 放量 — 動能突破，TradingView 確認',color:'green'};
+        if(bonus>=4)return{text:'🔥 貼近 52週高('+(pfh!==null?pfh+'%':'')+') + 動能強 — 即將突破',color:'green'};
+        if(bonus>=2)return{text:'✅ 貼近 52週高('+(pfh!==null?pfh+'%':'')+') — 留意突破',color:'green'};
+        return{text:'⚠️ 貼近高位但動能一般 — 觀察',color:'amber'};}
       if(req>=reqMax||strat.ready)return{text:'（未實戰）Bonus '+bonus,color:'amber'};
       return{text:'—',color:'red'};
     }
