@@ -341,6 +341,38 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
                  "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
+    # ── S6 旗形 H1 + 突破偵測（approximate，參考用，TradingView 畫返準）──
+    # 邏輯：旗杆 = 近期高位（旗杆頂）；整固區 = 旗杆頂之後嘅橫行；
+    #       H1 ≈ 整固區內嘅最高收市（旗形上邊界 = 突破位）
+    #       突破 = 今日 close 升穿 H1
+    h1 = None
+    pct_to_h1 = None
+    broke_h1 = False
+    flag_low = None
+    try:
+        # 旗杆頂 = 近 15 日內最高 close 嘅位置（approximate impulse top）
+        win = 20
+        seg_c = closes[max(0, idx-win):idx+1]
+        seg_h = highs[max(0, idx-win):idx+1]
+        if len(seg_c) >= 8:
+            pole_top = max(seg_h[:-1])               # 旗杆頂（唔計今日）
+            pole_idx = seg_h.index(pole_top)         # 喺 segment 內位置
+            # 整固區 = 旗杆頂之後嘅 bars（旗形喺旗杆後形成）
+            consol_h = seg_h[pole_idx:]              # 含旗杆頂之後嘅高
+            consol_l = lows[max(0, idx-win)+pole_idx:idx+1]
+            if len(consol_h) >= 2:
+                # H1 = 整固區（旗杆頂之後）嘅最高，但唔計今日（突破位喺今日之前）
+                h1 = max(consol_h[:-1]) if len(consol_h) > 1 else pole_top
+                flag_low = min(consol_l) if consol_l else None
+                pct_to_h1 = (close - h1) / h1 * 100   # 正=已突破，負=仲喺下面
+                broke_h1 = close > h1 and relvol is not None and relvol > 1.3
+    except Exception:
+        pass
+    res["S6"]["h1"] = round(h1, 2) if h1 else None
+    res["S6"]["flagLow"] = round(flag_low, 2) if flag_low else None
+    res["S6"]["pctToH1"] = round(pct_to_h1, 1) if pct_to_h1 is not None else None
+    res["S6"]["brokeH1"] = broke_h1
+
     # ── S7 52週新高動能（Required 5/5, Bonus 5/5）──
     # 機械式：買最強、買新高、趨勢健康 + 放量推動
     today_high = highs[idx] if idx < len(highs) else None
@@ -527,6 +559,12 @@ def build_record(ticker, hist):
         # S7 距52週高
         if s == "S7":
             strategies[s]["pctFromHigh"] = today[s].get("pctFromHigh")
+        # S6 旗形 H1 / 突破（approximate）
+        if s == "S6":
+            strategies[s]["h1"] = today[s].get("h1")
+            strategies[s]["flagLow"] = today[s].get("flagLow")
+            strategies[s]["pctToH1"] = today[s].get("pctToH1")
+            strategies[s]["brokeH1"] = today[s].get("brokeH1", False)
 
     # K 線 + EMA 圖數據（最近 120 根，畀 app 內畫圖）
     times = hist.get("time", [])
