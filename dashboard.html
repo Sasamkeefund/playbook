@@ -419,7 +419,24 @@
           <td style="text-align:center"><span class="badge ${st.score===mx?'perfect':''}">${st.score}/${mx}</span></td>
           <td style="text-align:center"><span class="badge ${st.bonusScore>=3?'perfect':''}">${st.bonusScore}/${mxB}</span></td>
           <td class="mono" style="text-align:center;font-weight:700">${st.streak}</td>
-          ${activeTab==='S1'?`<td class="mono" style="text-align:center;font-weight:700;color:${(st.streakBefore!==undefined&&(st.daysBelow20||0)>0)?(st.streakBefore>=7?'#2ee6a6':st.streakBefore>=3?'#f5b945':'#ff5d6c'):'var(--faint)'}">${(st.streakBefore!==undefined&&(st.daysBelow20||0)>0)?st.streakBefore:'—'}</td><td class="mono" style="text-align:center;color:${(st.daysBelow20||0)>0&&(st.daysRecover||0)===0?'#ff5d6c':'var(--dim)'}">${st.daysBelow20||0}</td><td class="mono" style="text-align:center;color:${(st.daysRecover||0)>=1&&(st.daysRecover||0)<=2&&(st.daysBelow20||0)<=3?'#2ee6a6':'var(--dim)'};font-weight:${(st.daysRecover||0)>=1&&(st.daysRecover||0)<=2?'700':'400'}">${st.daysRecover||0}</td>`:'<td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td>'}
+          ${activeTab==='S1'?(function(){
+            const db=st.daysBelow20||0, dr=st.daysRecover||0, sb=st.streakBefore;
+            const dash='<td style="text-align:center;color:var(--faint)">—</td>';
+            // 只有「啱啱發生」嘅有效假突破先顯示：跌穿1-3日 + 升返1-2日
+            const fresh=(db>=1&&db<=3&&dr>=1&&dr<=2);
+            // 跌穿緊（仲喺下面，未升返）都顯示，等你 watch
+            const dipping=(db>=1&&db<=3&&dr===0);
+            if(fresh||dipping){
+              const sbCol=sb>=7?'#2ee6a6':sb>=3?'#f5b945':'#ff5d6c';
+              const drCol=fresh?'#2ee6a6':'var(--dim)';
+              return '<td class="mono" style="text-align:center;font-weight:700;color:'+sbCol+'">'+(sb!==undefined?sb:'—')+'</td>'
+                +'<td class="mono" style="text-align:center;color:'+(dr===0?'#ff5d6c':'var(--dim)')+'">'+db+'</td>'
+                +'<td class="mono" style="text-align:center;color:'+drCol+';font-weight:'+(fresh?'700':'400')+'">'+dr+'</td>';
+            }
+            // 真跌穿（≥4日）紅色顯示跌穿日數，其餘「—」
+            const dbCell='<td class="mono" style="text-align:center;color:'+(db>=4?'#ff5d6c':'var(--faint)')+'">'+(db>=4?db:'—')+'</td>';
+            return dash+dbCell+dash;
+          })():'<td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td>'}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
           <td style="text-align:center"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button></td>
         </tr>`;
@@ -466,11 +483,19 @@
     }
     function fakeoutBadge(st){
       const db=st.daysBelow20||0, dr=st.daysRecover||0, sb=st.streakBefore;
-      const sbTxt=(sb!==undefined&&db>0)?` ｜ 跌穿前著 ${sb}日${sb>=7?' ✓':sb>=3?' ⚠️':' 🛑'}`:'';
-      if(db===0&&dr===0)return '<span style="color:var(--faint)">EMA20 上方（未跌穿）</span>';
-      if(dr===0)return `<span style="color:#ff5d6c">⬇ 跌穿 EMA20 ${db}日（仲喺下面）${sbTxt}</span>`;
-      const fresh=(dr<=2&&db<=3);
-      return `<span style="color:${fresh?'#2ee6a6':'var(--dim)'}">↩ 跌穿${db}日→升返第${dr}日${fresh?' 🔥':''}${sbTxt}</span>`;
+      // 未跌穿
+      if(db===0)return '<span style="color:var(--faint)">EMA20 上方（未回調觸線）</span>';
+      // 真跌穿（≥4日）
+      if(db>=4)return `<span style="color:#ff5d6c">真跌穿 EMA20 ${db}日（≥4，唔係假突破）</span>`;
+      // 跌穿緊（仲喺下面）
+      if(dr===0)return `<span style="color:#f5b945">⬇ 跌穿 EMA20 ${db}日（等收市返上）</span>`;
+      // 啱啱升返（有效假突破）
+      if(dr<=2){
+        const sbTxt=sb!==undefined?`，跌穿前著 ${sb}日${sb>=7?' ✓':sb>=3?' ⚠️':' 🛑'}`:'';
+        return `<span style="color:#2ee6a6">🔥 假突破確認：跌穿${db}日→升返第${dr}日${sbTxt}</span>`;
+      }
+      // 升返耐咗（過時）
+      return `<span style="color:var(--faint)">假突破已過（升返 ${dr}日前）— 追入已遲</span>`;
     }
     function fillChartInfo(ticker){
       const box=document.getElementById('chartInfo');
