@@ -267,7 +267,7 @@
 
     function getVerdict(tab,strat){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
-      const reqMax=(tab==='S4'||tab==='S5')?4:5;
+      const reqMax=(tab==='S4'||tab==='S5'||tab==='S6')?4:5;
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
         const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.recentMaxStreak||0;
         // 趨勢質素標籤（唔 block，只標示）
