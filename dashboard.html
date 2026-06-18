@@ -195,7 +195,7 @@
       </select>
       <select id="filterFakeout" title="只 S1 有效">
         <option value="">回調形態 不限</option>
-        <option value="fresh">🔥 啱啱收市跌穿後企返（0-2日）</option>
+        <option value="fresh">🔥 升返第1日（入場日）</option>
         <option value="touched">收市跌穿過（近6日）</option>
         <option value="below">收市跌穿但仲喺下面</option>
       </select>
@@ -270,21 +270,20 @@
       const reqMax=(tab==='S4'||tab==='S5')?4:5;
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
         const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.recentMaxStreak||0;
-        // 趨勢健康度（過去20日最高連續5/5）
-        if(rms<3)return{text:'🛑 近期趨勢弱（最高連'+rms+'日）— 唔入',color:'red'};
-        // 未回調探線
+        // 趨勢質素標籤（唔 block，只標示）
+        const qLabel=rms>=7?'趨勢健康('+rms+'日)':rms>=3?'趨勢一般('+rms+'日,保守)':'趨勢弱('+rms+'日,低質細注)';
+        const qMark=rms>=7?'✓':rms>=3?'⚠️':'🔻';
+        // 核心 gate = 假突破形態
         if(!touch)return{text:'📈 近6日收市未跌穿 EMA20 — 等回調',color:'amber'};
-        // 探咗線但仲喺下面
-        if(!above)return{text:'⬇ '+ago+'日前收市跌穿，等收市企返上',color:'amber'};
-        // 探咗線 + 企返上 = 似 setup
-        if(ago>2)return{text:'⏰ '+ago+'日前跌穿，回調已過幾日 — 留意是否太遲',color:'amber'};
-        // 啱啱探線企返（ago 0-2）→ 睇趨勢健康 + Bonus
-        if(rms<7)return{text:'⚠️ 收市跌穿後企返，但近期最高連'+rms+'日(<7) — 趨勢未夠強，保守',color:'amber'};
-        if(bonus<=2)return{text:'⚠️ 探線企返 + 趨勢健康，但 Bonus 唔夠 — TradingView 確認',color:'amber'};
-        if(!b2)return{text:'⚠️ b2 三線未齊 — 極細倉，TradingView 確認',color:'amber'};
-        if(bonus>=4)return{text:'🔥 似 setup：收市跌穿後企返 + 趨勢健康 + Bonus高 — TradingView confirm',color:'green'};
-        if(b3&&b4)return{text:'✅ 似 setup：收市跌穿後企返 + 縮量回調 — TradingView confirm',color:'green'};
-        return{text:'✅ 似 setup：收市跌穿後企返 — TradingView confirm 假突破',color:'green'};}
+        if(!above)return{text:'⬇ '+ago+'日前收市跌穿，等收市企返上 ｜ '+qLabel,color:'amber'};
+        // 已企返：升返第1日 = 入場日；第2日+ = 太遲
+        if(ago>=2)return{text:'⏰ 升返第'+ago+'日 — 過咗入場日（第1日），太遲，SKIP',color:'red'};
+        // ago 0-1 = 正路入場時機 → 用趨勢標質素 + Bonus
+        const tail=' ｜ '+qMark+' '+qLabel+' ｜ TradingView confirm';
+        if(bonus>=4&&rms>=7)return{text:'🔥 高質 setup：升返第'+(ago+1)+'日入場日 + Bonus高'+tail,color:'green'};
+        if(rms>=7)return{text:'✅ setup：升返第'+(ago+1)+'日入場日'+tail,color:'green'};
+        if(rms>=3)return{text:'✅ setup（保守注）：升返第'+(ago+1)+'日'+tail,color:'green'};
+        return{text:'⚠️ setup（低質細注）：升返第'+(ago+1)+'日'+tail,color:'amber'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
         if(b1&&b5)return{text:'🔥 頂級 — 優先入場，正常倉',color:'green'};
@@ -355,7 +354,7 @@
       const ef=document.getElementById('filterEma20').value;
       if(ef)s=s.filter(x=>Math.abs((x.close-x.ema20)/x.ema20*100)<=parseFloat(ef));
       if(activeTab==='S1'&&ff){
-        if(ff==='fresh')s=s.filter(x=>{const st=x.strategies.S1;return st.pullbackTouch&&st.aboveNow&&st.pullbackDaysAgo>=0&&st.pullbackDaysAgo<=2;});
+        if(ff==='fresh')s=s.filter(x=>{const st=x.strategies.S1;return st.pullbackTouch&&st.aboveNow&&st.pullbackDaysAgo>=0&&st.pullbackDaysAgo<=1;});
         else if(ff==='touched')s=s.filter(x=>x.strategies.S1.pullbackTouch);
         else if(ff==='below')s=s.filter(x=>x.strategies.S1.pullbackTouch&&!x.strategies.S1.aboveNow);
       }
@@ -426,11 +425,11 @@
             const rms=st.recentMaxStreak||0, touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow;
             const rmsCol=rms>=7?'#2ee6a6':rms>=3?'#f5b945':'#ff5d6c';
             const agoTxt=touch?(ago===0?'今日':ago+'日前'):'—';
-            const agoCol=(touch&&ago<=2)?'#2ee6a6':'var(--dim)';
+            const agoCol=(touch&&ago<=1)?'#2ee6a6':'var(--dim)';
             const aboveTxt=!touch?'—':(above?'✓':'✗');
             const aboveCol=!touch?'var(--faint)':(above?'#2ee6a6':'#ff5d6c');
             return '<td class="mono" style="text-align:center;font-weight:700;color:'+rmsCol+'">'+rms+'</td>'
-              +'<td class="mono" style="text-align:center;color:'+agoCol+';font-weight:'+((touch&&ago<=2)?'700':'400')+'">'+agoTxt+'</td>'
+              +'<td class="mono" style="text-align:center;color:'+agoCol+';font-weight:'+((touch&&ago<=1)?'700':'400')+'">'+agoTxt+'</td>'
               +'<td style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():'<td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td>'}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
@@ -479,12 +478,13 @@
     }
     function fakeoutBadge(st){
       const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.recentMaxStreak;
-      const trendTxt=rms!==undefined?`（近期最高連 ${rms}日${rms>=7?' ✓健康':rms>=3?' ⚠️':' 🛑弱'}）`:'';
+      const trendTxt=rms!==undefined?`（趨勢 ${rms}日${rms>=7?' ✓健康':rms>=3?' ⚠️一般':' 🔻弱'}）`:'';
       if(!touch)return `<span style="color:var(--faint)">近6日收市未跌穿 EMA20 ${trendTxt}</span>`;
-      if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，今日仲喺下面 ${trendTxt}</span>`;
-      // 探過 + 企返上
-      const fresh=(ago<=2);
-      return `<span style="color:${fresh?'#2ee6a6':'var(--dim)'}">${fresh?'🔥 ':''}${ago===0?'今日':ago+'日前'}收市跌穿後企返上 ${trendTxt}</span>`;
+      if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，等收市企返上 ${trendTxt}</span>`;
+      // 已企返：升返第幾日
+      const day=ago+1; // ago0=升返第1日
+      if(ago<=1)return `<span style="color:#2ee6a6">🔥 升返第${day}日（入場日）${trendTxt}</span>`;
+      return `<span style="color:var(--faint)">升返第${day}日 — 過咗入場日，太遲 SKIP ${trendTxt}</span>`;
     }
     function fillChartInfo(ticker){
       const box=document.getElementById('chartInfo');
