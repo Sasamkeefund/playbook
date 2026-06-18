@@ -195,7 +195,7 @@
       </select>
       <select id="filterFakeout" title="只 S1 有效">
         <option value="">回調形態 不限</option>
-        <option value="fresh">🔥 升返第1日（入場日）</option>
+        <option value="fresh">🔥 升返第1-2日（入場窗口）</option>
         <option value="touched">收市跌穿過（近6日）</option>
         <option value="below">收市跌穿但仲喺下面</option>
       </select>
@@ -276,12 +276,12 @@
         // 核心 gate = 假突破形態
         if(!touch)return{text:'📈 近6日收市未跌穿 EMA20 — 等回調',color:'amber'};
         if(!above)return{text:'⬇ '+ago+'日前收市跌穿，等收市企返上 ｜ '+qLabel,color:'amber'};
-        // 已企返：升返第1日 = 入場日；第2日+ = 太遲
-        if(ago>=2)return{text:'⏰ 升返第'+ago+'日 — 過咗入場日（第1日），太遲，SKIP',color:'red'};
-        // ago 0-1 = 正路入場時機 → 用趨勢標質素 + Bonus
-        const tail=' ｜ '+qMark+' '+qLabel+' ｜ TradingView confirm';
-        if(bonus>=4&&rms>=7)return{text:'🔥 高質 setup：升返第'+(ago+1)+'日入場日 + Bonus高'+tail,color:'green'};
-        if(rms>=7)return{text:'✅ setup：升返第'+(ago+1)+'日入場日'+tail,color:'green'};
+        // 已企返：升返第1-2日 = 入場窗口；第3日+ = 太遲
+        if(ago>=2)return{text:'⏰ 升返第'+(ago+1)+'日 — 過咗入場窗口（第1-2日），太遲，SKIP',color:'red'};
+        // ago 0-1 = 升返第1-2日，入場窗口 → 用趨勢標質素 + Bonus
+        const tail=' ｜ '+qMark+' '+qLabel+' ｜ R:R OK 先入，TradingView confirm';
+        if(bonus>=4&&rms>=7)return{text:'🔥 高質 setup：升返第'+(ago+1)+'日（入場窗口）+ Bonus高'+tail,color:'green'};
+        if(rms>=7)return{text:'✅ setup：升返第'+(ago+1)+'日（入場窗口）'+tail,color:'green'};
         if(rms>=3)return{text:'✅ setup（保守注）：升返第'+(ago+1)+'日'+tail,color:'green'};
         return{text:'⚠️ setup（低質細注）：升返第'+(ago+1)+'日'+tail,color:'amber'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
@@ -483,8 +483,8 @@
       if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，等收市企返上 ${trendTxt}</span>`;
       // 已企返：升返第幾日
       const day=ago+1; // ago0=升返第1日
-      if(ago<=1)return `<span style="color:#2ee6a6">🔥 升返第${day}日（入場日）${trendTxt}</span>`;
-      return `<span style="color:var(--faint)">升返第${day}日 — 過咗入場日，太遲 SKIP ${trendTxt}</span>`;
+      if(ago<=1)return `<span style="color:#2ee6a6">🔥 升返第${day}日（入場窗口）${trendTxt}</span>`;
+      return `<span style="color:var(--faint)">升返第${day}日 — 過咗入場窗口，太遲 SKIP ${trendTxt}</span>`;
     }
     function fillChartInfo(ticker){
       const box=document.getElementById('chartInfo');
