@@ -200,6 +200,7 @@
         <option value="below">收市跌穿但仲喺下面</option>
       </select>
       <button id="starFilter" onclick="toggleStarFilter()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">⭐ 只睇 Watchlist</button>
+      <button id="showSkipBtn" onclick="toggleShowSkipped()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">👁 顯示已 skip</button>
     </div>
 
     <div class="summary" id="summary"></div>
@@ -350,6 +351,7 @@
         s=globalData.stocks.filter(x=>x.strategies[activeTab].ready);
       }
       if(starOnly)s=s.filter(x=>wlSet.has(x.ticker.toUpperCase()));
+      if(!showSkipped)s=s.filter(x=>!isSkipped(x.ticker));
       const q=document.getElementById('searchTicker').value.toUpperCase();
       if(q)s=s.filter(x=>x.ticker.includes(q));
       const sf=document.getElementById('filterScore').value;
@@ -438,7 +440,7 @@
               +'<td style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():'<td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td><td style="text-align:center;color:var(--faint)">—</td>'}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
-          <td style="text-align:center"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button></td>
+          <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button><button onclick="toggleSkip('${s.ticker}',event)" title="check 完 fail，skip 唔再睇（21日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:${isSkipped(s.ticker)?'#ff5d6c':'var(--faint)'}">${isSkipped(s.ticker)?'↩️':'🚫'}</button></td>
         </tr>`;
       }).join('');
     }
@@ -457,13 +459,40 @@
     let chartsCache=null, lwChart=null;
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
     let wlSet=new Set();
+    let skipSet=new Set(); // "TICKER|STRATEGY" 已 skip（21日內）
+    let showSkipped=false;
     async function loadWatchlist(){
       try{
         const r=await fetch(WL_API);
         const d=await r.json();
         wlSet=new Set((d.watchlist||[]).map(x=>x.ticker.toUpperCase()));
-      }catch(e){wlSet=new Set();}
+        // skip 清單：21日內先有效（過期自動重現）
+        skipSet=new Set();
+        const now=Date.now();
+        (d.skips||[]).forEach(s=>{
+          const days=(now-new Date(s.dateSkipped).getTime())/86400000;
+          if(days<=21)skipSet.add(s.ticker.toUpperCase()+'|'+(s.strategy||'').toUpperCase());
+        });
+      }catch(e){wlSet=new Set();skipSet=new Set();}
       if(globalData)renderTable();
+    }
+    function isSkipped(ticker){return skipSet.has(ticker.toUpperCase()+'|'+activeTab);}
+    async function toggleSkip(ticker,ev){
+      if(ev)ev.stopPropagation();
+      ticker=ticker.toUpperCase();
+      const key=ticker+'|'+activeTab;
+      const on=skipSet.has(key);
+      if(on){skipSet.delete(key);}else{skipSet.add(key);}
+      renderTable();
+      try{
+        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:on?'skip_remove':'skip_add',ticker,strategy:activeTab})});
+      }catch(e){}
+    }
+    function toggleShowSkipped(){
+      showSkipped=!showSkipped;
+      const b=document.getElementById('showSkipBtn');
+      if(b){b.style.background=showSkipped?'var(--accent)':'var(--surface)';b.style.color=showSkipped?'#fff':'var(--dim)';}
+      renderTable();
     }
     async function toggleStar(ticker,btn){
       ticker=ticker.toUpperCase();
