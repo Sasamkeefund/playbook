@@ -411,6 +411,9 @@
       const c5Exist=!(activeTab==='S4'||activeTab==='S5');
       // 趨勢/跌穿/企返 只喺 S1 顯示
       document.querySelectorAll('.s1col').forEach(el=>{el.style.display=(activeTab==='S1')?'':'none';});
+      // 顯示已 skip 掣只喺 S6/S7
+      const ssb=document.getElementById('showSkipBtn');
+      if(ssb)ssb.style.display=(activeTab==='S6'||activeTab==='S7')?'':'none';
       const tb=document.getElementById('tbody');
       const cspan=(activeTab==='S1')?19:16;
       if(!stocks.length){tb.innerHTML='<tr><td colspan="'+cspan+'" class="empty">No stocks match filters</td></tr>';return;}
@@ -443,7 +446,7 @@
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():''}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
-          <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button><button onclick="toggleSkip('${s.ticker}',event)" title="check 完 fail，skip 唔再睇（21日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:${isSkipped(s.ticker)?'#ff5d6c':'var(--faint)'}">${isSkipped(s.ticker)?'↩️':'🚫'}</button></td>
+          <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（21日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
         </tr>`;
       }).join('');
     }
