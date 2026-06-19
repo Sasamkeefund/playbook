@@ -186,14 +186,14 @@
         <option value="5">≥ 5 日</option>
         <option value="10">≥ 10 日</option>
       </select>
-      <select id="filterEma20">
+      <select id="filterEma20" class="s1filter">
         <option value="">距 EMA20 不限</option>
         <option value="1">± 1% 內（已觸線）</option>
         <option value="2">± 2% 內（好近）</option>
         <option value="3">± 3% 內（接近）</option>
         <option value="5">± 5% 內</option>
       </select>
-      <select id="filterFakeout" title="只 S1 有效">
+      <select id="filterFakeout" class="s1filter" title="只 S1 有效">
         <option value="">回調形態 不限</option>
         <option value="fresh">🔥 升返第1-2日（入場窗口）</option>
         <option value="touched">收市跌穿過（近6日）</option>
@@ -414,6 +414,8 @@
       // 顯示已 skip 掣只喺 S6/S7
       const ssb=document.getElementById('showSkipBtn');
       if(ssb)ssb.style.display=(activeTab==='S6'||activeTab==='S7')?'':'none';
+      // 距EMA20 / 回調形態 filter 只喺 S1
+      document.querySelectorAll('.s1filter').forEach(el=>{el.style.display=(activeTab==='S1')?'':'none';});
       const tb=document.getElementById('tbody');
       const cspan=(activeTab==='S1')?19:16;
       if(!stocks.length){tb.innerHTML='<tr><td colspan="'+cspan+'" class="empty">No stocks match filters</td></tr>';return;}
