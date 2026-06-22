@@ -199,6 +199,11 @@
         <option value="touched">收市跌穿過（近6日）</option>
         <option value="below">收市跌穿但仲喺下面</option>
       </select>
+      <select id="filterRetrace" class="s6filter" title="只 S6 有效（Patreon: 回調 ≤ 0.236）">
+        <option value="">回調深度 不限</option>
+        <option value="0.236">✅ 回調 ≤ 0.236（合格旗形）</option>
+        <option value="0.382">回調 ≤ 0.382（較寬）</option>
+      </select>
       <button id="starFilter" onclick="toggleStarFilter()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">⭐ 只睇 Watchlist</button>
       <button id="showSkipBtn" onclick="toggleShowSkipped()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">👁 顯示已 skip</button>
     </div>
@@ -287,8 +292,9 @@
         return{text:'⚠️ setup（低質細注）：升返第'+(ago+1)+'日'+tail,color:'amber'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
-        const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1;
-        const h1txt=h1?(' ｜ H1≈$'+h1+(pth!==null?'('+(pth>0?'+':'')+pth+'%)':'')):'';
+        const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1, fr=strat.flagRetrace;
+        const frTxt=(fr!==null&&fr!==undefined)?' ｜ 回調 '+(fr*100).toFixed(0)+'%'+(fr<=0.236?' ✓淺':fr<=0.382?' ⚠️':' 🔻深'):'';
+        const h1txt=(h1?(' ｜ H1≈$'+h1+(pth!==null?'('+(pth>0?'+':'')+pth+'%)':'')):'')+frTxt;
         if(broke)return{text:'🔥 突破 H1 + 放量！突破入場（手法A）'+h1txt+' ｜ TradingView 畫旗形確認',color:'green'};
         const quality=b1&&b5?'頂級':b1||b5?'良好':bonus>=3?'一般':'偏弱';
         if(pth!==null&&pth<0&&pth>=-5)return{text:'⏳ 旗形整固中（'+quality+'）等突破 H1'+h1txt+' ｜ 畫旗形 + 0.236',color:'amber'};
@@ -352,6 +358,11 @@
       }
       if(starOnly)s=s.filter(x=>wlSet.has(x.ticker.toUpperCase()));
       if(!showSkipped)s=s.filter(x=>!isSkipped(x.ticker));
+      // S6 回調深度 filter（Patreon 0.236 過濾）
+      if(activeTab==='S6'){
+        const rf=document.getElementById('filterRetrace')?document.getElementById('filterRetrace').value:'';
+        if(rf)s=s.filter(x=>{const fr=x.strategies.S6.flagRetrace;return fr!==null&&fr!==undefined&&fr<=parseFloat(rf);});
+      }
       const q=document.getElementById('searchTicker').value.toUpperCase();
       if(q)s=s.filter(x=>x.ticker.includes(q));
       const sf=document.getElementById('filterScore').value;
@@ -416,6 +427,8 @@
       if(ssb)ssb.style.display=(activeTab==='S6'||activeTab==='S7')?'':'none';
       // 距EMA20 / 回調形態 filter 只喺 S1
       document.querySelectorAll('.s1filter').forEach(el=>{el.style.display=(activeTab==='S1')?'':'none';});
+      // 回調深度 filter 只喺 S6
+      document.querySelectorAll('.s6filter').forEach(el=>{el.style.display=(activeTab==='S6')?'':'none';});
       const tb=document.getElementById('tbody');
       const cspan=(activeTab==='S1')?19:16;
       if(!stocks.length){tb.innerHTML='<tr><td colspan="'+cspan+'" class="empty">No stocks match filters</td></tr>';return;}
@@ -463,6 +476,7 @@
     document.getElementById('filterStreak').addEventListener('change',renderTable);
     document.getElementById('filterEma20').addEventListener('change',renderTable);
     document.getElementById('filterFakeout').addEventListener('change',renderTable);
+    document.getElementById('filterRetrace').addEventListener('change',renderTable);
 
     let chartsCache=null, lwChart=null;
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
