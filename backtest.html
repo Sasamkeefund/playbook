@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>playbook — Backtest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root{
+      --bg:#0a0b12; --surface:#13141f; --surface-2:#1a1c2b; --surface-3:#20233a;
+      --border:#262a3d; --border-2:#323754;
+      --text:#e6e8f0; --dim:#8a8fa3; --faint:#5b6075;
+      --accent:#7c5cff; --accent-2:#4d8dff;
+      --up:#2ee6a6; --down:#ff5d6c; --amber:#f5b945;
+    }
+    body.work{
+      --bg:#fff; --surface:#fff; --surface-2:#f3f3f3; --surface-3:#e9e9e9;
+      --border:#d0d0d0; --border-2:#bcbcbc; --text:#1a1a1a; --dim:#555; --faint:#888;
+      --accent:#444; --accent-2:#444; --up:#177245; --down:#b00020; --amber:#7a5c00;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:14px}
+    .mono{font-family:'JetBrains Mono',monospace}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+    .topbar-inner{max-width:1400px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+    .brand{font-size:22px;font-weight:700;background:linear-gradient(90deg,#7c5cff,#4d8dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    body.work .brand{background:none;-webkit-text-fill-color:#333;color:#333}
+    .topnav{display:flex;gap:6px;flex-wrap:wrap}
+    .topnav a{color:var(--dim);text-decoration:none;padding:8px 12px;border-radius:8px;font-weight:600;font-size:14px}
+    .topnav a.active{background:var(--accent);color:#fff}
+    body.work .topnav a.active{background:#dcdcdc;color:#1a1a1a}
+    .topactions{margin-left:auto;display:flex;align-items:center;gap:10px}
+    .btn{background:var(--surface-2);color:var(--dim);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;padding:7px 12px;text-decoration:none;display:inline-block}
+    .wrap{max-width:1400px;margin:0 auto;padding:24px 20px}
+    h1{font-size:22px;margin:0 0 4px}
+    .sub{color:var(--dim);font-size:13px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:20px 0}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+    .card .lbl{color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+    .card .val{font-size:30px;font-weight:700;line-height:1}
+    .card .note{color:var(--faint);font-size:12px;margin-top:6px}
+    .green{color:var(--up)} .red{color:var(--down)} .amber{color:var(--amber)}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin:18px 0}
+    .panel h2{font-size:15px;margin:0 0 14px;color:var(--dim);font-weight:600}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
+    th{color:var(--dim);font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+    #chart{width:100%;height:300px}
+    .verdict{padding:14px 16px;border-radius:12px;margin:16px 0;line-height:1.6}
+    .verdict.good{background:rgba(46,230,166,.08);border:1px solid rgba(46,230,166,.3)}
+    .warn{background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);padding:14px 16px;border-radius:12px;margin:16px 0;line-height:1.6;font-size:13px}
+    .loading{text-align:center;padding:60px;color:var(--dim)}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">playbook</div>
+      <nav class="topnav">
+        <a href="overview.html">📊 Market</a>
+        <a href="dashboard.html">🔍 Screener</a>
+        <a href="checklist.html">✅ Checklist</a>
+        <a href="watchlist.html">📋 Watchlist</a>
+        <a href="backtest.html" class="active">🧪 Backtest</a>
+      </nav>
+      <div class="topactions">
+        <button onclick="toggleWork()" id="workBtn" class="btn">🕶 返工 Mode</button>
+        <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/backtest.yml" target="_blank" rel="noopener" class="btn">🔁 重跑 Backtest</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h1>🧪 S7 Backtest — 52週新高動能</h1>
+    <div class="sub" id="meta">載入緊…</div>
+    <div id="content"><div class="loading">載入緊 backtest 數據…</div></div>
+  </div>
+
+<script>
+const DATA_URL='https://raw.githubusercontent.com/Sasamkeefund/playbook/main/bt_s7_app.json?t='+Date.now();
+
+function toggleWork(){
+  document.body.classList.toggle('work');
+  document.cookie='work='+(document.body.classList.contains('work')?'1':'0')+';path=/;max-age=31536000';
+}
+if(document.cookie.includes('work=1'))document.body.classList.add('work');
+document.addEventListener('keydown',e=>{if(e.key==='`')toggleWork();});
+
+function fmtR(r){return (r>=0?'+':'')+r.toFixed(1)+'R';}
+
+async function load(){
+  let d;
+  try{ d=await (await fetch(DATA_URL)).json(); }
+  catch(e){ document.getElementById('content').innerHTML='<div class="warn">未搵到 backtest 數據。請去 Actions 撳「S7 Backtest」Run workflow，跑完再 refresh。</div>'; return; }
+  render(d);
+}
+
+function render(d){
+  document.getElementById('meta').textContent=`S&P 500 · ${d.period} · ${d.rr} R:R · ${d.total} 單 · 更新 ${d.updated||''}`;
+  const expGood=d.expR>0;
+  let html='';
+
+  // 核心卡
+  html+='<div class="cards">';
+  html+=card('每單期望值',(d.expR>=0?'+':'')+d.expR.toFixed(2)+'R',expGood?'green':'red',expGood?'✅ 正期望，長做有利':'❌ 負期望');
+  html+=card('勝率',d.winRate+'%','',`贏 ${d.wins} / 輸 ${d.losses}`);
+  html+=card('3年累計',fmtR(d.totalR),d.totalR>=0?'green':'red','以每單 1R 風險計');
+  html+=card('最大回撤',d.maxDD.toFixed(1)+'R','red','連輸最深嘅一段');
+  html+=card('平均持倉',d.avgHold+' 日','','入場到平倉');
+  html+='</div>';
+
+  // verdict
+  if(expGood){
+    html+=`<div class="verdict good">✅ <b>S7 係正期望值策略</b> — 每單平均賺 ${d.expR.toFixed(2)}R。勝率雖然得 ${d.winRate}%（輸多贏少），但贏嗰啲贏 2R、輸嗰啲輸 1R，所以長做有利可圖。呢個正係動能策略特性：靠粒大、唔靠勝率。</div>`;
+  }else{
+    html+=`<div class="verdict warn">⚠️ S7 喺呢段期間係負期望值 — 要重新檢視參數或市況過濾。</div>`;
+  }
+
+  // 資金曲線
+  html+='<div class="panel"><h2>📈 資金曲線（累計 R）</h2><div id="chart"></div></div>';
+
+  // 年份
+  html+='<div class="panel"><h2>📅 按年份</h2><table><thead><tr><th>年份</th><th>單數</th><th>勝率</th><th>累計 R</th></tr></thead><tbody>';
+  for(const y in d.years){const v=d.years[y];html+=`<tr><td class="mono">${y}</td><td class="mono">${v.n}</td><td class="mono">${v.wr}%</td><td class="mono ${v.r>=0?'green':'red'}">${fmtR(v.r)}</td></tr>`;}
+  html+='</tbody></table></div>';
+
+  // Bonus
+  html+='<div class="panel"><h2>⭐ 按 Bonus 質素</h2><table><thead><tr><th>Bonus</th><th>單數</th><th>勝率</th><th>每單期望</th></tr></thead><tbody>';
+  for(const b in d.bonus){const v=d.bonus[b];html+=`<tr><td class="mono">${b}/5</td><td class="mono">${v.n}</td><td class="mono">${v.wr}%</td><td class="mono ${v.er>=0?'green':'red'}">${(v.er>=0?'+':'')+v.er.toFixed(2)}R</td></tr>`;}
+  html+='</tbody></table></div>';
+
+  // 限制
+  html+='<div class="warn"><b>⚠️ Backtest 限制（實際表現可能差少少）：</b><br>• 冇計手續費同滑點<br>• 同一日觸止損當先觸（保守假設）<br>• S&P 500 成份股有生存者偏差（唔包期間除牌嘅股）<br>• 過去表現唔代表未來。S7 係實驗策略，注碼要細。</div>';
+
+  document.getElementById('content').innerHTML=html;
+  drawChart(d.curve);
+}
+
+function card(lbl,val,cls,note){
+  return `<div class="card"><div class="lbl">${lbl}</div><div class="val ${cls||''}">${val}</div>${note?`<div class="note">${note}</div>`:''}</div>`;
+}
+
+function drawChart(curve){
+  if(!curve||!curve.length)return;
+  const el=document.getElementById('chart');
+  const work=document.body.classList.contains('work');
+  const chart=LightweightCharts.createChart(el,{
+    width:el.clientWidth,height:300,
+    layout:{background:{color:'transparent'},textColor:work?'#555':'#8a8fa3'},
+    grid:{vertLines:{color:work?'#eee':'#1a1c2b'},horzLines:{color:work?'#eee':'#1a1c2b'}},
+    rightPriceScale:{borderColor:work?'#ddd':'#262a3d'},
+    timeScale:{borderColor:work?'#ddd':'#262a3d'},
+  });
+  const series=chart.addAreaSeries({
+    lineColor:work?'#177245':'#2ee6a6',
+    topColor:work?'rgba(23,114,69,.2)':'rgba(46,230,166,.25)',
+    bottomColor:'rgba(46,230,166,0)',
+    lineWidth:2,
+  });
+  // 用 index 做 x（轉做假時間，等 lightweight charts 收貨）
+  const base=Math.floor(Date.now()/1000)-curve.length*86400;
+  series.setData(curve.map((v,i)=>({time:base+i*86400,value:v})));
+  chart.timeScale().fitContent();
+  window.addEventListener('resize',()=>chart.applyOptions({width:el.clientWidth}));
+}
+
+load();
+</script>
+</body>
+</html>
