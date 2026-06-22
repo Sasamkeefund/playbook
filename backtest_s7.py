@@ -113,7 +113,36 @@ def main():
     open("bt_s7_report.txt","w").write(report)
     # 資金曲線數據
     ts=sorted(all_t,key=lambda x:(x["year"] or 0,x["entry_idx"]))
-    _,curve=max_drawdown_R(ts)
+    mdd,curve=max_drawdown_R(ts)
+    # app 用嘅精簡統計 JSON
+    n=len(all_t)
+    wins=[t for t in all_t if t["outcome"]=="win"]
+    losses=[t for t in all_t if t["outcome"]=="loss"]
+    tos=[t for t in all_t if t["outcome"]=="timeout"]
+    total_r=sum(t["r"] for t in all_t)
+    years={}
+    for y in sorted(set(t["year"] for t in all_t if t["year"])):
+        g=[t for t in all_t if t["year"]==y]
+        years[str(y)]={"n":len(g),"wr":round(len([t for t in g if t["outcome"]=="win"])/len(g)*100,1),"r":round(sum(t["r"] for t in g),1)}
+    bonus={}
+    for b in range(6):
+        g=[t for t in all_t if t["bonus"]==b]
+        if g:
+            bonus[str(b)]={"n":len(g),"wr":round(len([t for t in g if t["outcome"]=="win"])/len(g)*100,1),"er":round(sum(t["r"] for t in g)/len(g),2)}
+    # 圖太多點，sample 落 ~400 點
+    step=max(1,len(curve)//400)
+    curve_s=curve[::step]
+    app={
+        "strategy":"S7","name":"52週新高動能","rr":"1:2","period":"3年",
+        "total":n,"wins":len(wins),"losses":len(losses),"timeouts":len(tos),
+        "winRate":round(len(wins)/n*100,1) if n else 0,
+        "expR":round(total_r/n,3) if n else 0,
+        "totalR":round(total_r,1),"maxDD":mdd,
+        "avgHold":round(sum(t["hold_days"] for t in all_t)/n) if n else 0,
+        "years":years,"bonus":bonus,"curve":curve_s,
+        "updated":datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    }
+    json.dump(app,open("bt_s7_app.json","w"))
     json.dump({"curve":curve,"report":report},open("bt_s7_summary.json","w"))
 
 if __name__=="__main__":
