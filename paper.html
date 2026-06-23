@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>playbook — S7 Paper Trade</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     :root{--bg:#0a0b12;--surface:#13141f;--surface-2:#1a1c2b;--border:#262a3d;--text:#e6e8f0;--dim:#8a8fa3;--faint:#5b6075;--accent:#7c5cff;--up:#2ee6a6;--down:#ff5d6c;--amber:#f5b945}
     body.work{--bg:#fff;--surface:#fff;--surface-2:#f3f3f3;--border:#d0d0d0;--text:#1a1a1a;--dim:#555;--faint:#888;--accent:#444;--up:#177245;--down:#b00020;--amber:#7a5c00}
@@ -37,6 +38,15 @@
     .warn{background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);padding:14px 16px;border-radius:12px;margin:16px 0;line-height:1.6;font-size:13px}
     .loading{text-align:center;padding:60px;color:var(--dim)}
     .pill{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+    .why{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin:8px 0;font-size:12px;line-height:1.7}
+    .why b{color:var(--text)}
+    .linkbtn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;padding:0;text-decoration:underline}
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+    .modal.show{display:flex}
+    .modalbox{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;width:min(900px,94vw)}
+    .modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    #pchart{width:100%;height:380px}
+    .x{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer}
   </style>
 </head>
 <body>
@@ -60,6 +70,14 @@
     <h1>📒 S7 Paper Trade — 機械模擬（跟 J Law）</h1>
     <div class="sub">入場：突破放量/回測 + 旗桿強 + 跑贏大盤×2 + Bonus≥4 ｜ 止損：突破位下 ｜ 止賺：跌穿20MA</div>
     <div id="content"><div class="loading">載入緊…</div></div>
+  </div>
+
+  <div class="modal" id="chartModal" onclick="if(event.target===this)closeChart()">
+    <div class="modalbox">
+      <div class="modalhead"><div id="chartTitle" style="font-weight:700"></div><button class="x" onclick="closeChart()">×</button></div>
+      <div id="pchart"></div>
+      <div class="sub" id="chartNote" style="margin-top:8px"></div>
+    </div>
   </div>
 
 <script>
@@ -94,25 +112,36 @@ function render(openP, closed){
     h+='<div class="warn">仲未有任何模擬交易。每次 scan 後撳「▶️ 行 Paper Trade」（或佢會自動每日跑），符合條件嘅 S7 就會自動開模擬倉。耐心儲幾星期數據先有意義。</div>';
   }
 
+  // 點解買入（策略解釋）
+  h+='<div class="why">📖 <b>點解 Paper Trade 會買入？</b>　系統淨係喺一隻股<b>同時</b>滿足以下全部先自動模擬買入（J Law 最嚴標準）：<br>① S7 ready（距52週高≤2% + 股價>200MA + 10MA>20MA + 黃金排列 + 放量 + 跑贏大盤×2）<br>② 突破狀態 = 🔥突破放量 或 ↩️回測（唔係追高，係喺突破位附近入）<br>③ 旗桿強（急升動能）　④ Bonus ≥ 4/5（高質）　⑤ 確實跑贏大盤<br>止損放突破位下方，止賺等收市跌穿 20MA（move stop，let winners run）。</div>';
+
   // 持倉中
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
-    h+='<table><thead><tr><th>股</th><th>入場日</th><th>入場價</th><th>止損</th><th>狀態</th><th>跑贏大盤</th></tr></thead><tbody>';
     openP.forEach(p=>{
-      const rs=(p.m1!=null&&p.spy1m!=null)?('你'+p.m1+'% vs '+p.spy1m+'%'):'';
-      h+='<tr><td><b>'+p.ticker+'</b></td><td class="mono">'+p.entryDate+'</td><td class="mono">$'+p.entry+'</td><td class="mono">$'+p.stop+'</td><td>'+(p.state||'')+'</td><td class="mono" style="font-size:11px">'+rs+'</td></tr>';
+      const rs=(p.m1!=null&&p.spy1m!=null)?('你 '+p.m1+'% vs 大盤 '+p.spy1m+'%'+(p.spy1m>0?'（跑贏 '+(p.m1/p.spy1m).toFixed(0)+'倍）':'')):'';
+      const risk=(p.entry&&p.stop)?((p.entry-p.stop)/p.entry*100).toFixed(1):'?';
+      h+='<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;font-weight:700">'+p.ticker+' <span class="sub" style="font-weight:400">入 $'+p.entry+'</span></div><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈 開圖</button></div>';
+      h+='<div class="why" style="margin:8px 0 0">';
+      h+='🟢 <b>買入理由：</b><br>';
+      h+='• 入場狀態：<b>'+(p.state||'-')+'</b>（'+(p.state==='回測'?'突破後回測突破位，唔係追高':'突破放量，動能確認')+'）<br>';
+      h+='• 跑贏大盤：<b>'+rs+'</b><br>';
+      h+='• 質素：Bonus <b>'+(p.bonus||'-')+'/5</b><br>';
+      h+='• 入場日：'+p.entryDate+'　止損：$'+p.stop+'（風險 '+risk+'%）<br>';
+      h+='• 止賺規則：收市跌穿 20MA 先走（move stop）';
+      h+='</div></div>';
     });
-    h+='</tbody></table>';
   }else h+='<div class="sub">冇持倉</div>';
   h+='</div>';
 
   // 已平倉
   h+='<div class="panel"><h2>📋 已平倉（'+n+'）</h2>';
   if(n){
-    h+='<table><thead><tr><th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th></tr></thead><tbody>';
+    h+='<table><thead><tr><th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th><th></th></tr></thead><tbody>';
     closed.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
-      h+='<tr><td><b>'+t.ticker+'</b></td><td class="mono">'+t.entryDate+'</td><td class="mono">'+t.exitDate+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+t.reason+'</td><td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td><td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td></tr>';
+      h+='<tr><td><b>'+t.ticker+'</b></td><td class="mono">'+t.entryDate+'</td><td class="mono">'+t.exitDate+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+t.reason+'</td><td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td><td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td><td><button class="linkbtn" onclick="openChart(\''+t.ticker+'\','+t.entry+','+t.stop+')">📈</button></td></tr>';
     });
     h+='</tbody></table>';
   }else h+='<div class="sub">仲未有平倉記錄</div>';
@@ -123,6 +152,38 @@ function render(openP, closed){
   document.getElementById('content').innerHTML=h;
 }
 function card(l,v,c){return '<div class="card"><div class="lbl">'+l+'</div><div class="val '+(c||'')+'">'+v+'</div></div>';}
+
+let chartsData=null, pchart=null;
+async function openChart(ticker, entry, stop){
+  document.getElementById('chartModal').classList.add('show');
+  document.getElementById('chartTitle').textContent=ticker+' 日線圖';
+  document.getElementById('chartNote').textContent='綠線=入場 $'+entry+'　紅線=止損 $'+stop;
+  const el=document.getElementById('pchart');
+  el.innerHTML='';
+  if(!chartsData){
+    try{ chartsData=await (await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/charts.json?t='+Date.now())).json(); }
+    catch(e){ el.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">圖表數據載入失敗</div>'; return; }
+  }
+  const c=chartsData[ticker];
+  if(!c||!c.c){ el.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">冇 '+ticker+' 圖表數據</div>'; return; }
+  const work=document.body.classList.contains('work');
+  pchart=LightweightCharts.createChart(el,{width:el.clientWidth,height:380,
+    layout:{background:{color:'transparent'},textColor:work?'#555':'#8a8fa3'},
+    grid:{vertLines:{color:work?'#eee':'#1a1c2b'},horzLines:{color:work?'#eee':'#1a1c2b'}},
+    rightPriceScale:{borderColor:work?'#ddd':'#262a3d'},timeScale:{borderColor:work?'#ddd':'#262a3d'}});
+  const base=Math.floor(Date.now()/1000)-c.c.length*86400;
+  const candle=pchart.addCandlestickSeries({upColor:work?'#177245':'#2ee6a6',downColor:work?'#b00020':'#ff5d6c',wickUpColor:work?'#177245':'#2ee6a6',wickDownColor:work?'#b00020':'#ff5d6c',borderVisible:false});
+  candle.setData(c.c.map((cl,i)=>({time:base+i*86400,open:c.o?c.o[i]:cl,high:c.h[i],low:c.l[i],close:cl})));
+  // EMA20 線
+  if(c.e20){const e=pchart.addLineSeries({color:'#4d8dff',lineWidth:1});e.setData(c.e20.map((v,i)=>v?{time:base+i*86400,value:v}:null).filter(Boolean));}
+  // 入場 + 止損線
+  candle.createPriceLine({price:entry,color:'#2ee6a6',lineWidth:1,lineStyle:2,title:'入場'});
+  candle.createPriceLine({price:stop,color:'#ff5d6c',lineWidth:1,lineStyle:2,title:'止損'});
+  pchart.timeScale().fitContent();
+}
+function closeChart(){document.getElementById('chartModal').classList.remove('show');if(pchart){pchart.remove();pchart=null;}}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeChart();});
+
 load();
 </script>
 </body>
