@@ -152,6 +152,21 @@ def pct_change(values, idx, lookback):
 # ─────────────────────────────────────────────────────────────
 # 策略評估（包含 bonus）
 # ─────────────────────────────────────────────────────────────
+# 相對強度線（股價 / SPY），逐隻股 eval 前由外部設定；None = 唔計 RS（自動過）
+_CUR_RS_LINE = None
+
+def rs_strong(idx, lookback=126, buf=0.97):
+    """RS 線接近自己 lookback 期內高位 = 跑贏大盤（Minervini/J Law RS）。"""
+    rl = _CUR_RS_LINE
+    if rl is None or idx >= len(rl) or rl[idx] is None:
+        return None  # 冇 SPY 數據時返 None（當條件 skip）
+    start = max(0, idx - lookback)
+    seg = [v for v in rl[start:idx + 1] if v is not None]
+    if len(seg) < 20:
+        return None
+    return rl[idx] >= max(seg) * buf
+
+
 def eval_strategies(idx, closes, highs, lows, volumes,
                     ema20a, ema50a, ema200a, rsia, atr5a, atr14a):
     """返回 {S1:{conds, bonus, score, bonusScore, ready, keyvals}, ...}。"""
@@ -382,25 +397,28 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S6"]["brokeH1"] = broke_h1
     res["S6"]["flagRetrace"] = round(flag_retrace, 3) if flag_retrace is not None else None
 
-    # ── S7 52週新高動能（Required 5/5, Bonus 5/5）──
-    # 機械式：買最強、買新高、趨勢健康 + 放量推動
+    # ── S7 52週新高動能（J Law Stage 2 + 相對強度版）──
+    # Stan Weinstein Stage 2 + Minervini/J Law RS：買最強、買新高、跑贏大盤
     today_high = highs[idx] if idx < len(highs) else None
+    rs_ok = rs_strong(idx)        # RS 接近 6個月高 = 跑贏大盤
+    rs_pass = (rs_ok is True) or (rs_ok is None)  # 冇 SPY 數據時唔卡
     c = [
-        (pct_from_high is not None and pct_from_high <= 2),          # C1 距52週高 ≤2%（新高或即將）
-        close > e50,                                                  # C2 中期趨勢向上
-        (e50 is not None and e200 is not None and e50 > e200),        # C3 長期趨勢健康
+        (pct_from_high is not None and pct_from_high <= 2),          # C1 距52週高 ≤2%
+        (e200 is not None and close > e200),                         # C2 價格 > EMA200（Stage 2 核心）
+        (e50 is not None and e200 is not None and e50 > e200),        # C3 黃金排列
         (relvol is not None and relvol > 1.3),                        # C4 放量推動
-        (50 <= r <= 80),                                              # C5 動能區（未極度超買）
+        rs_pass,                                                      # C5 相對強度：跑贏大盤
     ]
     b = [
-        (today_high is not None and close >= today_high * 0.985),     # b1 收市接近全日高（強燭）
-        (e20 is not None and e50 is not None and e20 > e50),          # b2 短期都向上（三線排列）
-        (pct_from_high is not None and pct_from_high <= 0.2),         # b3 真正當日新高（距高位≈0）
+        (today_high is not None and close >= today_high * 0.985),     # b1 強燭
+        (e20 is not None and e50 is not None and e20 > e50),          # b2 三線排列
+        (50 <= r <= 80),                                              # b3 動能區（RSI）
         (perf1m is not None and perf1m > 10),                         # b4 1個月動能強
         (ema200_slope is not None and ema200_slope > 0),              # b5 200日線升緊
     ]
     res["S7"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 5,
                  "pctFromHigh": round(pct_from_high, 1) if pct_from_high is not None else None,
+                 "rsStrong": rs_ok,
                  "keyvals": {"距52高%": round(pct_from_high, 1) if pct_from_high is not None else None, "1M%": round(perf1m, 1) if perf1m is not None else None}}
 
     return res
@@ -468,6 +486,39 @@ def fetch_history(ticker):
     return None
 
 
+# 大盤基準（SPY）date->close，做相對強度 RS 用
+_SPY_MAP = None
+
+def load_spy():
+    """fetch SPY，建 date->close map（module 快取）。"""
+    global _SPY_MAP
+    if _SPY_MAP is not None:
+        return _SPY_MAP
+    h = fetch_history("SPY")
+    m = {}
+    if h:
+        for t, c in zip(h["time"], h["close"]):
+            if t and c:
+                m[int(t) // 86400] = c   # 以「日」做 key，容忍時分差異
+    _SPY_MAP = m
+    return m
+
+
+def build_rs_line(times, closes):
+    """RS 線 = 股價 / 同日 SPY 收市。返回同 closes 等長嘅 list（None=冇對應SPY）。"""
+    spy = load_spy()
+    if not spy:
+        return None
+    out = []
+    for t, c in zip(times, closes):
+        if not t:
+            out.append(None); continue
+        d = int(t) // 86400
+        sp = spy.get(d) or spy.get(d - 1) or spy.get(d + 1)
+        out.append((c / sp) if sp else None)
+    return out
+
+
 def get_sp500_tickers():
     try:
         url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
@@ -493,6 +544,7 @@ def get_sp500_tickers():
 # 主流程
 # ─────────────────────────────────────────────────────────────
 def build_record(ticker, hist):
+    global _CUR_RS_LINE
     closes = hist["close"]
     highs = hist["high"]
     lows = hist["low"]
@@ -504,6 +556,9 @@ def build_record(ticker, hist):
     rsia = rsi(closes, 14)
     atr5a = atr(highs, lows, closes, 5)
     atr14a = atr(highs, lows, closes, 14)
+
+    # 設定 RS 線（相對 SPY），畀 S7 用
+    _CUR_RS_LINE = build_rs_line(hist.get("time", []), closes) if ticker != "SPY" else None
 
     last = len(closes) - 1
     today = eval_strategies(last, closes, highs, lows, volumes,
