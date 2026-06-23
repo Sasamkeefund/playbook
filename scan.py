@@ -555,6 +555,34 @@ def build_rs_line(times, closes):
     return out
 
 
+def get_russell1000_tickers():
+    """Russell 1000（IWB ETF holdings）— 大+中型股，S7 用。失敗則 fallback S&P500。"""
+    import re
+    # iShares IWB holdings CSV（Russell 1000 ETF）
+    url = ("https://www.ishares.com/us/products/239707/"
+           "ishares-russell-1000-etf/1467271812596.ajax"
+           "?fileType=csv&fileName=IWB_holdings&dataType=fund")
+    try:
+        resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=25)
+        if resp.status_code == 200 and len(resp.text) > 1000:
+            out, seen = [], set()
+            for line in resp.text.splitlines():
+                # CSV：第一欄通常係 ticker（在 header 之後）
+                m = re.match(r'^"?([A-Z][A-Z.\-]{0,5})"?,', line)
+                if m:
+                    t = m.group(1).replace(".", "-")
+                    # 隔走非股票（現金、期貨等已冇 ticker pattern）
+                    if t.isalpha() or "-" in t:
+                        if t not in seen:
+                            seen.add(t); out.append(t)
+            if len(out) > 800:
+                return out
+    except Exception:
+        pass
+    # fallback：S&P 500
+    return get_sp500_tickers()
+
+
 def get_sp500_tickers():
     try:
         url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
@@ -713,8 +741,14 @@ def load_previous_ready():
 
 
 def main():
-    tickers = get_sp500_tickers()
-    print(f"掃描 {len(tickers)} 隻股…")
+    sp500 = set(get_sp500_tickers())
+    # S7 想要中型爆發股 → 用 Russell 1000；S1-S6 喺 app 度 filter 返 S&P 500
+    tickers = get_russell1000_tickers()
+    # 確保 S&P 500 全部包到（萬一 IWB 攞唔齊）
+    for t in sp500:
+        if t not in tickers:
+            tickers.append(t)
+    print(f"掃描 {len(tickers)} 隻股（Russell 1000，S&P500={len(sp500)}）…")
 
     prev_ready = load_previous_ready()
 
@@ -725,6 +759,7 @@ def main():
         if hist:
             rec = build_record(t, hist)
             if rec:
+                rec["inSP500"] = (t in sp500)   # 標記，app 用嚟 filter S1-S6
                 records.append(rec)
                 ok += 1
         if i % 25 == 0:
@@ -733,7 +768,10 @@ def main():
 
     summary = {}
     for s in STRATEGY_META:
-        ready = [r["ticker"] for r in records if r["strategies"][s]["ready"]]
+        if s == "S7":
+            ready = [r["ticker"] for r in records if r["strategies"][s]["ready"]]
+        else:
+            ready = [r["ticker"] for r in records if r["strategies"][s]["ready"] and r.get("inSP500")]
         summary[s] = {"count": len(ready), "tickers": ready}
 
     # 標記每隻股每個策略係咪「新入」（上次唔 ready，今次 ready）
