@@ -68,7 +68,7 @@
 
   <div class="wrap">
     <h1>📒 S7 Paper Trade — 機械模擬（跟 J Law）</h1>
-    <div class="sub">入場：突破放量/回測 + 旗桿強 + 跑贏大盤×2 + Bonus≥4 ｜ 止損：突破位下 ｜ 止賺：跌穿20MA</div>
+    <div class="sub">入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA</div>
     <div id="content"><div class="loading">載入緊…</div></div>
   </div>
 
@@ -112,36 +112,31 @@ function render(openP, closed){
     h+='<div class="warn">仲未有任何模擬交易。每次 scan 後撳「▶️ 行 Paper Trade」（或佢會自動每日跑），符合條件嘅 S7 就會自動開模擬倉。耐心儲幾星期數據先有意義。</div>';
   }
 
-  // 點解買入（策略解釋）
-  h+='<div class="why">📖 <b>點解 Paper Trade 會買入？</b>　系統淨係喺一隻股<b>同時</b>滿足以下全部先自動模擬買入（J Law 最嚴標準）：<br>① S7 ready（距52週高≤2% + 股價>200MA + 10MA>20MA + 黃金排列 + 放量 + 跑贏大盤×2）<br>② 突破狀態 = 🔥突破放量 或 ↩️回測（唔係追高，係喺突破位附近入）<br>③ 旗桿強（急升動能）　④ Bonus ≥ 4/5（高質）　⑤ 確實跑贏大盤<br>止損放突破位下方，止賺等收市跌穿 20MA（move stop，let winners run）。</div>';
+  // 點解買入（純 J Law）
+  h+='<div class="why">📖 <b>點解 Paper Trade 會買入？</b>　系統揾到符合 <b>J Law 強勢股</b>全部條件就自動模擬買入：<br>① 距52週高 ≤2%　② 股價 > 200MA　③ 10MA > 20MA　④ EMA50 > EMA200（黃金排列）<br>⑤ 放量　⑥ 跑贏大盤 ×2（1個月升幅 ≥ 大盤×2）<br><b>入場：</b>隔日開市　<b>止損：</b>1.5×ATR　<b>止賺：</b>收市跌穿 20MA（let winners run）<br><span style="color:var(--faint)">※ 實際突破入場時機由你 TradingView 自己睇（J Law 本人都係人手睇圖）</span></div>';
 
-  // 持倉中（表格，一格格）
+  // 持倉中（表格）
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>入場日</th><th>狀態</th><th>買入價</th><th>突破位</th><th>止損</th><th>風險</th><th>跑贏大盤</th><th>Bonus</th><th>旗桿</th><th>止賺</th><th>圖</th>'
+      +'<th>股</th><th>入場日</th><th>買入價</th><th>止損</th><th>風險</th><th>跑贏大盤</th><th>Bonus</th><th>止賺</th><th>圖</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const risk=(p.entry&&p.stop)?((p.entry-p.stop)/p.entry*100).toFixed(1)+'%':'—';
       const rs=(p.m1!=null&&p.spy1m!=null)?(p.m1+'% vs '+p.spy1m+'%'):'—';
-      const stCol=p.state==='回測'?'#2ee6a6':p.state==='突破放量'?'#f5b945':'var(--dim)';
       h+='<tr>'
         +'<td><b>'+p.ticker+'</b></td>'
         +'<td class="mono">'+p.entryDate+'</td>'
-        +'<td style="color:'+stCol+';font-weight:600">'+(p.state||'—')+'</td>'
         +'<td class="mono">$'+p.entry+'</td>'
-        +'<td class="mono" style="color:var(--accent)">$'+(p.resist||'—')+'</td>'
         +'<td class="mono red">$'+p.stop+'</td>'
         +'<td class="mono">'+risk+'</td>'
         +'<td class="mono" style="font-size:11px">'+rs+'</td>'
         +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
-        +'<td style="text-align:center">'+(p.pole||'—')+'</td>'
         +'<td style="font-size:11px;color:var(--dim)">跌穿20MA</td>'
-        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+','+(p.resist||0)+')">📈</button></td>'
+        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
-    h+='<div class="sub" style="margin-top:8px">💡 <b>突破位</b>（紫色）= TradingView 要睇嘅關鍵位。股價守住突破位 = 健康；跌穿突破位 = 觸止損。</div>';
   }else h+='<div class="sub">冇持倉</div>';
   h+='</div>';
 
@@ -164,10 +159,10 @@ function render(openP, closed){
 function card(l,v,c){return '<div class="card"><div class="lbl">'+l+'</div><div class="val '+(c||'')+'">'+v+'</div></div>';}
 
 let chartsData=null, pchart=null;
-async function openChart(ticker, entry, stop, resist){
+async function openChart(ticker, entry, stop){
   document.getElementById('chartModal').classList.add('show');
   document.getElementById('chartTitle').textContent=ticker+' 日線圖';
-  document.getElementById('chartNote').innerHTML='🟢 入場 $'+entry+'　🔴 止損 $'+stop+(resist?'　🟣 突破位 $'+resist:'');
+  document.getElementById('chartNote').innerHTML='🟢 入場 $'+entry+'　🔴 止損 $'+stop;
   const el=document.getElementById('pchart');
   el.innerHTML='';
   if(!chartsData){
@@ -187,7 +182,6 @@ async function openChart(ticker, entry, stop, resist){
   if(c.e20){const e=pchart.addLineSeries({color:'#4d8dff',lineWidth:1});e.setData(c.e20.map((v,i)=>v?{time:base+i*86400,value:v}:null).filter(Boolean));}
   candle.createPriceLine({price:entry,color:'#2ee6a6',lineWidth:1,lineStyle:2,title:'入場'});
   candle.createPriceLine({price:stop,color:'#ff5d6c',lineWidth:1,lineStyle:2,title:'止損'});
-  if(resist)candle.createPriceLine({price:resist,color:'#a78bfa',lineWidth:1,lineStyle:0,title:'突破位'});
   pchart.timeScale().fitContent();
 }
 function closeChart(){document.getElementById('chartModal').classList.remove('show');if(pchart){pchart.remove();pchart=null;}}
