@@ -433,46 +433,6 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                  "rsStrong": rs_jl, "spy1m": round(spy_1m, 1) if spy_1m is not None else None,
                  "keyvals": {"距52高%": round(pct_from_high, 1) if pct_from_high is not None else None, "1M%": round(perf1m, 1) if perf1m is not None else None}}
 
-    # ── S7 突破/回測偵測（J Law 買法：突破前高/阻力 → 回測 → 入場）──
-    # 阻力 = 整固區前高（近20日內、唔計最近3日嘅最高）
-    # 狀態：整固中 / 啱啱突破+放量 / 突破後回測緊 / 突破飛走
-    s7_resist = None; s7_state = None; s7_pole = None; s7_pct_resist = None
-    try:
-        win = 25
-        seg_h = highs[max(0, idx - win):idx + 1]
-        seg_c = closes[max(0, idx - win):idx + 1]
-        if len(seg_h) >= 10:
-            # 阻力 = 整固區高位（唔計最近3日，避免今日自己做阻力）
-            resist = max(seg_h[:-3]) if len(seg_h) > 3 else max(seg_h)
-            s7_resist = resist
-            s7_pct_resist = (close - resist) / resist * 100   # 正=已突破，負=喺下面
-            # 旗桿強度：1個月升幅斜率（升幅越急越強）
-            if perf1m is not None:
-                if perf1m > 20: s7_pole = "強"
-                elif perf1m > 10: s7_pole = "中"
-                else: s7_pole = "弱"
-            # 突破狀態
-            broke_recent = False
-            for k in range(max(0, len(seg_c) - 5), len(seg_c)):
-                if seg_c[k] > resist * 1.001:
-                    broke_recent = True; break
-            if s7_pct_resist < -1:
-                s7_state = "整固"                      # 喺阻力下 >1%，未突破
-            elif close > resist and relvol is not None and relvol > 1.3 and s7_pct_resist <= 2:
-                s7_state = "突破放量"                  # 啱啱突破 + 放量 + 未飛太遠
-            elif broke_recent and -1 <= s7_pct_resist <= 1.5:
-                s7_state = "回測"                      # 突破後回落貼返突破位 = 入場窗口
-            elif s7_pct_resist > 2:
-                s7_state = "飛走"                      # 突破飛遠咗
-            else:
-                s7_state = "貼阻力"                    # 喺阻力附近 ±1%
-    except Exception:
-        pass
-    res["S7"]["resist"] = round(s7_resist, 2) if s7_resist else None
-    res["S7"]["pctToResist"] = round(s7_pct_resist, 1) if s7_pct_resist is not None else None
-    res["S7"]["state"] = s7_state
-    res["S7"]["pole"] = s7_pole
-
     return res
 
 
@@ -734,10 +694,6 @@ def build_record(ticker, hist):
             strategies[s]["pctFromHigh"] = today[s].get("pctFromHigh")
             strategies[s]["spy1m"] = today[s].get("spy1m")
             strategies[s]["rsStrong"] = today[s].get("rsStrong")
-            strategies[s]["resist"] = today[s].get("resist")
-            strategies[s]["pctToResist"] = today[s].get("pctToResist")
-            strategies[s]["state"] = today[s].get("state")
-            strategies[s]["pole"] = today[s].get("pole")
         # S6 旗形 H1 / 突破（approximate）
         if s == "S6":
             strategies[s]["h1"] = today[s].get("h1")
@@ -770,6 +726,7 @@ def build_record(ticker, hist):
         "ema50": round(ema50a[last], 2),
         "ema200": round(ema200a[last], 2),
         "rsi": round(rsia[last], 1),
+        "atr14": round(atr14a[last], 2) if atr14a[last] else None,
         "strategies": strategies,
         "chart": chart,
     }
