@@ -113,7 +113,7 @@ function render(openP, closed){
   }
 
   // 點解買入（純 J Law）
-  h+='<div class="why">📖 <b>點解 Paper Trade 會買入？</b>　系統揾到符合 <b>J Law 強勢股</b>全部條件就自動模擬買入：<br>① 距52週高 ≤2%　② 股價 > 200MA　③ 10MA > 20MA　④ EMA50 > EMA200（黃金排列）<br>⑤ 放量　⑥ 跑贏大盤 ×2（1個月升幅 ≥ 大盤×2）<br><b>入場：</b>隔日開市　<b>止損：</b>1.5×ATR　<b>止賺：</b>收市跌穿 20MA（let winners run）<br><span style="color:var(--faint)">※ 實際突破入場時機由你 TradingView 自己睇（J Law 本人都係人手睇圖）</span></div>';
+  h+='<div class="why">📖 <b>點解 Paper Trade 會買入？</b>　系統揾到符合 <b>J Law 強勢股</b>全部條件就自動模擬買入：<br>① 距52週高 ≤2%　② 股價 > 200MA　③ 10MA > 20MA　④ EMA50 > EMA200（黃金排列）<br>⑤ 放量　⑥ 跑贏大盤 ×2（1個月升幅 ≥ 大盤×2）<br><b>入場：</b>隔日開市　<b>止損：</b>1.5×ATR　<b>止賺：</b>收市跌穿 20MA（let winners run）<br><span style="color:var(--faint)">※ 純機械測試：S7 一 ready 就自動買，唔需要人手。測 J Law 篩選本身夠唔夠強。</span></div>';
 
   // 持倉中（表格）
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
