@@ -56,7 +56,7 @@ def main():
         entry = float(p["entry"])
         exit_reason = None
         if close <= stop:
-            exit_reason = "止蝕(穿突破位)"
+            exit_reason = "止蝕(1.5×ATR)"
         elif ema20 and close < ema20:
             exit_reason = "止賺(跌穿20MA)"
         if exit_reason:
@@ -68,37 +68,27 @@ def main():
             print(f"平倉 {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
             held.discard(tk)
 
-    # 4. 揾新入場：最嚴 S7（突破放量/回測 + 旗桿強 + 跑贏×2 + Bonus≥4）
+    # 4. 揾新入場：純 J Law S7 ready（隔日開市買，止損 1.5×ATR）
     for tk, st in stocks.items():
         if tk in held:
             continue
         s7 = st["strategies"].get("S7", {})
         if not s7.get("ready"):
             continue
-        state = s7.get("state")
-        if state not in ("突破放量", "回測"):
-            continue
-        # 最嚴 J Law filter
-        if s7.get("pole") != "強":
-            continue
-        if s7.get("bonusScore", 0) < 4:
-            continue
-        rs = s7.get("rsStrong")
-        if rs is not True:   # 必須確實跑贏（唔當 None）
-            continue
-        # 入場（用今日 close approximate 隔日開市；止損 = 突破位下）
+        # 入場（用今日 close approximate 隔日開市）
         entry = st["close"]
-        resist = s7.get("resist") or entry * 0.97
-        stop = min(resist * 0.99, entry * 0.95)   # 突破位下方，最多 -5%
-        if stop >= entry:
+        atr14 = st.get("atr14")
+        if not atr14 or atr14 <= 0:
+            continue
+        stop = entry - 1.5 * atr14
+        if stop <= 0 or stop >= entry:
             continue
         gv_post({"action": "paper_open", "ticker": tk,
                  "entryDate": today_str(), "entry": round(entry, 2),
-                 "stop": round(stop, 2), "state": state,
+                 "stop": round(stop, 2), "state": "S7 ready",
                  "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
-                 "m1": s7.get("keyvals", {}).get("1M%"),
-                 "resist": round(resist, 2), "pole": s7.get("pole")})
-        print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f} [{state}]")
+                 "m1": s7.get("keyvals", {}).get("1M%")})
+        print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f}")
         held.add(tk)
 
     print("Paper trade 完成")
