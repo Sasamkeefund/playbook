@@ -274,7 +274,7 @@
 
     function getVerdict(tab,strat){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
-      const reqMax=(tab==='S4'||tab==='S5'||tab==='S6')?4:5;
+      const reqMax=(tab==='S4'||tab==='S5'||tab==='S6')?4:(tab==='S7'?6:5);
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
         const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.recentMaxStreak||0;
         // 趨勢質素標籤（唔 block，只標示）
@@ -312,13 +312,13 @@
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
         if(bonus>=3)return{text:'✅ 可深入 — 人手確認 0.786 + 推進浪',color:'green'};
         return{text:'⚠️ 人手確認整理區 + 0.786 Fib',color:'amber'};}
-      if(tab==='S7'){const b3=b[2];const pfh=strat.pctFromHigh;
-        if(req<reqMax)return{text:'👀 未齊條件 — 等突破/放量',color:'amber'};
-        // ready：5/5
-        if(b3||(pfh!==null&&pfh<=0.2))return{text:'🔥 創 52週新高 + 放量 — 動能突破，TradingView 確認',color:'green'};
-        if(bonus>=4)return{text:'🔥 貼近 52週高('+(pfh!==null?pfh+'%':'')+') + 動能強 — 即將突破',color:'green'};
-        if(bonus>=2)return{text:'✅ 貼近 52週高('+(pfh!==null?pfh+'%':'')+') — 留意突破',color:'green'};
-        return{text:'⚠️ 貼近高位但動能一般 — 觀察',color:'amber'};}
+      if(tab==='S7'){const pfh=strat.pctFromHigh;const rs=strat.rsStrong;const spy=strat.spy1m;const m1=(strat.keyvals&&strat.keyvals['1M%']);
+        if(req<reqMax)return{text:'👀 未齊 J Law 條件（Stage2 + 跑贏大盤）',color:'amber'};
+        const rsTxt=(m1!=null&&spy!=null)?'（你 '+m1+'% vs 大盤 '+spy+'%）':'';
+        if(pfh!==null&&pfh<=0.2)return{text:'🔥 創52週新高 + 跑贏大盤 '+rsTxt+'— 動能突破，TradingView 確認',color:'green'};
+        if(bonus>=4)return{text:'🔥 強勢股：貼52週高('+(pfh!==null?pfh+'%':'')+') + 跑贏大盤 '+rsTxt,color:'green'};
+        if(bonus>=2)return{text:'✅ 強勢股：貼52週高('+(pfh!==null?pfh+'%':'')+') + 跑贏大盤 '+rsTxt,color:'green'};
+        return{text:'✅ 符合 J Law Stage 2 + RS '+rsTxt,color:'green'};}
       if(req>=reqMax||strat.ready)return{text:'（未實戰）Bonus '+bonus,color:'amber'};
       return{text:'—',color:'red'};
     }
@@ -407,7 +407,7 @@
     }
     function renderSummary(){
       const s=globalData.stocks.filter(x=>x.strategies[activeTab].ready);
-      const mx=(activeTab==='S5'||activeTab==='S4')?4:5;
+      const mx=(activeTab==='S5'||activeTab==='S4')?4:(activeTab==='S7'?6:5);
       const perfect=s.filter(x=>x.strategies[activeTab].score===mx).length;
       const avgB=s.length?(s.reduce((a,x)=>a+x.strategies[activeTab].bonusScore,0)/s.length).toFixed(1):0;
       const mxStreak=s.length?Math.max(...s.map(x=>x.strategies[activeTab].streak)):0;
@@ -419,7 +419,7 @@
     }
     function renderTable(){
       const stocks=getFilteredStocks();
-      const mx=(activeTab==='S5'||activeTab==='S4')?4:5, mxB=mx;
+      const mx=(activeTab==='S5'||activeTab==='S4')?4:(activeTab==='S7'?6:5), mxB=(activeTab==='S7'?5:mx);
       const c5Exist=!(activeTab==='S4'||activeTab==='S5');
       // 趨勢/跌穿/企返 只喺 S1 顯示
       document.querySelectorAll('.s1col').forEach(el=>{el.style.display=(activeTab==='S1')?'':'none';});
