@@ -22,7 +22,8 @@ def backtest_ticker(ticker, hist):
     if n<70: return []
     ema20a=scan.ema(closes,20); ema50a=scan.ema(closes,50); ema200a=scan.ema(closes,200)
     rsia=scan.rsi(closes,14); atr5a=scan.atr(highs,lows,closes,5); atr14a=scan.atr(highs,lows,closes,14)
-    # RS 線（相對 SPY）畀 S7 用
+    # RS 線 + bar 時間（相對 SPY）畀 S7 用
+    scan._CUR_TIMES = times
     scan._CUR_RS_LINE = scan.build_rs_line(times, closes) if ticker != "SPY" else None
     trades=[]; busy_until=-1
     for idx in range(63,n-1):
