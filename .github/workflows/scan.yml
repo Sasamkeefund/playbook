@@ -1,4 +1,4 @@
-name: Nightly S1-S6 Scan
+name: Nightly Scan (S1-S7) + Paper Trade
 
 on:
   schedule:
@@ -23,7 +23,7 @@ jobs:
       - name: Install deps
         run: pip install requests
 
-      - name: Run scanner
+      - name: Run scanner (S1-S7)
         run: python scan.py
 
       - name: Commit data.json
@@ -33,3 +33,6 @@ jobs:
           git add data.json charts.json
           git diff --staged --quiet || git commit -m "nightly scan $(date -u +%Y-%m-%d)"
           git push
+
+      - name: Run S7 paper trade
+        run: python paper_trade.py
