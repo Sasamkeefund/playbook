@@ -360,6 +360,8 @@
       }
       if(starOnly)s=s.filter(x=>wlSet.has(x.ticker.toUpperCase()));
       if(!showSkipped)s=s.filter(x=>!isSkipped(x.ticker));
+      // S1-S6 只睇 S&P 500；S7 用 Russell 1000（捉中型爆發股）
+      if(activeTab!=='S7')s=s.filter(x=>x.inSP500!==false);
       // S6 回調深度 filter（Patreon 0.236 過濾）
       if(activeTab==='S6'){
         const rf=document.getElementById('filterRetrace')?document.getElementById('filterRetrace').value:'';
