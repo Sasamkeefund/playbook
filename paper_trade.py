@@ -96,7 +96,8 @@ def main():
                  "entryDate": today_str(), "entry": round(entry, 2),
                  "stop": round(stop, 2), "state": state,
                  "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
-                 "m1": s7.get("keyvals", {}).get("1M%")})
+                 "m1": s7.get("keyvals", {}).get("1M%"),
+                 "resist": round(resist, 2), "pole": s7.get("pole")})
         print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f} [{state}]")
         held.add(tk)
 
