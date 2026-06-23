@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>playbook — S7 Paper Trade</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0a0b12;--surface:#13141f;--surface-2:#1a1c2b;--border:#262a3d;--text:#e6e8f0;--dim:#8a8fa3;--faint:#5b6075;--accent:#7c5cff;--up:#2ee6a6;--down:#ff5d6c;--amber:#f5b945}
+    body.work{--bg:#fff;--surface:#fff;--surface-2:#f3f3f3;--border:#d0d0d0;--text:#1a1a1a;--dim:#555;--faint:#888;--accent:#444;--up:#177245;--down:#b00020;--amber:#7a5c00}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:14px}
+    .mono{font-family:'JetBrains Mono',monospace}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+    .topbar-inner{max-width:1400px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+    .brand{font-size:22px;font-weight:700;background:linear-gradient(90deg,#7c5cff,#4d8dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    body.work .brand{background:none;-webkit-text-fill-color:#333}
+    .topnav{display:flex;gap:6px;flex-wrap:wrap}
+    .topnav a{color:var(--dim);text-decoration:none;padding:8px 12px;border-radius:8px;font-weight:600}
+    .topnav a.active{background:var(--accent);color:#fff}
+    body.work .topnav a.active{background:#dcdcdc;color:#1a1a1a}
+    .topactions{margin-left:auto;display:flex;gap:10px}
+    .btn{background:var(--surface-2);color:var(--dim);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;padding:7px 12px;text-decoration:none}
+    .wrap{max-width:1400px;margin:0 auto;padding:24px 20px}
+    h1{font-size:22px;margin:0 0 4px}
+    .sub{color:var(--dim);font-size:13px}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin:20px 0}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+    .card .lbl{color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+    .card .val{font-size:28px;font-weight:700;line-height:1}
+    .green{color:var(--up)}.red{color:var(--down)}.amber{color:var(--amber)}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin:18px 0}
+    .panel h2{font-size:15px;margin:0 0 14px;color:var(--dim)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
+    th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase}
+    .warn{background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);padding:14px 16px;border-radius:12px;margin:16px 0;line-height:1.6;font-size:13px}
+    .loading{text-align:center;padding:60px;color:var(--dim)}
+    .pill{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="topbar"><div class="topbar-inner">
+    <div class="brand">playbook</div>
+    <nav class="topnav">
+      <a href="overview.html">📊 Market</a>
+      <a href="dashboard.html">🔍 Screener</a>
+      <a href="checklist.html">✅ Checklist</a>
+      <a href="watchlist.html">📋 Watchlist</a>
+      <a href="backtest.html">🧪 Backtest</a>
+      <a href="paper.html" class="active">📒 Paper Trade</a>
+    </nav>
+    <div class="topactions">
+      <button onclick="toggleWork()" class="btn">🕶 返工 Mode</button>
+      <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/paper.yml" target="_blank" rel="noopener" class="btn">▶️ 行 Paper Trade</a>
+    </div>
+  </div></div>
+
+  <div class="wrap">
+    <h1>📒 S7 Paper Trade — 機械模擬（跟 J Law）</h1>
+    <div class="sub">入場：突破放量/回測 + 旗桿強 + 跑贏大盤×2 + Bonus≥4 ｜ 止損：突破位下 ｜ 止賺：跌穿20MA</div>
+    <div id="content"><div class="loading">載入緊…</div></div>
+  </div>
+
+<script>
+const WL_API="https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec";
+function toggleWork(){document.body.classList.toggle('work');document.cookie='work='+(document.body.classList.contains('work')?'1':'0')+';path=/;max-age=31536000';}
+if(document.cookie.includes('work=1'))document.body.classList.add('work');
+document.addEventListener('keydown',e=>{if(e.key==='`')toggleWork();});
+
+async function load(){
+  let d;
+  try{ d=await (await fetch(WL_API+"?action=paper_list")).json(); }
+  catch(e){ document.getElementById('content').innerHTML='<div class="warn">載入失敗。請確認 Apps Script 已更新（加咗 Paper trade）。</div>'; return; }
+  render(d.open||[], d.closed||[]);
+}
+
+function render(openP, closed){
+  const n=closed.length;
+  const wins=closed.filter(t=>Number(t.r)>0);
+  const totalR=closed.reduce((a,t)=>a+(Number(t.r)||0),0);
+  const wr=n?Math.round(wins.length/n*100):0;
+  const exp=n?(totalR/n):0;
+  let h='';
+  h+='<div class="cards">';
+  h+=card('持倉中',openP.length,'');
+  h+=card('已平倉',n,'');
+  h+=card('勝率',n?wr+'%':'—',n&&wr>=40?'green':'');
+  h+=card('每單期望',n?(exp>=0?'+':'')+exp.toFixed(2)+'R':'—',exp>=0?'green':'red');
+  h+=card('累計',n?(totalR>=0?'+':'')+totalR.toFixed(1)+'R':'—',totalR>=0?'green':'red');
+  h+='</div>';
+
+  if(n===0&&openP.length===0){
+    h+='<div class="warn">仲未有任何模擬交易。每次 scan 後撳「▶️ 行 Paper Trade」（或佢會自動每日跑），符合條件嘅 S7 就會自動開模擬倉。耐心儲幾星期數據先有意義。</div>';
+  }
+
+  // 持倉中
+  h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
+  if(openP.length){
+    h+='<table><thead><tr><th>股</th><th>入場日</th><th>入場價</th><th>止損</th><th>狀態</th><th>跑贏大盤</th></tr></thead><tbody>';
+    openP.forEach(p=>{
+      const rs=(p.m1!=null&&p.spy1m!=null)?('你'+p.m1+'% vs '+p.spy1m+'%'):'';
+      h+='<tr><td><b>'+p.ticker+'</b></td><td class="mono">'+p.entryDate+'</td><td class="mono">$'+p.entry+'</td><td class="mono">$'+p.stop+'</td><td>'+(p.state||'')+'</td><td class="mono" style="font-size:11px">'+rs+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }else h+='<div class="sub">冇持倉</div>';
+  h+='</div>';
+
+  // 已平倉
+  h+='<div class="panel"><h2>📋 已平倉（'+n+'）</h2>';
+  if(n){
+    h+='<table><thead><tr><th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th></tr></thead><tbody>';
+    closed.slice().reverse().forEach(t=>{
+      const rcol=Number(t.r)>=0?'green':'red';
+      h+='<tr><td><b>'+t.ticker+'</b></td><td class="mono">'+t.entryDate+'</td><td class="mono">'+t.exitDate+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+t.reason+'</td><td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td><td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td></tr>';
+    });
+    h+='</tbody></table>';
+  }else h+='<div class="sub">仲未有平倉記錄</div>';
+  h+='</div>';
+
+  h+='<div class="warn"><b>⚠️ 呢個係模擬（Paper Trade），冇真錢。</b><br>目的：觀察 S7 喺真實時間 work 唔 work（前向測試，比 backtest 可信）。<br>• 入場價用收市 approximate 隔日開市<br>• 真錢落單一定要你自己手動，呢個 app 唔會連 broker</div>';
+
+  document.getElementById('content').innerHTML=h;
+}
+function card(l,v,c){return '<div class="card"><div class="lbl">'+l+'</div><div class="val '+(c||'')+'">'+v+'</div></div>';}
+load();
+</script>
+</body>
+</html>
