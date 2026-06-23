@@ -3,6 +3,9 @@ name: S7 Backtest
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   backtest:
     runs-on: ubuntu-latest
@@ -19,6 +22,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add bt_s7_trades.json bt_s7_report.txt bt_s7_summary.json
+          git add bt_s7_trades.json bt_s7_report.txt bt_s7_summary.json bt_s7_app.json
           git commit -m "S7 backtest results" || echo "no changes"
           git push
