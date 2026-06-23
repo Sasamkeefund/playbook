@@ -228,6 +228,7 @@
             <th class="sortable s1col" style="text-align:center" onclick="sortBy('recentMaxStreak')" title="過去20日內最高連續 5/5 日數（趨勢健康度）">趨勢 <span class="sarr" data-k="recentMaxStreak"></span></th>
             <th class="sortable s1col" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次收市 close 跌穿 EMA20 係幾多日前">跌穿 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
             <th class="s1col" style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
+            <th class="sortable s7col" style="text-align:center" onclick="sortBy('pctToResist')" title="突破狀態 + 距阻力/突破位%">突破狀態 <span class="sarr" data-k="pctToResist"></span></th>
             <th>入場建議</th>
             <th style="text-align:center">⭐</th>
           </tr>
@@ -382,7 +383,7 @@
       }
       // 排序
       if(sortKey){
-        const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo'];
+        const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo','pctToResist'];
         s=s.slice().sort((a,b)=>{
           let va,vb;
           if(stratKeys.includes(sortKey)){va=a.strategies[activeTab][sortKey];vb=b.strategies[activeTab][sortKey];}
@@ -426,6 +427,8 @@
       const c5Exist=!(activeTab==='S4'||activeTab==='S5');
       // 趨勢/跌穿/企返 只喺 S1 顯示
       document.querySelectorAll('.s1col').forEach(el=>{el.style.display=(activeTab==='S1')?'':'none';});
+      // 突破狀態 只喺 S7 顯示
+      document.querySelectorAll('.s7col').forEach(el=>{el.style.display=(activeTab==='S7')?'':'none';});
       // 顯示已 skip 掣只喺 S6/S7
       const ssb=document.getElementById('showSkipBtn');
       if(ssb)ssb.style.display=(activeTab==='S6'||activeTab==='S7')?'':'none';
@@ -434,7 +437,7 @@
       // 回調深度 filter 只喺 S6
       document.querySelectorAll('.s6filter').forEach(el=>{el.style.display=(activeTab==='S6')?'':'none';});
       const tb=document.getElementById('tbody');
-      const cspan=(activeTab==='S1')?19:16;
+      const cspan=(activeTab==='S1')?19:(activeTab==='S7'?17:16);
       if(!stocks.length){tb.innerHTML='<tr><td colspan="'+cspan+'" class="empty">No stocks match filters</td></tr>';return;}
       tb.innerHTML=stocks.map(s=>{
         const st=s.strategies[activeTab];
@@ -463,6 +466,14 @@
             return '<td class="s1col mono" style="text-align:center;font-weight:700;color:'+rmsCol+'">'+rms+'</td>'
               +'<td class="s1col mono" style="text-align:center;color:'+agoCol+';font-weight:'+((touch&&ago<=1)?'700':'400')+'">'+agoTxt+'</td>'
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
+          })():''}
+          ${activeTab==='S7'?(function(){
+            const stt=st.state, ptr=st.pctToResist, pole=st.pole;
+            if(!stt)return '<td class="s7col" style="text-align:center;color:var(--faint)">—</td>';
+            const map={'突破放量':['🔥突破放量','#2ee6a6'],'回測':['↩️回測入場','#2ee6a6'],'貼阻力':['⏳貼阻力','#f5b945'],'整固':['⏳整固','var(--dim)'],'飛走':['🚀已飛走','#8a8fa3']};
+            const m=map[stt]||[stt,'var(--dim)'];
+            const ptrTxt=(ptr!==null&&ptr!==undefined)?'<br><span style="font-size:9px;color:var(--faint)">阻力 '+(ptr>0?'+':'')+ptr+'%'+(pole?' ｜旗桿'+pole:'')+'</span>':'';
+            return '<td class="s7col" style="text-align:center;font-weight:600;color:'+m[1]+'">'+m[0]+ptrTxt+'</td>';
           })():''}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
           <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（21日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
