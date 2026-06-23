@@ -317,7 +317,7 @@
       if(tab==='S7'){const pfh=strat.pctFromHigh;const spy=strat.spy1m;const m1=(strat.keyvals&&strat.keyvals['1M%']);
         if(req<reqMax)return{text:'👀 未齊 J Law 條件（Stage2 + 跑贏大盤×2）',color:'amber'};
         const rsTxt=(m1!=null&&spy!=null)?'（你 '+m1+'% vs 大盤 '+spy+'%'+(spy>0?'，跑贏 '+(m1/spy).toFixed(0)+'倍':'')+'）':'';
-        return{text:'🔥 J Law 強勢股：距52週高 '+(pfh!==null?pfh+'%':'')+' + 跑贏大盤 '+rsTxt+' — TradingView 睇突破入場',color:'green'};}
+        return{text:'🔥 J Law 強勢股：距52週高 '+(pfh!==null?pfh+'%':'')+' + 跑贏大盤 '+rsTxt,color:'green'};}
       if(req>=reqMax||strat.ready)return{text:'（未實戰）Bonus '+bonus,color:'amber'};
       return{text:'—',color:'red'};
     }
