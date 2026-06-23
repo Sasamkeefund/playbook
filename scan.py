@@ -556,30 +556,34 @@ def build_rs_line(times, closes):
 
 
 def get_russell1000_tickers():
-    """Russell 1000（IWB ETF holdings）— 大+中型股，S7 用。失敗則 fallback S&P500。"""
-    import re
-    # iShares IWB holdings CSV（Russell 1000 ETF）
-    url = ("https://www.ishares.com/us/products/239707/"
-           "ishares-russell-1000-etf/1467271812596.ajax"
-           "?fileType=csv&fileName=IWB_holdings&dataType=fund")
+    """大中型美股（市值排序，J Law filter）— S7 用。
+    來源：Ate329/top-us-stock-tickers（每日更新，有市值/價格）。
+    J Law 條件：市值 3B-2T、價格 ≥$10。取頭 ~1200 隻（≈ Russell 1000+）。"""
+    import csv, io
+    url = "https://raw.githubusercontent.com/Ate329/top-us-stock-tickers/main/tickers/all.csv"
     try:
         resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=25)
-        if resp.status_code == 200 and len(resp.text) > 1000:
-            out, seen = [], set()
-            for line in resp.text.splitlines():
-                # CSV：第一欄通常係 ticker（在 header 之後）
-                m = re.match(r'^"?([A-Z][A-Z.\-]{0,5})"?,', line)
-                if m:
-                    t = m.group(1).replace(".", "-")
-                    # 隔走非股票（現金、期貨等已冇 ticker pattern）
-                    if t.isalpha() or "-" in t:
-                        if t not in seen:
-                            seen.add(t); out.append(t)
+        if resp.status_code == 200 and len(resp.text) > 5000:
+            out = []
+            rd = csv.DictReader(io.StringIO(resp.text))
+            for row in rd:
+                try:
+                    sym = (row.get("symbol") or "").strip().upper()
+                    mc = float(row.get("marketCap") or 0)
+                    px = float(row.get("price") or 0)
+                except (ValueError, TypeError):
+                    continue
+                if not sym or not sym.replace("-", "").replace(".", "").isalpha():
+                    continue
+                # J Law filter：市值 3B-2T、價格 ≥$10
+                if 3e9 <= mc <= 2e12 and px >= 10:
+                    out.append(sym.replace(".", "-"))
+                if len(out) >= 1200:
+                    break
             if len(out) > 800:
                 return out
     except Exception:
         pass
-    # fallback：S&P 500
     return get_sp500_tickers()
 
 
@@ -688,6 +692,8 @@ def build_record(ticker, hist):
         # S7 距52週高
         if s == "S7":
             strategies[s]["pctFromHigh"] = today[s].get("pctFromHigh")
+            strategies[s]["spy1m"] = today[s].get("spy1m")
+            strategies[s]["rsStrong"] = today[s].get("rsStrong")
         # S6 旗形 H1 / 突破（approximate）
         if s == "S6":
             strategies[s]["h1"] = today[s].get("h1")
