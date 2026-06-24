@@ -39,14 +39,15 @@ def main():
 
     # 2. 攞現有 paper 持倉（Google Sheet "Paper" tab）
     pf = gv_get("paper_list")
-    open_pos = pf.get("open", [])      # [{ticker, entry, stop, entryDate}]
+    open_pos = pf.get("open", [])      # [{ticker, entry, stop, entryDate, group}]
     closed = pf.get("closed", [])      # 已平倉
 
-    held = {p["ticker"] for p in open_pos}
+    # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
+    held = {(p["ticker"], p.get("group", "A")) for p in open_pos}
 
     # 3. 管理現有持倉：跌穿 20MA → 平倉；跌穿止損 → 止蝕
     for p in list(open_pos):
-        tk = p["ticker"]
+        tk = p["ticker"]; grp = p.get("group", "A")
         st = stocks.get(tk)
         if not st:
             continue
@@ -62,20 +63,19 @@ def main():
         if exit_reason:
             r_mult = (close - entry) / (entry - stop) if entry > stop else 0
             pct = (close - entry) / entry * 100
-            gv_post({"action": "paper_close", "ticker": tk,
+            gv_post({"action": "paper_close", "ticker": tk, "group": grp,
                      "exitDate": today_str(), "exitPx": round(close, 2),
                      "reason": exit_reason, "r": round(r_mult, 2), "pct": round(pct, 1)})
-            print(f"平倉 {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
-            held.discard(tk)
+            print(f"平倉 [{grp}] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
+            held.discard((tk, grp))
 
-    # 4. 揾新入場：純 J Law S7 ready（隔日開市買，止損 1.5×ATR）
+    # 4. 揾新入場 — 兩組對比：
+    #    A 組 = 純 J Law（S7 ready）
+    #    B 組 = S7 ready + VCP（整固≥15日 + 波動收窄）
     for tk, st in stocks.items():
-        if tk in held:
-            continue
         s7 = st["strategies"].get("S7", {})
         if not s7.get("ready"):
             continue
-        # 入場（用今日 close approximate 隔日開市）
         entry = st["close"]
         atr14 = st.get("atr14")
         if not atr14 or atr14 <= 0:
@@ -83,14 +83,23 @@ def main():
         stop = entry - 1.5 * atr14
         if stop <= 0 or stop >= entry:
             continue
-        gv_post({"action": "paper_open", "ticker": tk,
-                 "entryDate": today_str(), "entry": round(entry, 2),
-                 "stop": round(stop, 2), "state": "S7 ready",
-                 "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
-                 "m1": s7.get("keyvals", {}).get("1M%")})
-        print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f}")
-        held.add(tk)
-
+        common = {"entryDate": today_str(), "entry": round(entry, 2),
+                  "stop": round(stop, 2), "bonus": s7.get("bonusScore"),
+                  "spy1m": s7.get("spy1m"), "m1": s7.get("keyvals", {}).get("1M%")}
+        # A 組：純 J Law
+        if (tk, "A") not in held:
+            gv_post({"action": "paper_open", "ticker": tk, "group": "A",
+                     "state": "純J Law", **common})
+            print(f"開倉 [A] {tk}: entry={entry:.2f} stop={stop:.2f}")
+            held.add((tk, "A"))
+        # B 組：S7 ready + VCP（整固≥15 + 收窄）
+        consol = s7.get("consolDays") or 0
+        vc = s7.get("volContract")
+        if consol >= 15 and vc is True and (tk, "B") not in held:
+            gv_post({"action": "paper_open", "ticker": tk, "group": "B",
+                     "state": "J Law+VCP", **common})
+            print(f"開倉 [B] {tk}: entry={entry:.2f} stop={stop:.2f} (整固{consol}日+收窄)")
+            held.add((tk, "B"))
     print("Paper trade 完成")
 
 if __name__ == "__main__":
