@@ -207,12 +207,6 @@
         <option value="0.236">✅ 回調 ≤ 0.236（合格旗形）</option>
         <option value="0.382">回調 ≤ 0.382（較寬）</option>
       </select>
-      <select id="filterVCP" class="s7filter" title="只 S7 有效（J Law VCP 整固輔助）">
-        <option value="">VCP 不限</option>
-        <option value="consol">整固 ≥15日（2-3週）</option>
-        <option value="contract">波動收窄（VCP）</option>
-        <option value="both">整固 + 收窄（最嚴）</option>
-      </select>
       <button id="starFilter" onclick="toggleStarFilter()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">⭐ 只睇 Watchlist</button>
       <button id="showSkipBtn" onclick="toggleShowSkipped()" style="padding:10px 14px;font-size:13px;font-weight:600;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--dim);cursor:pointer">👁 顯示已 skip</button>
     </div>
@@ -321,14 +315,12 @@
         if(bonus>=3)return{text:'✅ 可深入 — 人手確認 0.786 + 推進浪',color:'green'};
         return{text:'⚠️ 人手確認整理區 + 0.786 Fib',color:'amber'};}
       if(tab==='S7'){const pfh=strat.pctFromHigh;const spy=strat.spy1m;const m1=(strat.keyvals&&strat.keyvals['1M%']);
-        if(req<reqMax)return{text:'👀 未齊 J Law 條件（Stage2 + 跑贏大盤×2）',color:'amber'};
-        const rsTxt=(m1!=null&&spy!=null)?'（你 '+m1+'% vs 大盤 '+spy+'%'+(spy>0?'，跑贏 '+(m1/spy).toFixed(0)+'倍':'')+'）':'';
-        const cd=strat.consolDays, vc=strat.volContract, mk=strat.mktOK;
-        let vcpTxt='';
-        if(cd!=null){vcpTxt+=' ｜ 整固'+cd+'日'+(cd>=15?'✓':'(短)');}
-        if(vc===true)vcpTxt+=' ｜ 波動收窄✓';
-        if(mk===false)vcpTxt+=' ｜ ⚠️大盤弱';
-        return{text:'🔥 J Law 強勢股：距52週高 '+(pfh!==null?pfh+'%':'')+' + 跑贏大盤 '+rsTxt+vcpTxt,color:'green'};}
+        if(req<reqMax)return{text:'👀 未齊 VCP 條件（Stage2 + 跑贏大盤 + 整固收窄）',color:'amber'};
+        const rsTxt=(m1!=null&&spy!=null)?'跑贏大盤（你 '+m1+'% vs 大盤 '+spy+'%）':'';
+        const cd=strat.consolDays, mk=strat.mktOK;
+        let vcpTxt='整固'+(cd||'?')+'日 + 波動收窄';
+        const mkTxt=(mk===false)?' ｜ ⚠️大盤弱(留意)':'';
+        return{text:'🔥 J Law VCP：'+vcpTxt+' ｜ '+rsTxt+' — TradingView 等突破入場'+mkTxt,color:'green'};}
       if(req>=reqMax||strat.ready)return{text:'（未實戰）Bonus '+bonus,color:'amber'};
       return{text:'—',color:'red'};
     }
@@ -375,13 +367,6 @@
       if(activeTab==='S6'){
         const rf=document.getElementById('filterRetrace')?document.getElementById('filterRetrace').value:'';
         if(rf)s=s.filter(x=>{const fr=x.strategies.S6.flagRetrace;return fr!==null&&fr!==undefined&&fr<=parseFloat(rf);});
-      }
-      // S7 VCP filter（整固/收窄）
-      if(activeTab==='S7'){
-        const vf=document.getElementById('filterVCP')?document.getElementById('filterVCP').value:'';
-        if(vf==='consol')s=s.filter(x=>(x.strategies.S7.consolDays||0)>=15);
-        else if(vf==='contract')s=s.filter(x=>x.strategies.S7.volContract===true);
-        else if(vf==='both')s=s.filter(x=>(x.strategies.S7.consolDays||0)>=15 && x.strategies.S7.volContract===true);
       }
       const q=document.getElementById('searchTicker').value.toUpperCase();
       if(q)s=s.filter(x=>x.ticker.includes(q));
@@ -449,7 +434,6 @@
       document.querySelectorAll('.s1filter').forEach(el=>{el.style.display=(activeTab==='S1')?'':'none';});
       // 回調深度 filter 只喺 S6
       document.querySelectorAll('.s6filter').forEach(el=>{el.style.display=(activeTab==='S6')?'':'none';});
-      document.querySelectorAll('.s7filter').forEach(el=>{el.style.display=(activeTab==='S7')?'':'none';});
       const tb=document.getElementById('tbody');
       const cspan=(activeTab==='S1')?19:16;
       if(!stocks.length){tb.innerHTML='<tr><td colspan="'+cspan+'" class="empty">No stocks match filters</td></tr>';return;}
@@ -498,7 +482,6 @@
     document.getElementById('filterEma20').addEventListener('change',renderTable);
     document.getElementById('filterFakeout').addEventListener('change',renderTable);
     document.getElementById('filterRetrace').addEventListener('change',renderTable);
-    document.getElementById('filterVCP').addEventListener('change',renderTable);
 
     let chartsCache=null, lwChart=null;
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
