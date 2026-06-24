@@ -433,6 +433,34 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                  "rsStrong": rs_jl, "spy1m": round(spy_1m, 1) if spy_1m is not None else None,
                  "keyvals": {"距52高%": round(pct_from_high, 1) if pct_from_high is not None else None, "1M%": round(perf1m, 1) if perf1m is not None else None}}
 
+    # ── VCP 輔助偵測（J Law/Minervini：整固時間 + 波動收窄 + 市況）──
+    # 全部係客觀計到嘅，做可揀 filter 幫你揾「已喺度整固」嘅強勢股。Pivot/突破位留 TradingView。
+    consol_days = None    # 喺窄區間橫行幾多日（≥15 ≈ 2-3週）
+    vol_contract = None   # 波動收窄（近期 ATR < 之前 ATR）= VCP 特徵
+    try:
+        # 整固天數：由今日向前數，價格維持喺 ±8% 窄區間有幾多日
+        win = closes[max(0, idx-40):idx+1]
+        if len(win) >= 15:
+            ref = win[-1]
+            cnt = 0
+            for k in range(len(win)-1, -1, -1):
+                if abs(win[k] - ref) / ref <= 0.08:  # 喺 ±8% 窄區
+                    cnt += 1
+                else:
+                    break
+            consol_days = cnt
+        # 波動收窄：近 10 日 ATR vs 之前 10-20 日 ATR
+        if atr14a[idx] is not None and idx >= 25:
+            recent_atr = sum(a for a in atr14a[idx-9:idx+1] if a is not None) / 10
+            prior_atr = sum(a for a in atr14a[idx-19:idx-9] if a is not None) / 10
+            if prior_atr > 0:
+                vol_contract = recent_atr < prior_atr  # 近期波動細過之前 = 收窄
+    except Exception:
+        pass
+    res["S7"]["consolDays"] = consol_days
+    res["S7"]["volContract"] = vol_contract
+    res["S7"]["mktOK"] = _SPY_ABOVE_200   # 大盤 > 200MA
+
     return res
 
 
@@ -501,6 +529,7 @@ def fetch_history(ticker):
 # 大盤基準（SPY）date->close，做相對強度 RS 用
 _SPY_MAP = None
 _SPY_TC = None  # (times, closes) 用嚟計大盤升幅
+_SPY_ABOVE_200 = None  # 大盤而家係咪 > 自己 200MA（市況過濾）
 
 def spy_perf(idx_time, lookback_days=30):
     """大盤(SPY) 喺指定日期前 lookback 自然日嘅升幅 %。"""
@@ -526,7 +555,7 @@ def spy_perf(idx_time, lookback_days=30):
 
 def load_spy():
     """fetch SPY，建 date->close map（module 快取）。"""
-    global _SPY_MAP, _SPY_TC
+    global _SPY_MAP, _SPY_TC, _SPY_ABOVE_200
     if _SPY_MAP is not None:
         return _SPY_MAP
     h = fetch_history("SPY")
@@ -536,6 +565,11 @@ def load_spy():
             if t and c:
                 m[int(t) // 86400] = c
         _SPY_TC = (h["time"], h["close"])
+        # 市況：大盤而家係咪喺自己 200MA 之上（Minervini「M」過濾）
+        spy_c = h["close"]
+        if len(spy_c) >= 200:
+            spy_ma200 = sum(spy_c[-200:]) / 200
+            _SPY_ABOVE_200 = spy_c[-1] > spy_ma200
     _SPY_MAP = m
     return m
 
@@ -694,6 +728,9 @@ def build_record(ticker, hist):
             strategies[s]["pctFromHigh"] = today[s].get("pctFromHigh")
             strategies[s]["spy1m"] = today[s].get("spy1m")
             strategies[s]["rsStrong"] = today[s].get("rsStrong")
+            strategies[s]["consolDays"] = today[s].get("consolDays")
+            strategies[s]["volContract"] = today[s].get("volContract")
+            strategies[s]["mktOK"] = today[s].get("mktOK")
         # S6 旗形 H1 / 突破（approximate）
         if s == "S6":
             strategies[s]["h1"] = today[s].get("h1")
