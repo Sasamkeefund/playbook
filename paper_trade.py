@@ -69,10 +69,10 @@ def main():
             print(f"平倉 [{grp}] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
             held.discard((tk, grp))
 
-    # 4. 揾新入場 — 兩組對比：
-    #    A 組 = 純 J Law（S7 ready）
-    #    B 組 = S7 ready + VCP（整固≥15日 + 波動收窄）
+    # 4. 揾新入場：S7 ready（= J Law VCP 整固股）→ 隔日開市買，止損 1.5×ATR
     for tk, st in stocks.items():
+        if (tk, "A") in held:
+            continue
         s7 = st["strategies"].get("S7", {})
         if not s7.get("ready"):
             continue
@@ -83,23 +83,13 @@ def main():
         stop = entry - 1.5 * atr14
         if stop <= 0 or stop >= entry:
             continue
-        common = {"entryDate": today_str(), "entry": round(entry, 2),
-                  "stop": round(stop, 2), "bonus": s7.get("bonusScore"),
-                  "spy1m": s7.get("spy1m"), "m1": s7.get("keyvals", {}).get("1M%")}
-        # A 組：純 J Law
-        if (tk, "A") not in held:
-            gv_post({"action": "paper_open", "ticker": tk, "group": "A",
-                     "state": "純J Law", **common})
-            print(f"開倉 [A] {tk}: entry={entry:.2f} stop={stop:.2f}")
-            held.add((tk, "A"))
-        # B 組：S7 ready + VCP（整固≥15 + 收窄）
-        consol = s7.get("consolDays") or 0
-        vc = s7.get("volContract")
-        if consol >= 15 and vc is True and (tk, "B") not in held:
-            gv_post({"action": "paper_open", "ticker": tk, "group": "B",
-                     "state": "J Law+VCP", **common})
-            print(f"開倉 [B] {tk}: entry={entry:.2f} stop={stop:.2f} (整固{consol}日+收窄)")
-            held.add((tk, "B"))
+        gv_post({"action": "paper_open", "ticker": tk, "group": "A",
+                 "state": "J Law VCP", "entryDate": today_str(),
+                 "entry": round(entry, 2), "stop": round(stop, 2),
+                 "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
+                 "m1": s7.get("keyvals", {}).get("1M%")})
+        print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f} (整固{s7.get('consolDays')}日)")
+        held.add((tk, "A"))
     print("Paper trade 完成")
 
 if __name__ == "__main__":
