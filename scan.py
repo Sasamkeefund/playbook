@@ -398,8 +398,9 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S6"]["brokeH1"] = broke_h1
     res["S6"]["flagRetrace"] = round(flag_retrace, 3) if flag_retrace is not None else None
 
-    # ── S7 52週新高動能（J Law Stage 2 + 相對強度版，Required 6/6）──
-    # J Law 揾強勢股：股價>200MA、10MA>20MA、距高、放量、跑贏大盤1倍以上
+    # ── S7 J Law / Minervini VCP 整固突破 ──
+    # 強勢股（Stage 2 + 跑贏大盤）正喺度 VCP 整固（橫行收窄），等突破。
+    # 注意：唔再用「距52週高≤2%」—— 整固股會距高有少少（回落整固中）。
     today_high = highs[idx] if idx < len(highs) else None
     sma10 = sma_at(closes, idx, 10)
     sma20 = sma_at(closes, idx, 20)
@@ -407,59 +408,61 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     bar_t = _CUR_TIMES[idx] if (_CUR_TIMES is not None and idx < len(_CUR_TIMES)) else None
     spy_1m = spy_perf(bar_t, 30) if bar_t else None
     if spy_1m is None or perf1m is None:
-        rs_jl = None  # 冇 SPY 數據 → 唔卡（當過）
+        rs_jl = None
     elif spy_1m > 0:
-        rs_jl = (perf1m > 0 and perf1m >= 2 * spy_1m)      # 大盤升 → 要跑贏1倍
+        rs_jl = (perf1m > 0 and perf1m >= 2 * spy_1m)
     else:
-        rs_jl = (perf1m > 0)                                # 大盤平/跌 → 自己升已算強
+        rs_jl = (perf1m > 0)
     rs_pass = (rs_jl is True) or (rs_jl is None)
+
+    # VCP 整固偵測（喺定義條件之前計）
+    consol_days = None    # 喺窄區間橫行幾多日
+    vol_contract = None   # 波動收窄
+    try:
+        win = closes[max(0, idx-50):idx+1]
+        if len(win) >= 15:
+            ref = win[-1]
+            cnt = 0
+            for k in range(len(win)-1, -1, -1):
+                if abs(win[k] - ref) / ref <= 0.10:   # ±10% 窄區（整固）
+                    cnt += 1
+                else:
+                    break
+            consol_days = cnt
+        if atr14a[idx] is not None and idx >= 25:
+            recent_atr = sum(a for a in atr14a[idx-9:idx+1] if a is not None) / 10
+            prior_atr = sum(a for a in atr14a[idx-19:idx-9] if a is not None) / 10
+            if prior_atr > 0:
+                vol_contract = recent_atr < prior_atr
+    except Exception:
+        pass
+
+    # 距高放寬到 ≤15%（整固股通常距高 5-15%，唔貼住新高）
+    near_high = pct_from_high is not None and pct_from_high <= 15
+    consol_ok = (consol_days or 0) >= 15      # 整固 ≥3週
+    contract_ok = vol_contract is True         # 波動收窄
+
     c = [
-        (pct_from_high is not None and pct_from_high <= 2),          # C1 距52週高 ≤2%
-        (e200 is not None and close > e200),                         # C2 股價 > 200MA（J Law #1）
-        (sma10 is not None and sma20 is not None and sma10 > sma20),  # C3 10MA > 20MA（J Law #2 短期動能）
-        (e50 is not None and e200 is not None and e50 > e200),        # C4 黃金排列
-        (relvol is not None and relvol > 1.3),                        # C5 放量推動
-        rs_pass,                                                      # C6 跑贏大盤1倍以上（J Law 強中強）
+        (e200 is not None and close > e200),                         # C1 股價 > 200MA（Stage 2）
+        (sma10 is not None and sma20 is not None and sma10 > sma20),  # C2 10MA > 20MA
+        (e50 is not None and e200 is not None and e50 > e200),        # C3 黃金排列
+        rs_pass,                                                      # C4 跑贏大盤（RS）
+        consol_ok,                                                    # C5 整固 ≥3週（VCP base）
+        contract_ok,                                                  # C6 波動收窄（VCP 核心）
     ]
     b = [
-        (today_high is not None and close >= today_high * 0.985),     # b1 強燭
+        near_high,                                                    # b1 距52週高 ≤15%（接近高位）
         (e20 is not None and e50 is not None and e20 > e50),          # b2 EMA20>50
         (50 <= r <= 80),                                              # b3 動能區（RSI）
-        (perf1m is not None and perf1m > 10),                         # b4 1個月動能強
+        (relvol is not None and relvol < 1.0),                        # b4 縮量（整固該縮量）
         (ema200_slope is not None and ema200_slope > 0),              # b5 200日線升緊
     ]
     res["S7"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 6,
                  "pctFromHigh": round(pct_from_high, 1) if pct_from_high is not None else None,
                  "rsStrong": rs_jl, "spy1m": round(spy_1m, 1) if spy_1m is not None else None,
+                 "consolDays": consol_days, "volContract": vol_contract, "mktOK": _SPY_ABOVE_200,
                  "keyvals": {"距52高%": round(pct_from_high, 1) if pct_from_high is not None else None, "1M%": round(perf1m, 1) if perf1m is not None else None}}
 
-    # ── VCP 輔助偵測（J Law/Minervini：整固時間 + 波動收窄 + 市況）──
-    # 全部係客觀計到嘅，做可揀 filter 幫你揾「已喺度整固」嘅強勢股。Pivot/突破位留 TradingView。
-    consol_days = None    # 喺窄區間橫行幾多日（≥15 ≈ 2-3週）
-    vol_contract = None   # 波動收窄（近期 ATR < 之前 ATR）= VCP 特徵
-    try:
-        # 整固天數：由今日向前數，價格維持喺 ±8% 窄區間有幾多日
-        win = closes[max(0, idx-40):idx+1]
-        if len(win) >= 15:
-            ref = win[-1]
-            cnt = 0
-            for k in range(len(win)-1, -1, -1):
-                if abs(win[k] - ref) / ref <= 0.08:  # 喺 ±8% 窄區
-                    cnt += 1
-                else:
-                    break
-            consol_days = cnt
-        # 波動收窄：近 10 日 ATR vs 之前 10-20 日 ATR
-        if atr14a[idx] is not None and idx >= 25:
-            recent_atr = sum(a for a in atr14a[idx-9:idx+1] if a is not None) / 10
-            prior_atr = sum(a for a in atr14a[idx-19:idx-9] if a is not None) / 10
-            if prior_atr > 0:
-                vol_contract = recent_atr < prior_atr  # 近期波動細過之前 = 收窄
-    except Exception:
-        pass
-    res["S7"]["consolDays"] = consol_days
-    res["S7"]["volContract"] = vol_contract
-    res["S7"]["mktOK"] = _SPY_ABOVE_200   # 大盤 > 200MA
 
     return res
 
