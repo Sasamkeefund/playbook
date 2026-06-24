@@ -94,22 +94,38 @@ async function load(){
 }
 
 function render(openP, closed){
+  // 分 A / B 組
+  const stat=(arr)=>{
+    const cl=arr.filter(t=>t.status!=='open'||t.exitDate); // closed
+    return cl;
+  };
+  const grpStat=(g)=>{
+    const op=openP.filter(p=>(p.group||'A')===g);
+    const cl=closed.filter(t=>(t.group||'A')===g);
+    const w=cl.filter(t=>Number(t.r)>0);
+    const tR=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
+    return {open:op.length, closed:cl.length, wr:cl.length?Math.round(w.length/cl.length*100):0,
+            exp:cl.length?tR/cl.length:0, totalR:tR};
+  };
+  const A=grpStat('A'), B=grpStat('B');
+
   const n=closed.length;
-  const wins=closed.filter(t=>Number(t.r)>0);
-  const totalR=closed.reduce((a,t)=>a+(Number(t.r)||0),0);
-  const wr=n?Math.round(wins.length/n*100):0;
-  const exp=n?(totalR/n):0;
   let h='';
-  h+='<div class="cards">';
-  h+=card('持倉中',openP.length,'');
-  h+=card('已平倉',n,'');
-  h+=card('勝率',n?wr+'%':'—',n&&wr>=40?'green':'');
-  h+=card('每單期望',n?(exp>=0?'+':'')+exp.toFixed(2)+'R':'—',exp>=0?'green':'red');
-  h+=card('累計',n?(totalR>=0?'+':'')+totalR.toFixed(1)+'R':'—',totalR>=0?'green':'red');
-  h+='</div>';
+
+  // A vs B 對比
+  h+='<div class="panel"><h2>🔬 A vs B 對比（邊個方法好）</h2>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>組別</th><th>方法</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
+  const row=(g,name,s)=>{
+    const ec=s.exp>=0?'green':'red', tc=s.totalR>=0?'green':'red';
+    return '<tr><td><b>'+g+'</b></td><td style="font-size:12px">'+name+'</td><td class="mono">'+s.open+'</td><td class="mono">'+s.closed+'</td><td class="mono">'+(s.closed?s.wr+'%':'—')+'</td><td class="mono '+ec+'">'+(s.closed?(s.exp>=0?'+':'')+s.exp.toFixed(2)+'R':'—')+'</td><td class="mono '+tc+'">'+(s.closed?(s.totalR>=0?'+':'')+s.totalR.toFixed(1)+'R':'—')+'</td></tr>';
+  };
+  h+=row('A','純 J Law（ready 就買）',A);
+  h+=row('B','J Law + VCP（整固+收窄）',B);
+  h+='</tbody></table></div>';
+  h+='<div class="sub" style="margin-top:8px">💡 儲夠數據後睇邊組「每單期望」高：B 明顯好過 A → VCP filter 有用；差唔多 → 唔使加 VCP。</div></div>';
 
   if(n===0&&openP.length===0){
-    h+='<div class="warn">仲未有任何模擬交易。每次 scan 後撳「▶️ 行 Paper Trade」（或佢會自動每日跑），符合條件嘅 S7 就會自動開模擬倉。耐心儲幾星期數據先有意義。</div>';
+    h+='<div class="warn">仲未有任何模擬交易。每次 scan 後會自動開倉（A=純J Law，B=加VCP）。耐心儲幾星期數據先有意義。</div>';
   }
 
   // 點解買入（純 J Law）
@@ -119,12 +135,15 @@ function render(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>入場日</th><th>買入價</th><th>止損</th><th>風險</th><th>跑贏大盤</th><th>Bonus</th><th>止賺</th><th>圖</th>'
+      +'<th>組</th><th>股</th><th>入場日</th><th>買入價</th><th>止損</th><th>風險</th><th>跑贏大盤</th><th>Bonus</th><th>止賺</th><th>圖</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const risk=(p.entry&&p.stop)?((p.entry-p.stop)/p.entry*100).toFixed(1)+'%':'—';
       const rs=(p.m1!=null&&p.spy1m!=null)?(p.m1+'% vs '+p.spy1m+'%'):'—';
+      const g=p.group||'A';
+      const gc=g==='B'?'#7c5cff':'#4d8dff';
       h+='<tr>'
+        +'<td style="font-weight:700;color:'+gc+'">'+g+'</td>'
         +'<td><b>'+p.ticker+'</b></td>'
         +'<td class="mono">'+p.entryDate+'</td>'
         +'<td class="mono">$'+p.entry+'</td>'
