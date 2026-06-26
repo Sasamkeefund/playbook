@@ -32,6 +32,34 @@ def gv_post(payload):
 def today_str():
     return datetime.datetime.utcnow().strftime("%Y-%m-%d")
 
+_MONTHS = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,
+           "Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
+
+def _norm_date(s):
+    """將日期 string 轉成 (year, month, day)。處理兩種格式：
+    '2026-06-24' 同 'Wed Jun 24 2026 00:00:00 GMT+0800'。"""
+    s = str(s).strip()
+    if not s:
+        return None
+    # ISO 格式 2026-06-24
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        try:
+            return (int(s[0:4]), int(s[5:7]), int(s[8:10]))
+        except ValueError:
+            pass
+    # JS Date 格式 'Wed Jun 24 2026 ...'
+    parts = s.split()
+    if len(parts) >= 4 and parts[1] in _MONTHS:
+        try:
+            return (int(parts[3]), _MONTHS[parts[1]], int(parts[2]))
+        except (ValueError, KeyError):
+            pass
+    return None
+
+def _same_day(a, b):
+    na, nb = _norm_date(a), _norm_date(b)
+    return na is not None and na == nb
+
 def main():
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
@@ -46,8 +74,14 @@ def main():
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}
 
     # 3. 管理現有持倉：跌穿 20MA → 平倉；跌穿止損 → 止蝕
+    #    BUG FIX：入場當日唔 check 平倉（要至少隔一日），否則一買即平
+    today = today_str()
     for p in list(open_pos):
         tk = p["ticker"]; grp = p.get("group", "A")
+        # 入場當日唔平倉（避免同日出入）
+        ed = str(p.get("entryDate", ""))
+        if _same_day(ed, today):
+            continue
         st = stocks.get(tk)
         if not st:
             continue
@@ -64,14 +98,17 @@ def main():
             r_mult = (close - entry) / (entry - stop) if entry > stop else 0
             pct = (close - entry) / entry * 100
             gv_post({"action": "paper_close", "ticker": tk, "group": grp,
-                     "exitDate": today_str(), "exitPx": round(close, 2),
+                     "exitDate": today, "exitPx": round(close, 2),
                      "reason": exit_reason, "r": round(r_mult, 2), "pct": round(pct, 1)})
             print(f"平倉 [{grp}] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
             held.discard((tk, grp))
 
     # 4. 揾新入場：S7 ready（= J Law VCP 整固股）→ 隔日開市買，止損 1.5×ATR
+    #    BUG FIX：今日已平倉嘅股，今日唔好再買返（避免重複出入）
+    closed_today = {(c["ticker"], c.get("group", "A")) for c in closed
+                    if _same_day(str(c.get("exitDate", "")), today)}
     for tk, st in stocks.items():
-        if (tk, "A") in held:
+        if (tk, "A") in held or (tk, "A") in closed_today:
             continue
         s7 = st["strategies"].get("S7", {})
         if not s7.get("ready"):
@@ -84,7 +121,7 @@ def main():
         if stop <= 0 or stop >= entry:
             continue
         gv_post({"action": "paper_open", "ticker": tk, "group": "A",
-                 "state": "J Law VCP", "entryDate": today_str(),
+                 "state": "J Law VCP", "entryDate": today,
                  "entry": round(entry, 2), "stop": round(stop, 2),
                  "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
                  "m1": s7.get("keyvals", {}).get("1M%")})
