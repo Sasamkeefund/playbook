@@ -119,10 +119,10 @@ function render(openP, closed){
     const ec=s.exp>=0?'green':'red', tc=s.totalR>=0?'green':'red';
     return '<tr><td><b>'+g+'</b></td><td style="font-size:12px">'+name+'</td><td class="mono">'+s.open+'</td><td class="mono">'+s.closed+'</td><td class="mono">'+(s.closed?s.wr+'%':'—')+'</td><td class="mono '+ec+'">'+(s.closed?(s.exp>=0?'+':'')+s.exp.toFixed(2)+'R':'—')+'</td><td class="mono '+tc+'">'+(s.closed?(s.totalR>=0?'+':'')+s.totalR.toFixed(1)+'R':'—')+'</td></tr>';
   };
-  h+=row('A','純 J Law（ready 就買）',A);
-  h+=row('B','J Law + VCP（整固+收窄）',B);
+  h+=row('A','全部 S7 ready（59隻）',A);
+  h+=row('B','只 Bonus 5/5（高質精選）',B);
   h+='</tbody></table></div>';
-  h+='<div class="sub" style="margin-top:8px">💡 儲夠數據後睇邊組「每單期望」高：B 明顯好過 A → VCP filter 有用；差唔多 → 唔使加 VCP。</div></div>';
+  h+='<div class="sub" style="margin-top:8px">💡 儲夠數據後睇邊組「每單期望」高：B（只買5/5）明顯好過 A → 證明高質精選有用；差唔多 → Bonus 分唔重要，買全部都得。</div></div>';
 
   if(n===0&&openP.length===0){
     h+='<div class="warn">仲未有任何模擬交易。每次 scan 後會自動開倉（A=純J Law，B=加VCP）。耐心儲幾星期數據先有意義。</div>';
