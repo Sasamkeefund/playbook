@@ -103,13 +103,13 @@ def main():
             print(f"平倉 [{grp}] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
             held.discard((tk, grp))
 
-    # 4. 揾新入場：S7 ready（= J Law VCP 整固股）→ 隔日開市買，止損 1.5×ATR
+    # 4. 揾新入場 — 兩組對比：
+    #    A 組 = 全部 S7 ready（59隻，測整體）
+    #    B 組 = S7 ready + Bonus 5/5（高質精選）
     #    BUG FIX：今日已平倉嘅股，今日唔好再買返（避免重複出入）
     closed_today = {(c["ticker"], c.get("group", "A")) for c in closed
                     if _same_day(str(c.get("exitDate", "")), today)}
     for tk, st in stocks.items():
-        if (tk, "A") in held or (tk, "A") in closed_today:
-            continue
         s7 = st["strategies"].get("S7", {})
         if not s7.get("ready"):
             continue
@@ -120,13 +120,20 @@ def main():
         stop = entry - 1.5 * atr14
         if stop <= 0 or stop >= entry:
             continue
-        gv_post({"action": "paper_open", "ticker": tk, "group": "A",
-                 "state": "J Law VCP", "entryDate": today,
-                 "entry": round(entry, 2), "stop": round(stop, 2),
-                 "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
-                 "m1": s7.get("keyvals", {}).get("1M%")})
-        print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f} (整固{s7.get('consolDays')}日)")
-        held.add((tk, "A"))
+        common = {"state": "J Law VCP", "entryDate": today,
+                  "entry": round(entry, 2), "stop": round(stop, 2),
+                  "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
+                  "m1": s7.get("keyvals", {}).get("1M%")}
+        # A 組：全部 S7 ready
+        if (tk, "A") not in held and (tk, "A") not in closed_today:
+            gv_post({"action": "paper_open", "ticker": tk, "group": "A", **common})
+            print(f"開倉 [A] {tk}: entry={entry:.2f} stop={stop:.2f}")
+            held.add((tk, "A"))
+        # B 組：只 Bonus 5/5（高質精選）
+        if s7.get("bonusScore", 0) >= 5 and (tk, "B") not in held and (tk, "B") not in closed_today:
+            gv_post({"action": "paper_open", "ticker": tk, "group": "B", **common})
+            print(f"開倉 [B] {tk}: entry={entry:.2f} stop={stop:.2f} (Bonus5/5)")
+            held.add((tk, "B"))
     print("Paper trade 完成")
 
 if __name__ == "__main__":
