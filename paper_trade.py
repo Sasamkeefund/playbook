@@ -61,6 +61,12 @@ def _same_day(a, b):
     return na is not None and na == nb
 
 def main():
+    # 0. 周末唔好跑（美股冇開市，數據冇更新會搞亂平倉）
+    wd = datetime.datetime.utcnow().weekday()  # 0=Mon ... 5=Sat 6=Sun
+    if wd >= 5:
+        print(f"周末（weekday={wd}）— 美股休市，skip paper trade")
+        return
+
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
     stocks = {s["ticker"]: s for s in data["stocks"]}
@@ -89,6 +95,9 @@ def main():
         ema20 = st.get("ema20")
         stop = float(p["stop"])
         entry = float(p["entry"])
+        # 數據新鮮度：如果 close 同入場價一模一樣（冇變）= 數據未更新，唔平倉
+        if abs(close - entry) < 0.001:
+            continue
         exit_reason = None
         if close <= stop:
             exit_reason = "止蝕(1.5×ATR)"
