@@ -94,11 +94,13 @@ async function load(){
 }
 
 function render(openP, closed){
+  // 隔走無效平倉記錄（R 空白 / 入場=平倉，多數係周末stale數據bug）
+  closed = closed.filter(t=>{
+    const rOk = t.r!==''&&t.r!==null&&t.r!==undefined&&!isNaN(Number(t.r));
+    const moved = Math.abs(Number(t.entry)-Number(t.exitPx))>=0.001;
+    return rOk && moved;
+  });
   // 分 A / B 組
-  const stat=(arr)=>{
-    const cl=arr.filter(t=>t.status!=='open'||t.exitDate); // closed
-    return cl;
-  };
   const grpStat=(g)=>{
     const op=openP.filter(p=>(p.group||'A')===g);
     const cl=closed.filter(t=>(t.group||'A')===g);
