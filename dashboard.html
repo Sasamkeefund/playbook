@@ -368,7 +368,7 @@
       </div>
       <div id="chartInfo" style="display:flex;gap:18px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12.5px;flex-wrap:wrap;background:var(--surface-2)"></div>
       <div id="chartContainer" style="flex:1;min-height:0"></div>
-      <div id="s1order" style="display:none;border-top:1px solid var(--border-2);background:var(--surface-2);padding:10px 16px;flex-shrink:0">
+      <div id="s1order" style="display:none;border-top:1px solid var(--border-2);background:var(--surface-2);padding:10px 16px;flex-shrink:0;max-height:30vh;overflow-y:auto">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px">
           <strong style="color:var(--accent)">📒 加入 S1 Paper</strong>
           <label style="color:var(--dim)">入場 <input type="number" id="s1Entry" step="0.01" style="width:80px" class="s1in"></label>
@@ -929,11 +929,21 @@
       msg.style.color='var(--dim)';msg.textContent='加入緊…';
       const today=new Date().toISOString().slice(0,10);
       const stopLabel=stopMode==='atr'?'1.5ATR':'前面最底';
+      // 攞該股 S1 screener 數據做 snapshot（之後方便 filter 比較）
+      const stk=globalData.stocks.find(x=>x.ticker===ticker)||{};
+      const s1=(stk.strategies||{}).S1||{};
+      const cd=s1.conds||[];
+      const snap={
+        rsi:stk.rsi||'', c1:cd[0]?1:0, c2:cd[1]?1:0, c3:cd[2]?1:0, c4:cd[3]?1:0, c5:cd[4]?1:0,
+        req:s1.score||'', streak:s1.streak||'', trend:s1.recentMaxStreak||'',
+        pullback:(s1.pullbackDaysAgo!==undefined&&s1.pullbackDaysAgo>=0)?s1.pullbackDaysAgo:'',
+        aboveEma20:s1.aboveNow?1:0
+      };
       try{
         await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
           body:JSON.stringify({action:'paper_open',ticker,group:'S1',state:'S1 ('+stopLabel+')',
             entryDate:today,entry:entry,stop:stop,
-            bonus:p.dataset.bonus||'',spy1m:'',m1:'',t1:t1,t2:isNaN(t2)?'':t2})});
+            bonus:p.dataset.bonus||'',spy1m:'',m1:'',t1:t1,t2:isNaN(t2)?'':t2, ...snap})});
         msg.style.color='#2ee6a6';msg.textContent='✓ 已加入 S1 Paper！';
       }catch(e){msg.style.color='#ff5d6c';msg.textContent='加入失敗，再試';}
     }
