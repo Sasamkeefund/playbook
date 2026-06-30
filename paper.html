@@ -36,6 +36,10 @@
     .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin:18px 0}
     .panel h2{font-size:15px;margin:0 0 14px;color:var(--dim)}
     table{width:100%;border-collapse:collapse;font-size:13px}
+    body.mobile table{font-size:14px}
+    body.mobile th,body.mobile td{padding:13px 10px}
+    body.mobile thead th:first-child,body.mobile tbody td:first-child{
+      position:sticky;left:0;background:var(--surface);z-index:5;box-shadow:2px 0 4px rgba(0,0,0,.2)}
     th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
     th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase}
     .warn{background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);padding:14px 16px;border-radius:12px;margin:16px 0;line-height:1.6;font-size:13px}
@@ -89,9 +93,28 @@
 
 <script>
 const WL_API="https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec";
-function toggleWork(){document.body.classList.toggle('work');document.cookie='work='+(document.body.classList.contains('work')?'1':'0')+';path=/;max-age=31536000';}
-if(document.cookie.includes('work=1'))document.body.classList.add('work');
-document.addEventListener('keydown',e=>{if(e.key==='`')toggleWork();});
+function toggleWork(){
+  const MODES=['trader','work','mobile'];
+  const LBL={trader:'🌙 Trader Mode',work:'🕶 返工 Mode',mobile:'📱 Mobile Mode'};
+  const cur=document.body.classList.contains('mobile')?'mobile':document.body.classList.contains('work')?'work':'trader';
+  const nxt=MODES[(MODES.indexOf(cur)+1)%MODES.length];
+  document.body.classList.toggle('work',nxt==='work');
+  document.body.classList.toggle('mobile',nxt==='mobile');
+  const b=document.querySelector('button[onclick="toggleWork()"]');
+  if(b)b.textContent=LBL[nxt];
+  try{document.cookie='uimode='+nxt+';path=/;max-age=31536000';}catch(e){}
+}
+(function(){var m=(document.cookie.match(/uimode=(\w+)/)||[])[1];
+  if(m==='work')document.body.classList.add('work');
+  else if(m==='mobile')document.body.classList.add('mobile');
+  const LBL={trader:'🌙 Trader Mode',work:'🕶 返工 Mode',mobile:'📱 Mobile Mode'};
+  const b=document.querySelector('button[onclick="toggleWork()"]');
+  if(b&&m&&LBL[m])b.textContent=LBL[m];
+})();
+document.addEventListener('keydown',e=>{if(e.key==='`'){
+  const w=document.body.classList.contains('work');
+  document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
+}});
 
 let _allOpen=[], _allClosed=[], _ptMode='S7';
 async function load(){
@@ -228,10 +251,14 @@ function renderS1(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>圖</th>'
+      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>圖</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const t1hit=(p.t1hit==='Y'||p.t1hit==='y')?'<span class="green">✓掂咗</span>':'—';
+      const e=Number(p.entry), st=Number(p.stop), t1=Number(p.t1), t2=Number(p.t2);
+      const risk=e-st;
+      const rr1=(risk>0&&t1)?'1:'+((t1-e)/risk).toFixed(1):'—';
+      const rr2=(risk>0&&t2)?'1:'+((t2-e)/risk).toFixed(1):'—';
       h+='<tr>'
         +'<td><b>'+p.ticker+'</b></td>'
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
@@ -239,7 +266,9 @@ function renderS1(openP, closed){
         +'<td class="mono red">$'+p.stop+'</td>'
         +'<td style="font-size:11px;color:var(--dim)">'+(p.state||'').replace('S1 ','')+'</td>'
         +'<td class="mono green">$'+(p.t1||'—')+'</td>'
+        +'<td class="mono" style="font-size:11px">'+rr1+'</td>'
         +'<td class="mono green">$'+(p.t2||'—')+'</td>'
+        +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
         +'<td style="text-align:center">'+t1hit+'</td>'
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
         +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
