@@ -116,6 +116,12 @@
     th.sortable{cursor:pointer;user-select:none}
     th.sortable:hover{color:var(--text)}
     .sarr{font-size:9px;color:var(--accent)}
+    /* Column 篩選行：每條 column 細下拉，多條一齊夾 */
+    tr.colfilter th{padding:4px 6px;background:var(--surface-2)}
+    tr.colfilter select{width:100%;min-width:48px;font-size:10px;padding:3px 2px;border:1px solid var(--border);
+      border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
+    tr.colfilter select.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+    body.work tr.colfilter select.on{border-color:#888;color:#333}
     td{padding:12px;border-top:1px solid var(--border);font-size:13px;white-space:nowrap}
     tbody tr{transition:background .12s}
     tbody tr:hover{background:var(--surface-2)}
@@ -231,6 +237,48 @@
             <th class="s1col" style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
             <th>入場建議</th>
             <th style="text-align:center">⭐</th>
+          </tr>
+          <tr class="colfilter">
+            <th></th><th></th><th></th><th></th><th></th>
+            <th><select id="cfRsi" onchange="applyColFilter(this);render()">
+              <option value="">RSI</option>
+              <option value="40-70">40-70</option>
+              <option value="50-70">50-70</option>
+              <option value="50-80">50-80</option>
+              <option value="60+">≥60</option>
+            </select></th>
+            <th></th><th></th><th></th><th></th><th></th>
+            <th><select id="cfReq" onchange="applyColFilter(this);render()">
+              <option value="">Req</option>
+              <option value="5">5/5</option>
+              <option value="4">≥4</option>
+              <option value="3">≥3</option>
+            </select></th>
+            <th><select id="cfBonus" onchange="applyColFilter(this);render()">
+              <option value="">Bonus</option>
+              <option value="5">5/5</option>
+              <option value="4">≥4</option>
+              <option value="3">≥3</option>
+            </select></th>
+            <th><select id="cfStreak" onchange="applyColFilter(this);render()">
+              <option value="">Streak</option>
+              <option value="3">≥3</option>
+              <option value="5">≥5</option>
+              <option value="10">≥10</option>
+            </select></th>
+            <th class="s1col"><select id="cfTrend" onchange="applyColFilter(this);render()">
+              <option value="">趨勢</option>
+              <option value="3">≥3</option>
+              <option value="5">≥5</option>
+              <option value="10">≥10</option>
+            </select></th>
+            <th class="s1col"><select id="cfPb" onchange="applyColFilter(this);render()">
+              <option value="">跌穿</option>
+              <option value="1">≤1日</option>
+              <option value="2">≤2日</option>
+              <option value="3">≤3日</option>
+            </select></th>
+            <th class="s1col"></th><th></th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -349,6 +397,9 @@
       b.style.borderColor=starOnly?'var(--accent)':'var(--border)';
       renderTable();
     }
+    function applyColFilter(sel){
+      if(sel.value)sel.classList.add('on');else sel.classList.remove('on');
+    }
     function getFilteredStocks(){
       if(!globalData)return[];
       const ff=document.getElementById('filterFakeout')?document.getElementById('filterFakeout').value:'';
@@ -376,6 +427,22 @@
       if(stf)s=s.filter(x=>x.strategies[activeTab].streak>=parseInt(stf));
       const ef=document.getElementById('filterEma20').value;
       if(ef)s=s.filter(x=>Math.abs((x.close-x.ema20)/x.ema20*100)<=parseFloat(ef));
+      // ── Column 篩選（多條一齊夾）──
+      const cfRsi=document.getElementById('cfRsi')?document.getElementById('cfRsi').value:'';
+      if(cfRsi){
+        if(cfRsi==='60+')s=s.filter(x=>x.rsi>=60);
+        else{const[lo,hi]=cfRsi.split('-').map(Number);s=s.filter(x=>x.rsi>=lo&&x.rsi<=hi);}
+      }
+      const cfReq=document.getElementById('cfReq')?document.getElementById('cfReq').value:'';
+      if(cfReq)s=s.filter(x=>x.strategies[activeTab].score>=parseInt(cfReq));
+      const cfBonus=document.getElementById('cfBonus')?document.getElementById('cfBonus').value:'';
+      if(cfBonus)s=s.filter(x=>x.strategies[activeTab].bonusScore>=parseInt(cfBonus));
+      const cfStreak=document.getElementById('cfStreak')?document.getElementById('cfStreak').value:'';
+      if(cfStreak)s=s.filter(x=>x.strategies[activeTab].streak>=parseInt(cfStreak));
+      const cfTrend=document.getElementById('cfTrend')?document.getElementById('cfTrend').value:'';
+      if(cfTrend)s=s.filter(x=>(x.strategies[activeTab].recentMaxStreak||0)>=parseInt(cfTrend));
+      const cfPb=document.getElementById('cfPb')?document.getElementById('cfPb').value:'';
+      if(cfPb)s=s.filter(x=>{const p=x.strategies[activeTab].pullbackDaysAgo;return p!==null&&p!==undefined&&p>=0&&p<=parseInt(cfPb);});
       if(activeTab==='S1'&&ff){
         if(ff==='fresh')s=s.filter(x=>{const st=x.strategies.S1;return st.pullbackTouch&&st.aboveNow&&st.pullbackDaysAgo>=0&&st.pullbackDaysAgo<=1;});
         else if(ff==='touched')s=s.filter(x=>x.strategies.S1.pullbackTouch);
