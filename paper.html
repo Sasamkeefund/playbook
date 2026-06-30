@@ -109,22 +109,24 @@ function render(openP, closed){
     return {open:op.length, closed:cl.length, wr:cl.length?Math.round(w.length/cl.length*100):0,
             exp:cl.length?tR/cl.length:0, totalR:tR};
   };
-  const A=grpStat('A'), B=grpStat('B');
+  const A=grpStat('A'), B=grpStat('B'), C=grpStat('C'), D=grpStat('D');
 
   const n=closed.length;
   let h='';
 
-  // A vs B 對比
-  h+='<div class="panel"><h2>🔬 A vs B 對比（邊個方法好）</h2>';
-  h+='<div style="overflow-x:auto"><table><thead><tr><th>組別</th><th>方法</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
-  const row=(g,name,s)=>{
+  // A/B/C/D 對比（2×2：入場 × 止賺）
+  h+='<div class="panel"><h2>🔬 4 組對比（入場 × 止賺）</h2>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>組別</th><th>入場</th><th>止賺</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
+  const row=(g,inn,trail,s)=>{
     const ec=s.exp>=0?'green':'red', tc=s.totalR>=0?'green':'red';
-    return '<tr><td><b>'+g+'</b></td><td style="font-size:12px">'+name+'</td><td class="mono">'+s.open+'</td><td class="mono">'+s.closed+'</td><td class="mono">'+(s.closed?s.wr+'%':'—')+'</td><td class="mono '+ec+'">'+(s.closed?(s.exp>=0?'+':'')+s.exp.toFixed(2)+'R':'—')+'</td><td class="mono '+tc+'">'+(s.closed?(s.totalR>=0?'+':'')+s.totalR.toFixed(1)+'R':'—')+'</td></tr>';
+    return '<tr><td><b>'+g+'</b></td><td style="font-size:12px">'+inn+'</td><td style="font-size:12px">'+trail+'</td><td class="mono">'+s.open+'</td><td class="mono">'+s.closed+'</td><td class="mono">'+(s.closed?s.wr+'%':'—')+'</td><td class="mono '+ec+'">'+(s.closed?(s.exp>=0?'+':'')+s.exp.toFixed(2)+'R':'—')+'</td><td class="mono '+tc+'">'+(s.closed?(s.totalR>=0?'+':'')+s.totalR.toFixed(1)+'R':'—')+'</td></tr>';
   };
-  h+=row('A','全部 S7 ready（59隻）',A);
-  h+=row('B','只 Bonus 5/5（高質精選）',B);
+  h+=row('A','全部','20MA',A);
+  h+=row('B','Bonus5/5','20MA',B);
+  h+=row('C','全部','10MA',C);
+  h+=row('D','Bonus5/5','10MA',D);
   h+='</tbody></table></div>';
-  h+='<div class="sub" style="margin-top:8px">💡 儲夠數據後睇邊組「每單期望」高：B（只買5/5）明顯好過 A → 證明高質精選有用；差唔多 → Bonus 分唔重要，買全部都得。</div></div>';
+  h+='<div class="sub" style="margin-top:8px">💡 對比方法：<b>A vs B</b>（或 C vs D）= 揀股有冇用（全部 vs 只買5/5）｜ <b>A vs C</b>（或 B vs D）= 止賺線（20MA vs 10MA）邊個好。儲夠數據睇邊組「每單期望」最高。</div></div>';
 
   if(n===0&&openP.length===0){
     h+='<div class="warn">仲未有任何模擬交易。每次 scan 後會自動開倉（A=純J Law，B=加VCP）。耐心儲幾星期數據先有意義。</div>';
