@@ -60,6 +60,14 @@ def _same_day(a, b):
     na, nb = _norm_date(a), _norm_date(b)
     return na is not None and na == nb
 
+def _num(x):
+    try:
+        if x is None or x == "":
+            return None
+        return float(x)
+    except (ValueError, TypeError):
+        return None
+
 def main():
     # 0. 周末唔好跑（美股冇開市，數據冇更新會搞亂平倉）
     wd = datetime.datetime.utcnow().weekday()  # 0=Mon ... 5=Sat 6=Sun
@@ -92,11 +100,47 @@ def main():
         if not st:
             continue
         close = st["close"]
+        entry = float(p["entry"])
+        stop = float(p["stop"])
+
+        # ── S1 組：人手揀股，用當日 High/Low check T1/T2/止損 ──
+        if grp == "S1":
+            high = st.get("high", close)
+            low = st.get("low", close)
+            # 數據新鮮度：high/low 同 close 都等於入場（冇變）= 數據未更新
+            if abs(close - entry) < 0.001 and abs(high - entry) < 0.001:
+                continue
+            t1 = _num(p.get("t1"))
+            t2 = _num(p.get("t2"))
+            t1hit = str(p.get("t1hit", "")).upper() == "Y"
+            exit_reason = None
+            exit_px = None
+            # 止損優先（保守）：當日 Low ≤ 止損
+            if low <= stop:
+                exit_reason = "止蝕(跌穿止損)"
+                exit_px = stop
+            # T2 止賺：當日 High ≥ T2
+            elif t2 and high >= t2:
+                exit_reason = "止賺(到T2 1.618)"
+                exit_px = t2
+            if exit_reason:
+                r_mult = (exit_px - entry) / (entry - stop) if entry > stop else 0
+                pct = (exit_px - entry) / entry * 100
+                gv_post({"action": "paper_close", "ticker": tk, "group": "S1",
+                         "exitDate": today, "exitPx": round(exit_px, 2),
+                         "reason": exit_reason, "r": round(r_mult, 2), "pct": round(pct, 1)})
+                print(f"平倉 [S1] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
+                held.discard((tk, "S1"))
+            elif t1 and high >= t1 and not t1hit:
+                # 掂咗 T1 → 標記（通知，唔平倉）
+                gv_post({"action": "paper_t1hit", "ticker": tk, "group": "S1", "t1hit": "Y"})
+                print(f"📍 [S1] {tk}: 掂咗 T1 ${t1}（通知，繼續持倉等 T2）")
+            continue
+
+        # ── S7 組（A/B/C/D）：用收市價 + trail ──
         # 止賺線：A/B = EMA20；C/D = 10MA
         trail = st.get("sma10") if grp in ("C", "D") else st.get("ema20")
         trail_name = "10MA" if grp in ("C", "D") else "20MA"
-        stop = float(p["stop"])
-        entry = float(p["entry"])
         # 數據新鮮度：close 同入場價一模一樣（冇變）= 數據未更新，唔平倉
         if abs(close - entry) < 0.001:
             continue
