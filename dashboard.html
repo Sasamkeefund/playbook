@@ -866,25 +866,29 @@
         document.getElementById('s1StopRef').textContent='參考：假突破底≈近10低 '+lo10.toFixed(2)+(atrStop?'｜1.5ATR '+atrStop.toFixed(2):'');
         document.getElementById('s1T1Ref').textContent='參考：近10高 '+hi10.toFixed(2);
         // 自動計 T2 + R:R
-        const recalcS1=()=>{
+        const recalcS1=(fromT2)=>{
           const e=parseFloat(document.getElementById('s1Entry').value);
           const st=parseFloat(document.getElementById('s1Stop').value);
           const t1=parseFloat(document.getElementById('s1T1').value);
-          // T2 = T1 + (T1 − 止損) × 1.618（前頂 + 回調段延伸；回調段≈T1−止損）
-          if(!isNaN(t1)&&!isNaN(st)){
+          // T2 = T1 + (T1 − 止損) × 1.618（除非用戶手動改緊 T2）
+          if(!fromT2&&!isNaN(t1)&&!isNaN(st)){
             const t2=t1+(t1-st)*1.618;
             document.getElementById('s1T2').value=t2.toFixed(2);
           }
-          // R:R 用 T1
-          if(!isNaN(e)&&!isNaN(st)&&!isNaN(t1)&&e>st){
-            const rr=(t1-e)/(e-st);
-            document.getElementById('s1RR').textContent='R:R(到T1) ≈ 1:'+rr.toFixed(1);
+          // R:R 用 T1 同 T2
+          if(!isNaN(e)&&!isNaN(st)&&e>st){
+            const risk=e-st;
+            let txt='';
+            if(!isNaN(t1)){const rr1=(t1-e)/risk;txt+='R:R 到T1 ≈ 1:'+rr1.toFixed(1);}
+            const t2v=parseFloat(document.getElementById('s1T2').value);
+            if(!isNaN(t2v)){const rr2=(t2v-e)/risk;txt+='　到T2 ≈ 1:'+rr2.toFixed(1);}
+            document.getElementById('s1RR').textContent=txt;
           }else{document.getElementById('s1RR').textContent='';}
         };
         ['s1Entry','s1Stop','s1T1'].forEach(id=>{
-          const el=document.getElementById(id);
-          el.oninput=recalcS1;
+          document.getElementById(id).oninput=()=>recalcS1(false);
         });
+        document.getElementById('s1T2').oninput=()=>recalcS1(true);
         // 記住個 ticker 俾 submitS1 用
         s1panel.dataset.ticker=ticker;
         s1panel.dataset.bonus=(globalData.stocks.find(x=>x.ticker===ticker)||{}).strategies?.S1?.bonusScore||'';
