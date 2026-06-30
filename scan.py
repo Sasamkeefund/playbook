@@ -761,6 +761,8 @@ def build_record(ticker, hist):
     return {
         "ticker": ticker,
         "close": round(closes[last], 2),
+        "high": round(highs[last], 2),
+        "low": round(lows[last], 2),
         "chgPct": round(pct_change(closes, last, 1) or 0, 2),
         "ema20": round(ema20a[last], 2),
         "ema50": round(ema50a[last], 2),
