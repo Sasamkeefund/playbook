@@ -66,6 +66,10 @@
     /* 返工 Mode：把 iframe 內嘅深色 checklist 反白 + 去色，變淡色報表樣 */
     body.work #clFrame{filter:invert(0.92) hue-rotate(180deg) saturate(0.25)}
     iframe{width:100%;height:100%;border:none;display:block}
+  
+    body.mobile table{font-size:14px}
+    body.mobile th,body.mobile td{padding:13px 10px}
+    body.mobile thead th:first-child,body.mobile tbody td:first-child{position:sticky;left:0;background:var(--surface);z-index:5;box-shadow:2px 0 4px rgba(0,0,0,.2)}
   </style>
 </head>
 <body>
@@ -105,15 +109,18 @@
       btn.classList.add('active');
       document.getElementById('clFrame').src = btn.dataset.src;
     }
-      function setWork(on){
-      document.body.classList.toggle('work',on);
-      const b=document.getElementById('workBtn');
-      if(b)b.textContent = on ? '🌙 Trader Mode' : '🕶 返工 Mode';
-      try{document.cookie='workmode='+(on?'1':'0')+';path=/;max-age=31536000';}catch(e){}
+      const _MODES=['trader','work','mobile'];
+    const _LBL={trader:'🌙 Trader Mode',work:'🕶 返工 Mode',mobile:'📱 Mobile Mode'};
+    function _curMode(){return document.body.classList.contains('mobile')?'mobile':document.body.classList.contains('work')?'work':'trader';}
+    function _setMode(m){
+      document.body.classList.toggle('work',m==='work');
+      document.body.classList.toggle('mobile',m==='mobile');
+      const b=document.getElementById('workBtn');if(b)b.textContent=_LBL[m];
+      try{document.cookie='uimode='+m+';path=/;max-age=31536000';}catch(e){}
     }
-    function toggleWork(){setWork(!document.body.classList.contains('work'));}
-    document.addEventListener('keydown',function(e){if(e.key==='`'){e.preventDefault();toggleWork();}});
-    (function(){try{if(/workmode=1/.test(document.cookie))setWork(true);}catch(e){}})();
+    function toggleWork(){_setMode(_MODES[(_MODES.indexOf(_curMode())+1)%3]);}
+    document.addEventListener('keydown',function(e){if(e.key==='`'){e.preventDefault();var w=document.body.classList.contains('work');document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);var b=document.getElementById('workBtn');if(b)b.textContent=_LBL[_curMode()];}});
+    (function(){try{var m=(document.cookie.match(/uimode=(\w+)/)||[])[1];if(m&&_MODES.includes(m))_setMode(m);}catch(e){}})();
 
   </script>
 </body>
