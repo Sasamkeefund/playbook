@@ -767,6 +767,7 @@ def build_record(ticker, hist):
         "ema200": round(ema200a[last], 2),
         "rsi": round(rsia[last], 1),
         "atr14": round(atr14a[last], 2) if atr14a[last] else None,
+        "sma10": round(sma_at(closes, last, 10), 2) if sma_at(closes, last, 10) is not None else None,
         "strategies": strategies,
         "chart": chart,
     }
