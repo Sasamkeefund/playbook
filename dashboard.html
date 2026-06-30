@@ -122,6 +122,24 @@
       border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
     tr.colfilter select.on{border-color:var(--accent);color:var(--accent);font-weight:700}
     body.work tr.colfilter select.on{border-color:#888;color:#333}
+    /* 📱 Mobile Mode：股票名固定喺左，其餘可左右滑，字大易篤 */
+    body.mobile .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    body.mobile table{min-width:900px}
+    body.mobile th, body.mobile td{font-size:14px;padding:14px 12px}
+    body.mobile tr.colfilter select{font-size:13px;padding:6px 4px}
+    /* 第 2 欄（Ticker）固定 */
+    body.mobile thead th:nth-child(2),
+    body.mobile tbody td:nth-child(2){
+      position:sticky;left:0;z-index:5;
+      background:var(--surface-2);
+      box-shadow:2px 0 4px rgba(0,0,0,.25)}
+    body.mobile tbody td:nth-child(2){background:var(--surface)}
+    body.mobile.work thead th:nth-child(2){background:#f3f3f3}
+    body.mobile.work tbody td:nth-child(2){background:#fff}
+    /* Mobile 隱藏第 1 欄 NEW（慳位）*/
+    body.mobile thead th:nth-child(1),
+    body.mobile tbody td:nth-child(1),
+    body.mobile tr.colfilter th:nth-child(1){display:none}
     td{padding:12px;border-top:1px solid var(--border);font-size:13px;white-space:nowrap}
     tbody tr{transition:background .12s}
     tbody tr:hover{background:var(--surface-2)}
@@ -799,19 +817,29 @@
     });
 
 
-    function setWork(on){
-      document.body.classList.toggle('work',on);
+    // 3 個 mode 循環：trader → work（返工）→ mobile → trader
+    const MODES=['trader','work','mobile'];
+    const MODE_LABEL={trader:'🌙 Trader Mode', work:'🕶 返工 Mode', mobile:'📱 Mobile Mode'};
+    let curMode='trader';
+    function setMode(m){
+      curMode=m;
+      document.body.classList.toggle('work', m==='work');
+      document.body.classList.toggle('mobile', m==='mobile');
       const b=document.getElementById('workBtn');
-      if(b)b.textContent = on ? '🌙 Trader Mode' : '🕶 返工 Mode';
-      try{document.cookie='workmode='+(on?'1':'0')+';path=/;max-age=31536000';}catch(e){}
+      // button 顯示「下一個 mode」做提示（撳一下去下一個）
+      if(b){const nxt=MODES[(MODES.indexOf(m)+1)%MODES.length];b.textContent=MODE_LABEL[m];}
+      try{document.cookie='uimode='+m+';path=/;max-age=31536000';}catch(e){}
     }
-    function toggleWork(){setWork(!document.body.classList.contains('work'));}
-    // Boss Key：㩒 ` 即刻切換
+    function toggleWork(){
+      const nxt=MODES[(MODES.indexOf(curMode)+1)%MODES.length];
+      setMode(nxt);
+    }
+    // Boss Key：㩒 ` 即刻去返工 mode（一鍵收）
     document.addEventListener('keydown',function(e){
-      if(e.key==='`'){e.preventDefault();toggleWork();}
+      if(e.key==='`'){e.preventDefault();setMode(curMode==='work'?'trader':'work');}
     });
     // 記住上次選擇
-    (function(){try{if(/workmode=1/.test(document.cookie))setWork(true);}catch(e){}})();
+    (function(){try{var m=(document.cookie.match(/uimode=(\w+)/)||[])[1];if(m&&MODES.includes(m))setMode(m);}catch(e){}})();
 
     loadData();
     loadWatchlist();
