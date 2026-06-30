@@ -79,12 +79,12 @@ def main():
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}
 
-    # 3. 管理現有持倉：跌穿 20MA → 平倉；跌穿止損 → 止蝕
+    # 3. 管理現有持倉：跌穿止賺線 → 平倉；跌穿止損 → 止蝕
+    #    A/B 組止賺用 EMA20；C/D 組止賺用 10MA
     #    BUG FIX：入場當日唔 check 平倉（要至少隔一日），否則一買即平
     today = today_str()
     for p in list(open_pos):
         tk = p["ticker"]; grp = p.get("group", "A")
-        # 入場當日唔平倉（避免同日出入）
         ed = str(p.get("entryDate", ""))
         if _same_day(ed, today):
             continue
@@ -92,17 +92,19 @@ def main():
         if not st:
             continue
         close = st["close"]
-        ema20 = st.get("ema20")
+        # 止賺線：A/B = EMA20；C/D = 10MA
+        trail = st.get("sma10") if grp in ("C", "D") else st.get("ema20")
+        trail_name = "10MA" if grp in ("C", "D") else "20MA"
         stop = float(p["stop"])
         entry = float(p["entry"])
-        # 數據新鮮度：如果 close 同入場價一模一樣（冇變）= 數據未更新，唔平倉
+        # 數據新鮮度：close 同入場價一模一樣（冇變）= 數據未更新，唔平倉
         if abs(close - entry) < 0.001:
             continue
         exit_reason = None
         if close <= stop:
             exit_reason = "止蝕(1.5×ATR)"
-        elif ema20 and close < ema20:
-            exit_reason = "止賺(跌穿20MA)"
+        elif trail and close < trail:
+            exit_reason = "止賺(跌穿" + trail_name + ")"
         if exit_reason:
             r_mult = (close - entry) / (entry - stop) if entry > stop else 0
             pct = (close - entry) / entry * 100
@@ -112,10 +114,9 @@ def main():
             print(f"平倉 [{grp}] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
             held.discard((tk, grp))
 
-    # 4. 揾新入場 — 兩組對比：
-    #    A 組 = 全部 S7 ready（59隻，測整體）
-    #    B 組 = S7 ready + Bonus 5/5（高質精選）
-    #    BUG FIX：今日已平倉嘅股，今日唔好再買返（避免重複出入）
+    # 4. 揾新入場 — 4 組對比（2×2：入場 × 止賺）：
+    #    A = 全部 ready + EMA20止賺   B = Bonus5/5 + EMA20止賺
+    #    C = 全部 ready + 10MA止賺    D = Bonus5/5 + 10MA止賺
     closed_today = {(c["ticker"], c.get("group", "A")) for c in closed
                     if _same_day(str(c.get("exitDate", "")), today)}
     for tk, st in stocks.items():
@@ -129,20 +130,18 @@ def main():
         stop = entry - 1.5 * atr14
         if stop <= 0 or stop >= entry:
             continue
+        is55 = s7.get("bonusScore", 0) >= 5
         common = {"state": "J Law VCP", "entryDate": today,
                   "entry": round(entry, 2), "stop": round(stop, 2),
                   "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
                   "m1": s7.get("keyvals", {}).get("1M%")}
-        # A 組：全部 S7 ready
-        if (tk, "A") not in held and (tk, "A") not in closed_today:
-            gv_post({"action": "paper_open", "ticker": tk, "group": "A", **common})
-            print(f"開倉 [A] {tk}: entry={entry:.2f} stop={stop:.2f}")
-            held.add((tk, "A"))
-        # B 組：只 Bonus 5/5（高質精選）
-        if s7.get("bonusScore", 0) >= 5 and (tk, "B") not in held and (tk, "B") not in closed_today:
-            gv_post({"action": "paper_open", "ticker": tk, "group": "B", **common})
-            print(f"開倉 [B] {tk}: entry={entry:.2f} stop={stop:.2f} (Bonus5/5)")
-            held.add((tk, "B"))
+        # 開倉：A(全部+20MA)、B(5/5+20MA)、C(全部+10MA)、D(5/5+10MA)
+        groups = [("A", True), ("B", is55), ("C", True), ("D", is55)]
+        for g, cond in groups:
+            if cond and (tk, g) not in held and (tk, g) not in closed_today:
+                gv_post({"action": "paper_open", "ticker": tk, "group": g, **common})
+                held.add((tk, g))
+        print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f}" + (" [5/5]" if is55 else ""))
     print("Paper trade 完成")
 
 if __name__ == "__main__":
