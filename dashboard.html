@@ -170,6 +170,9 @@
       background:var(--surface-2);color:var(--text);cursor:pointer}
     body.work #colPicker{background:#fff;border-color:#ccc}
     body.work #colPicker h3,body.work #colPicker label{color:#1a1a1a}
+    .s1in{padding:5px 8px;font-size:12.5px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);margin-left:4px}
+    .s1ref{font-size:11px;color:var(--dim)}
+    body.work .s1in{background:#fff;color:#1a1a1a;border-color:#ccc}
     td{padding:12px;border-top:1px solid var(--border);font-size:13px;white-space:nowrap}
     tbody tr{transition:background .12s}
     tbody tr:hover{background:var(--surface-2)}
@@ -365,6 +368,21 @@
       </div>
       <div id="chartInfo" style="display:flex;gap:18px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12.5px;flex-wrap:wrap;background:var(--surface-2)"></div>
       <div id="chartContainer" style="flex:1"></div>
+      <div id="s1order" style="display:none;border-top:1px solid var(--border-2);background:var(--surface-2);padding:10px 16px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px">
+          <strong style="color:var(--accent)">📒 加入 S1 Paper</strong>
+          <label style="color:var(--dim)">入場 <input type="number" id="s1Entry" step="0.01" style="width:80px" class="s1in"></label>
+          <label style="color:var(--dim)">止損 <input type="number" id="s1Stop" step="0.01" style="width:80px" class="s1in"></label>
+          <span class="s1ref" id="s1StopRef"></span>
+          <label style="color:var(--dim)">T1 <input type="number" id="s1T1" step="0.01" style="width:80px" class="s1in"></label>
+          <span class="s1ref" id="s1T1Ref"></span>
+          <label style="color:var(--dim)">T2 <input type="number" id="s1T2" step="0.01" style="width:80px" class="s1in"></label>
+          <span class="s1ref">自動=前頂+(T1−止損)×1.618</span>
+          <span id="s1RR" class="s1ref"></span>
+          <button onclick="submitS1()" id="s1Btn" class="btn primary" style="padding:6px 14px">✓ 確認加入</button>
+          <span id="s1Msg" style="font-size:12px"></span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -827,6 +845,72 @@
       document.getElementById('fibB').addEventListener('change',saveAB);
       // S6 或者已經有 A/B → 自動開 Fib
       if(activeTab==='S6'||pendingAB.a){ft.checked=true;drawFib(true);}
+
+      // ── S1 落單面板（只 S1 tab 顯示）──
+      const s1panel=document.getElementById('s1order');
+      if(activeTab==='S1'){
+        s1panel.style.display='block';
+        const last=d.c.length-1;
+        const cur=d.c[last];
+        const stk=globalData.stocks.find(x=>x.ticker===ticker)||{};
+        const atr=stk.atr14||null;
+        // 參考值：1.5ATR 止損、近10日低（假突破底參考）、近10日高（T1參考）
+        const lo10=Math.min(...d.l.slice(-10));
+        const hi10=Math.max(...d.h.slice(-10));
+        const atrStop=atr?(cur-1.5*atr):null;
+        document.getElementById('s1Entry').value=cur.toFixed(2);
+        document.getElementById('s1Stop').value='';
+        document.getElementById('s1T1').value='';
+        document.getElementById('s1T2').value='';
+        document.getElementById('s1Msg').textContent='';
+        document.getElementById('s1StopRef').textContent='參考：假突破底≈近10低 '+lo10.toFixed(2)+(atrStop?'｜1.5ATR '+atrStop.toFixed(2):'');
+        document.getElementById('s1T1Ref').textContent='參考：近10高 '+hi10.toFixed(2);
+        // 自動計 T2 + R:R
+        const recalcS1=()=>{
+          const e=parseFloat(document.getElementById('s1Entry').value);
+          const st=parseFloat(document.getElementById('s1Stop').value);
+          const t1=parseFloat(document.getElementById('s1T1').value);
+          // T2 = T1 + (T1 − 止損) × 1.618（前頂 + 回調段延伸；回調段≈T1−止損）
+          if(!isNaN(t1)&&!isNaN(st)){
+            const t2=t1+(t1-st)*1.618;
+            document.getElementById('s1T2').value=t2.toFixed(2);
+          }
+          // R:R 用 T1
+          if(!isNaN(e)&&!isNaN(st)&&!isNaN(t1)&&e>st){
+            const rr=(t1-e)/(e-st);
+            document.getElementById('s1RR').textContent='R:R(到T1) ≈ 1:'+rr.toFixed(1);
+          }else{document.getElementById('s1RR').textContent='';}
+        };
+        ['s1Entry','s1Stop','s1T1'].forEach(id=>{
+          const el=document.getElementById(id);
+          el.oninput=recalcS1;
+        });
+        // 記住個 ticker 俾 submitS1 用
+        s1panel.dataset.ticker=ticker;
+        s1panel.dataset.bonus=(globalData.stocks.find(x=>x.ticker===ticker)||{}).strategies?.S1?.bonusScore||'';
+      }else{
+        s1panel.style.display='none';
+      }
+    }
+    async function submitS1(){
+      const p=document.getElementById('s1order');
+      const ticker=p.dataset.ticker;
+      const entry=parseFloat(document.getElementById('s1Entry').value);
+      const stop=parseFloat(document.getElementById('s1Stop').value);
+      const t1=parseFloat(document.getElementById('s1T1').value);
+      const t2=parseFloat(document.getElementById('s1T2').value);
+      const msg=document.getElementById('s1Msg');
+      if(isNaN(entry)||isNaN(stop)||isNaN(t1)){msg.style.color='#ff5d6c';msg.textContent='請填入場/止損/T1';return;}
+      if(stop>=entry){msg.style.color='#ff5d6c';msg.textContent='止損要低過入場';return;}
+      msg.style.color='var(--dim)';msg.textContent='加入緊…';
+      const today=new Date().toISOString().slice(0,10);
+      try{
+        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body:JSON.stringify({action:'paper_open',ticker,group:'S1',state:'S1 假突破回測',
+            entryDate:today,entry:entry,stop:stop,
+            bonus:p.dataset.bonus||'',spy1m:'',m1:'',t1:t1,t2:isNaN(t2)?'':t2})});
+        msg.style.color='#2ee6a6';msg.textContent='✓ 已加入 S1 Paper！';
+      }catch(e){msg.style.color='#ff5d6c';msg.textContent='加入失敗，再試';}
     }
     function navChart(dir){
       const stocks=getFilteredStocks();
