@@ -372,7 +372,13 @@
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px">
           <strong style="color:var(--accent)">📒 加入 S1 Paper</strong>
           <label style="color:var(--dim)">入場 <input type="number" id="s1Entry" step="0.01" style="width:80px" class="s1in"></label>
-          <label style="color:var(--dim)">止損 <input type="number" id="s1Stop" step="0.01" style="width:80px" class="s1in"></label>
+          <span style="color:var(--dim)">止損：</span>
+          <label style="color:var(--dim);display:flex;align-items:center;gap:4px">
+            <input type="radio" name="s1stoptype" id="s1StopAtrR" value="atr" checked onchange="s1StopMode()">
+            1.5×ATR <input type="number" id="s1StopAtr" step="0.01" style="width:75px" class="s1in" readonly></label>
+          <label style="color:var(--dim);display:flex;align-items:center;gap:4px">
+            <input type="radio" name="s1stoptype" id="s1StopBotR" value="bottom" onchange="s1StopMode()">
+            前面最底 <input type="number" id="s1StopBot" step="0.01" style="width:75px" class="s1in" placeholder="你填"></label>
           <span class="s1ref" id="s1StopRef"></span>
           <label style="color:var(--dim)">T1 <input type="number" id="s1T1" step="0.01" style="width:80px" class="s1in"></label>
           <span class="s1ref" id="s1T1Ref"></span>
@@ -854,21 +860,29 @@
         const cur=d.c[last];
         const stk=globalData.stocks.find(x=>x.ticker===ticker)||{};
         const atr=stk.atr14||null;
-        // 參考值：1.5ATR 止損、近10日低（假突破底參考）、近10日高（T1參考）
+        // 參考值：近10日低（前面最底參考）、近10日高（T1參考）
         const lo10=Math.min(...d.l.slice(-10));
         const hi10=Math.max(...d.h.slice(-10));
         const atrStop=atr?(cur-1.5*atr):null;
         document.getElementById('s1Entry').value=cur.toFixed(2);
-        document.getElementById('s1Stop').value='';
+        document.getElementById('s1StopAtr').value=atrStop?atrStop.toFixed(2):'';
+        document.getElementById('s1StopBot').value='';
+        document.getElementById('s1StopAtrR').checked=true;
         document.getElementById('s1T1').value='';
         document.getElementById('s1T2').value='';
         document.getElementById('s1Msg').textContent='';
-        document.getElementById('s1StopRef').textContent='參考：假突破底≈近10低 '+lo10.toFixed(2)+(atrStop?'｜1.5ATR '+atrStop.toFixed(2):'');
+        document.getElementById('s1StopRef').textContent='前面最底參考：近10低 '+lo10.toFixed(2);
         document.getElementById('s1T1Ref').textContent='參考：近10高 '+hi10.toFixed(2);
+        // 攞「目前揀緊」嘅止損值
+        const getStop=()=>{
+          const mode=document.querySelector('input[name="s1stoptype"]:checked').value;
+          return mode==='atr'?parseFloat(document.getElementById('s1StopAtr').value)
+                             :parseFloat(document.getElementById('s1StopBot').value);
+        };
         // 自動計 T2 + R:R
         const recalcS1=(fromT2)=>{
           const e=parseFloat(document.getElementById('s1Entry').value);
-          const st=parseFloat(document.getElementById('s1Stop').value);
+          const st=getStop();
           const t1=parseFloat(document.getElementById('s1T1').value);
           // T2 = T1 + (T1 − 止損) × 1.618（除非用戶手動改緊 T2）
           if(!fromT2&&!isNaN(t1)&&!isNaN(st)){
@@ -885,10 +899,13 @@
             document.getElementById('s1RR').textContent=txt;
           }else{document.getElementById('s1RR').textContent='';}
         };
-        ['s1Entry','s1Stop','s1T1'].forEach(id=>{
+        window._s1recalc=recalcS1;
+        ['s1Entry','s1T1','s1StopBot'].forEach(id=>{
           document.getElementById(id).oninput=()=>recalcS1(false);
         });
         document.getElementById('s1T2').oninput=()=>recalcS1(true);
+        document.getElementById('s1StopAtrR').onchange=()=>recalcS1(false);
+        document.getElementById('s1StopBotR').onchange=()=>recalcS1(false);
         // 記住個 ticker 俾 submitS1 用
         s1panel.dataset.ticker=ticker;
         s1panel.dataset.bonus=(globalData.stocks.find(x=>x.ticker===ticker)||{}).strategies?.S1?.bonusScore||'';
@@ -896,11 +913,14 @@
         s1panel.style.display='none';
       }
     }
+    function s1StopMode(){if(window._s1recalc)window._s1recalc(false);}
     async function submitS1(){
       const p=document.getElementById('s1order');
       const ticker=p.dataset.ticker;
       const entry=parseFloat(document.getElementById('s1Entry').value);
-      const stop=parseFloat(document.getElementById('s1Stop').value);
+      const stopMode=document.querySelector('input[name="s1stoptype"]:checked').value;
+      const stop=stopMode==='atr'?parseFloat(document.getElementById('s1StopAtr').value)
+                                 :parseFloat(document.getElementById('s1StopBot').value);
       const t1=parseFloat(document.getElementById('s1T1').value);
       const t2=parseFloat(document.getElementById('s1T2').value);
       const msg=document.getElementById('s1Msg');
@@ -908,9 +928,10 @@
       if(stop>=entry){msg.style.color='#ff5d6c';msg.textContent='止損要低過入場';return;}
       msg.style.color='var(--dim)';msg.textContent='加入緊…';
       const today=new Date().toISOString().slice(0,10);
+      const stopLabel=stopMode==='atr'?'1.5ATR':'前面最底';
       try{
         await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body:JSON.stringify({action:'paper_open',ticker,group:'S1',state:'S1 假突破回測',
+          body:JSON.stringify({action:'paper_open',ticker,group:'S1',state:'S1 ('+stopLabel+')',
             entryDate:today,entry:entry,stop:stop,
             bonus:p.dataset.bonus||'',spy1m:'',m1:'',t1:t1,t2:isNaN(t2)?'':t2})});
         msg.style.color='#2ee6a6';msg.textContent='✓ 已加入 S1 Paper！';
