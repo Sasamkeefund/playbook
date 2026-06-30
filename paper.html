@@ -30,6 +30,9 @@
     .card .lbl{color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
     .card .val{font-size:28px;font-weight:700;line-height:1}
     .green{color:var(--up)}.red{color:var(--down)}.amber{color:var(--amber)}
+    .ptab{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 16px;color:var(--dim);cursor:pointer;font-size:14px;font-weight:600}
+    .ptab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    body.work .ptab.active{background:#444;border-color:#444}
     .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin:18px 0}
     .panel h2{font-size:15px;margin:0 0 14px;color:var(--dim)}
     table{width:100%;border-collapse:collapse;font-size:13px}
@@ -67,8 +70,12 @@
   </div></div>
 
   <div class="wrap">
-    <h1>📒 S7 Paper Trade — 機械模擬（跟 J Law）</h1>
-    <div class="sub">入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA</div>
+    <h1 id="ptTitle">📒 S7 Paper Trade — 機械模擬（跟 J Law）</h1>
+    <div class="sub" id="ptSub">入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA</div>
+    <div style="display:flex;gap:8px;margin:14px 0">
+      <button id="tabS7" class="ptab active" onclick="switchPT('S7')">🤖 S7 機械</button>
+      <button id="tabS1" class="ptab" onclick="switchPT('S1')">✋ S1 人手揀</button>
+    </div>
     <div id="content"><div class="loading">載入緊…</div></div>
   </div>
 
@@ -86,11 +93,25 @@ function toggleWork(){document.body.classList.toggle('work');document.cookie='wo
 if(document.cookie.includes('work=1'))document.body.classList.add('work');
 document.addEventListener('keydown',e=>{if(e.key==='`')toggleWork();});
 
+let _allOpen=[], _allClosed=[], _ptMode='S7';
 async function load(){
   let d;
   try{ d=await (await fetch(WL_API+"?action=paper_list")).json(); }
   catch(e){ document.getElementById('content').innerHTML='<div class="warn">載入失敗。請確認 Apps Script 已更新（加咗 Paper trade）。</div>'; return; }
-  render(d.open||[], d.closed||[]);
+  _allOpen=d.open||[]; _allClosed=d.closed||[];
+  renderCurrent();
+}
+function switchPT(m){
+  _ptMode=m;
+  document.getElementById('tabS7').classList.toggle('active',m==='S7');
+  document.getElementById('tabS1').classList.toggle('active',m==='S1');
+  document.getElementById('ptTitle').textContent=m==='S7'?'📒 S7 Paper Trade — 機械模擬（跟 J Law）':'📒 S1 Paper Trade — 人手揀股（假突破回測）';
+  document.getElementById('ptSub').textContent=m==='S7'?'入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA':'入場：你睇圖人手揀 ｜ 止損：1.5ATR 或 前面最底 ｜ 止賺：T1(通知) / T2(1.618)';
+  renderCurrent();
+}
+function renderCurrent(){
+  if(_ptMode==='S1')renderS1(_allOpen.filter(p=>p.group==='S1'), _allClosed.filter(p=>p.group==='S1'));
+  else render(_allOpen.filter(p=>p.group!=='S1'), _allClosed.filter(p=>p.group!=='S1'));
 }
 
 function render(openP, closed){
@@ -179,7 +200,80 @@ function render(openP, closed){
 
   document.getElementById('content').innerHTML=h;
 }
-function card(l,v,c){return '<div class="card"><div class="lbl">'+l+'</div><div class="val '+(c||'')+'">'+v+'</div></div>';}
+
+function renderS1(openP, closed){
+  // 有效平倉
+  closed = closed.filter(t=>{
+    const rOk = t.r!==''&&t.r!==null&&t.r!==undefined&&!isNaN(Number(t.r));
+    return rOk;
+  });
+  let h='';
+  // 統計
+  const cl=closed, w=cl.filter(t=>Number(t.r)>0);
+  const tR=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
+  const t1hits=openP.filter(p=>p.t1hit==='Y'||p.t1hit==='y').length;
+  h+='<div class="panel"><h2>📊 S1 統計</h2>';
+  h+='<div style="display:flex;gap:24px;flex-wrap:wrap">';
+  h+='<div><div class="sub">持倉中</div><div style="font-size:24px;font-weight:700">'+openP.length+'</div></div>';
+  h+='<div><div class="sub">已平倉</div><div style="font-size:24px;font-weight:700">'+cl.length+'</div></div>';
+  h+='<div><div class="sub">勝率</div><div style="font-size:24px;font-weight:700">'+(cl.length?Math.round(w.length/cl.length*100)+'%':'—')+'</div></div>';
+  h+='<div><div class="sub">每單期望</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR/cl.length>=0?'+':'')+(tR/cl.length).toFixed(2)+'R':'—')+'</div></div>';
+  h+='<div><div class="sub">累計R</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR>=0?'+':'')+tR.toFixed(1)+'R':'—')+'</div></div>';
+  h+='<div><div class="sub">掂咗T1</div><div style="font-size:24px;font-weight:700" class="green">'+t1hits+'</div></div>';
+  h+='</div></div>';
+
+  h+='<div class="why">📖 <b>S1 人手揀股（假突破回測）</b>　你喺 Screener 睇圖 → 一睇就知買唔買 → 圖度撳「加入 S1 Paper」填價位。<br><b>止損：</b>1.5ATR 或 前面最底（你揀）　<b>止賺：</b>T1 推進浪頂（掂咗通知，唔平）→ T2 = 前頂+(T1−止損)×1.618<br><span style="color:var(--faint)">※ 每日 workflow 用當日 High/Low check：Low≤止損→止損；High≥T1→通知；High≥T2→止賺平。</span></div>';
+
+  // 持倉中
+  h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
+  if(openP.length){
+    h+='<div style="overflow-x:auto"><table><thead><tr>'
+      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>圖</th>'
+      +'</tr></thead><tbody>';
+    openP.forEach(p=>{
+      const t1hit=(p.t1hit==='Y'||p.t1hit==='y')?'<span class="green">✓掂咗</span>':'—';
+      h+='<tr>'
+        +'<td><b>'+p.ticker+'</b></td>'
+        +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
+        +'<td class="mono">$'+p.entry+'</td>'
+        +'<td class="mono red">$'+p.stop+'</td>'
+        +'<td style="font-size:11px;color:var(--dim)">'+(p.state||'').replace('S1 ','')+'</td>'
+        +'<td class="mono green">$'+(p.t1||'—')+'</td>'
+        +'<td class="mono green">$'+(p.t2||'—')+'</td>'
+        +'<td style="text-align:center">'+t1hit+'</td>'
+        +'<td class="mono">'+(p.rsi||'—')+'</td>'
+        +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
+        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
+        +'</tr>';
+    });
+    h+='</tbody></table></div>';
+  }else h+='<div class="sub">仲未有 S1 持倉。去 Screener S1 tab 開圖，撳「加入 S1 Paper」。</div>';
+  h+='</div>';
+
+  // 已平倉
+  h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
+  if(cl.length){
+    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th><th>Bonus</th></tr></thead><tbody>';
+    cl.slice().reverse().forEach(t=>{
+      const rcol=Number(t.r)>=0?'green':'red';
+      h+='<tr><td><b>'+t.ticker+'</b></td><td class="mono">'+fmtDate(t.entryDate)+'</td><td class="mono">'+fmtDate(t.exitDate)+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+t.reason+'</td><td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td><td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td><td class="mono" style="text-align:center">'+(t.bonus||'—')+'/5</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }else h+='<div class="sub">仲未有平倉記錄</div>';
+  h+='</div>';
+
+  h+='<div class="warn"><b>⚠️ S1 模擬，冇真錢。</b><br>你人手揀股入場，程式跟蹤結果。連 screener 數據都存咗（RSI/Bonus/趨勢…），之後可以分析咩條件入場最 work。</div>';
+
+  document.getElementById('content').innerHTML=h;
+}
+function fmtDate(s){
+  if(!s)return '—';
+  s=String(s);
+  // 'Wed Jun 24 2026...' → 'Jun 24'
+  const m=s.match(/^\w+ (\w+) (\d+) (\d+)/);
+  if(m)return m[1]+' '+m[2];
+  return s.slice(5);  // ISO 2026-06-24 → 06-24
+}
 
 let chartsData=null, pchart=null;
 async function openChart(ticker, entry, stop){
