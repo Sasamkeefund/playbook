@@ -140,6 +140,36 @@
     body.mobile thead th:nth-child(1),
     body.mobile tbody td:nth-child(1),
     body.mobile tr.colfilter th:nth-child(1){display:none}
+    /* Column 顯示控制：table 加 class hide-cN 就隱藏第 N 欄 */
+    .hide-c3 td:nth-child(3),.hide-c3 th:nth-child(3){display:none}
+    .hide-c4 td:nth-child(4),.hide-c4 th:nth-child(4){display:none}
+    .hide-c5 td:nth-child(5),.hide-c5 th:nth-child(5){display:none}
+    .hide-c6 td:nth-child(6),.hide-c6 th:nth-child(6){display:none}
+    .hide-cC td:nth-child(7),.hide-cC th:nth-child(7),
+    .hide-cC td:nth-child(8),.hide-cC th:nth-child(8),
+    .hide-cC td:nth-child(9),.hide-cC th:nth-child(9),
+    .hide-cC td:nth-child(10),.hide-cC th:nth-child(10),
+    .hide-cC td:nth-child(11),.hide-cC th:nth-child(11){display:none}
+    .hide-c12 td:nth-child(12),.hide-c12 th:nth-child(12){display:none}
+    .hide-c13 td:nth-child(13),.hide-c13 th:nth-child(13){display:none}
+    .hide-c14 td:nth-child(14),.hide-c14 th:nth-child(14){display:none}
+    .hide-c15 td:nth-child(15),.hide-c15 th:nth-child(15){display:none}
+    .hide-c16 td:nth-child(16),.hide-c16 th:nth-child(16){display:none}
+    .hide-c17 td:nth-child(17),.hide-c17 th:nth-child(17){display:none}
+    .hide-c18 td:nth-child(18),.hide-c18 th:nth-child(18){display:none}
+    .hide-c19 td:nth-child(19),.hide-c19 th:nth-child(19){display:none}
+    /* Column picker 面板 */
+    #colPicker{display:none;position:fixed;top:60px;right:20px;z-index:2000;background:var(--surface);
+      border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:280px}
+    #colPicker h3{margin:0 0 10px;font-size:14px;color:var(--text)}
+    #colPicker .modetag{font-size:11px;color:var(--accent);font-weight:700;margin-bottom:8px}
+    #colPicker label{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;color:var(--text);cursor:pointer}
+    #colPicker input{width:16px;height:16px;cursor:pointer}
+    #colPicker .pkbtns{margin-top:10px;display:flex;gap:8px}
+    #colPicker .pkbtns button{flex:1;padding:6px;font-size:12px;border-radius:8px;border:1px solid var(--border);
+      background:var(--surface-2);color:var(--text);cursor:pointer}
+    body.work #colPicker{background:#fff;border-color:#ccc}
+    body.work #colPicker h3,body.work #colPicker label{color:#1a1a1a}
     td{padding:12px;border-top:1px solid var(--border);font-size:13px;white-space:nowrap}
     tbody tr{transition:background .12s}
     tbody tr:hover{background:var(--surface-2)}
@@ -189,6 +219,7 @@
       </nav>
       <div class="topactions">
         <button onclick="toggleWork()" id="workBtn" class="btn" style="padding:7px 12px">🕶 返工 Mode</button>
+        <button onclick="openColPicker()" id="colBtn" class="btn" style="padding:7px 12px" title="揀顯示邊幾條 column（每個 mode 記唔同設定）">⚙️ Column</button>
         <span class="sub" id="updated">更新於 …</span>
         <button onclick="reloadData()" id="reloadBtn" class="btn primary" style="padding:7px 12px">🔄 刷新</button>
         <a href="https://github.com/Sasamkeefund/playbook/actions/workflows/scan.yml" target="_blank" rel="noopener" class="btn" style="padding:7px 12px" title="重新掃描 S1-S7（撳開後再撳 Run workflow）">⚙️ 重新掃描</a>
@@ -236,6 +267,17 @@
     </div>
 
     <div class="summary" id="summary"></div>
+
+    <div id="colPicker">
+      <h3>⚙️ 顯示 Column</h3>
+      <div class="modetag" id="colPickerMode">目前：Trader Mode</div>
+      <div id="colPickerList"></div>
+      <div class="pkbtns">
+        <button onclick="colPickAll(true)">全選</button>
+        <button onclick="colPickAll(false)">全唔要</button>
+        <button onclick="closeColPicker()">完成</button>
+      </div>
+    </div>
 
     <div class="tablewrap">
       <table>
@@ -560,7 +602,7 @@
       document.getElementById('filterScore').value='';
       document.getElementById('filterStreak').value='';
       render();}
-    function render(){renderTabs();renderSummary();renderTable();}
+    function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     document.getElementById('searchTicker').addEventListener('input',renderTable);
     document.getElementById('filterScore').addEventListener('change',renderTable);
     document.getElementById('filterStreak').addEventListener('change',renderTable);
@@ -829,6 +871,7 @@
       // button 顯示「下一個 mode」做提示（撳一下去下一個）
       if(b){const nxt=MODES[(MODES.indexOf(m)+1)%MODES.length];b.textContent=MODE_LABEL[m];}
       try{document.cookie='uimode='+m+';path=/;max-age=31536000';}catch(e){}
+      if(typeof applyColVisibility==='function')applyColVisibility();
     }
     function toggleWork(){
       const nxt=MODES[(MODES.indexOf(curMode)+1)%MODES.length];
@@ -840,6 +883,54 @@
     });
     // 記住上次選擇
     (function(){try{var m=(document.cookie.match(/uimode=(\w+)/)||[])[1];if(m&&MODES.includes(m))setMode(m);}catch(e){}})();
+
+    // ── Column 顯示控制（每個 mode 記唔同設定）──
+    // key = hide class；label = 顯示名。Ticker(第2欄)永遠 show，唔列出。
+    const COLDEFS=[
+      {k:'c3',label:'Close'},{k:'c4',label:'1D%'},{k:'c5',label:'EMA'},{k:'c6',label:'RSI'},
+      {k:'cC',label:'C1–C5'},{k:'c12',label:'Req'},{k:'c13',label:'Bonus'},{k:'c14',label:'Streak'},
+      {k:'c15',label:'趨勢 (S1)'},{k:'c16',label:'跌穿 (S1)'},{k:'c17',label:'企返 (S1)'},
+      {k:'c18',label:'入場建議'},{k:'c19',label:'⭐'}
+    ];
+    // 每個 mode 嘅「隱藏」清單。預設：全部 show（hidden 空）
+    let colHidden={trader:[],work:[],mobile:[]};
+    function loadColSettings(){
+      try{var raw=(document.cookie.match(/colcfg=([^;]+)/)||[])[1];
+        if(raw){const o=JSON.parse(decodeURIComponent(raw));
+          ['trader','work','mobile'].forEach(m=>{if(Array.isArray(o[m]))colHidden[m]=o[m];});}
+      }catch(e){}
+    }
+    function saveColSettings(){
+      try{document.cookie='colcfg='+encodeURIComponent(JSON.stringify(colHidden))+';path=/;max-age=31536000';}catch(e){}
+    }
+    function applyColVisibility(){
+      const tbl=document.querySelector('.tablewrap table');
+      if(!tbl)return;
+      COLDEFS.forEach(c=>tbl.classList.remove('hide-'+c.k));
+      (colHidden[curMode]||[]).forEach(k=>tbl.classList.add('hide-'+k));
+    }
+    function openColPicker(){
+      document.getElementById('colPickerMode').textContent='目前：'+MODE_LABEL[curMode];
+      const list=document.getElementById('colPickerList');
+      const hid=colHidden[curMode]||[];
+      list.innerHTML=COLDEFS.map(c=>
+        '<label><input type="checkbox" data-k="'+c.k+'" '+(hid.includes(c.k)?'':'checked')+
+        ' onchange="toggleCol(this)">'+c.label+'</label>').join('');
+      document.getElementById('colPicker').style.display='block';
+    }
+    function closeColPicker(){document.getElementById('colPicker').style.display='none';}
+    function toggleCol(cb){
+      const k=cb.getAttribute('data-k');
+      let hid=colHidden[curMode]||[];
+      if(cb.checked)hid=hid.filter(x=>x!==k);else if(!hid.includes(k))hid.push(k);
+      colHidden[curMode]=hid;
+      saveColSettings();applyColVisibility();
+    }
+    function colPickAll(show){
+      colHidden[curMode]=show?[]:COLDEFS.map(c=>c.k);
+      saveColSettings();applyColVisibility();openColPicker();
+    }
+    loadColSettings();
 
     loadData();
     loadWatchlist();
