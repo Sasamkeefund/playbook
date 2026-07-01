@@ -640,6 +640,10 @@
     let wlSet=new Set();
     let skipSet=new Set(); // "TICKER|STRATEGY" 已 skip（21日內）
     let showSkipped=false;
+    let fibMap={};  // ticker → {a,b,h1}（獨立 FibAB 表，任何機都讀到）
+    async function loadFibAll(){
+      try{const r=await fetch(WL_API+'?action=fib_all&t='+Date.now());fibMap=await r.json()||{};}catch(e){fibMap={};}
+    }
     async function loadWatchlist(){
       try{
         const r=await fetch(WL_API);
@@ -745,17 +749,14 @@
       const c=document.getElementById('chartContainer');
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
       document.getElementById('chartModal').classList.add('show');
-      pendingAB={a:null,b:null};
-      try{
-        // 讀返 Google Sheet 嘅 A/B 值
-        const abResp=await fetch(WL_API+'?ticker='+ticker);
-        const ab=await abResp.json();
-        pendingAB={a:ab.a||null,b:ab.b||null};
-      }catch(e){}
-      // 如果 Google Sheet 冇，試 localStorage（同一部電腦記住，任何股都得）
-      if(!pendingAB.a&&!pendingAB.b){
-        try{const ls=JSON.parse(localStorage.getItem('fibAB_'+ticker.toUpperCase())||'null');
-          if(ls){pendingAB={a:ls.a||null,b:ls.b||null};}}catch(e){}
+      pendingAB={a:null,b:null,h1:null};
+      // 由 FibAB 表讀（任何機都一致）；fibMap 已 preload，即時
+      const fm=fibMap[ticker.toUpperCase()];
+      if(fm){pendingAB={a:fm.a||null,b:fm.b||null,h1:fm.h1||null};}
+      else{
+        // fibMap 未 load 到就即時 fetch 一次
+        try{const r=await fetch(WL_API+'?action=fib_get&ticker='+ticker+'&t='+Date.now());
+          const f=await r.json();pendingAB={a:f.a||null,b:f.b||null,h1:f.h1||null};}catch(e){}
       }
       try{
         const all=await ensureCharts();
@@ -897,26 +898,18 @@
       // 填返 A/B/H1 值（drawChart 重建咗 input 後先填）
       if(pendingAB.a)document.getElementById('fibA').value=pendingAB.a;
       if(pendingAB.b)document.getElementById('fibB').value=pendingAB.b;
-      // H1 頸線由 localStorage 讀（任何股）
-      try{const lh=JSON.parse(localStorage.getItem('fibH1_'+ticker.toUpperCase())||'null');
-        if(lh&&lh.h1)document.getElementById('fibH1').value=lh.h1;}catch(e){}
+      if(pendingAB.h1)document.getElementById('fibH1').value=pendingAB.h1;
       ft.addEventListener('change',e=>drawFib(e.target.checked));
-      // A/B/H1 改變 → 存住 + 重畫
+      // A/B/H1 改變 → 存去獨立 FibAB 表（任何機都讀到）+ 重畫
       const saveAB=()=>{
         const a=document.getElementById('fibA').value;
         const b=document.getElementById('fibB').value;
         const h1=document.getElementById('fibH1').value;
-        // localStorage：任何股都記住（同一部電腦）
-        try{
-          if(a||b)localStorage.setItem('fibAB_'+ticker.toUpperCase(),JSON.stringify({a:parseFloat(a)||'',b:parseFloat(b)||''}));
-          else localStorage.removeItem('fibAB_'+ticker.toUpperCase());
-          if(h1)localStorage.setItem('fibH1_'+ticker.toUpperCase(),JSON.stringify({h1:parseFloat(h1)||''}));
-          else localStorage.removeItem('fibH1_'+ticker.toUpperCase());
-        }catch(e){}
-        // watchlist 股：另外存 Google Sheet（跨裝置）
-        if(wlSet.has(ticker.toUpperCase())){
-          try{fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'ab',ticker,a:parseFloat(a)||'',b:parseFloat(b)||''})});}catch(e){}
-        }
+        // 更新本地 fibMap（即時，唔使等 fetch）
+        fibMap[ticker.toUpperCase()]={a:parseFloat(a)||'',b:parseFloat(b)||'',h1:parseFloat(h1)||''};
+        // 存去 FibAB 表（獨立，唔靠 watchlist，任何機都見到）
+        try{fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body:JSON.stringify({action:'fib_set',ticker,a:parseFloat(a)||'',b:parseFloat(b)||'',h1:parseFloat(h1)||''})});}catch(e){}
         drawFib(ft.checked);
       };
       document.getElementById('fibA').addEventListener('change',saveAB);
@@ -1126,6 +1119,7 @@
 
     loadData();
     loadWatchlist();
+    loadFibAll();
   </script>
 </body>
 </html>
