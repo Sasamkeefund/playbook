@@ -735,6 +735,11 @@
         const ab=await abResp.json();
         pendingAB={a:ab.a||null,b:ab.b||null};
       }catch(e){}
+      // 如果 Google Sheet 冇，試 localStorage（同一部電腦記住，任何股都得）
+      if(!pendingAB.a&&!pendingAB.b){
+        try{const ls=JSON.parse(localStorage.getItem('fibAB_'+ticker.toUpperCase())||'null');
+          if(ls){pendingAB={a:ls.a||null,b:ls.b||null};}}catch(e){}
+      }
       try{
         const all=await ensureCharts();
         const d=all[ticker];
@@ -758,10 +763,10 @@
         </span>
         <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--dim)"><input type="checkbox" id="fibToggle"> 黃金比例 (Fib)</label>
         <div id="fibInputs" style="display:none;gap:8px;align-items:center;margin-left:12px">
-          <label style="font-size:11px;color:var(--dim)">A:</label>
-          <input type="number" id="fibA" placeholder="高" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
-          <label style="font-size:11px;color:var(--dim)">B:</label>
-          <input type="number" id="fibB" placeholder="低" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <label style="font-size:11px;color:var(--dim)">A(低):</label>
+          <input type="number" id="fibA" placeholder="低" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <label style="font-size:11px;color:var(--dim)">B(高):</label>
+          <input type="number" id="fibB" placeholder="高" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
         </div>
         <span id="fibInfo" style="color:var(--amber)"></span>`;
       c.appendChild(bar);
@@ -809,27 +814,25 @@
         const fibInputs=document.getElementById('fibInputs');
         if(!on){fibInputs.style.display='none';return;}
         fibInputs.style.display='flex';
-        // 用手動輸入或自動偵測
-        const aInput=parseFloat(document.getElementById('fibA').value);
-        const bInput=parseFloat(document.getElementById('fibB').value);
+        // 用手動輸入或自動偵測（A=低 swingLo，B=高 hi）
+        const aInput=parseFloat(document.getElementById('fibA').value);  // 低
+        const bInput=parseFloat(document.getElementById('fibB').value);  // 高
         let hi,swingLo;
         if(!isNaN(aInput)&&!isNaN(bInput)){
-          hi=aInput; swingLo=bInput;
+          swingLo=aInput; hi=bInput;
         }else{
           hi=Math.max(...d.h);
           const hiIdx=d.h.indexOf(hi);
           // 旗桿起點 = 高位之前，最近一次明顯升浪嘅起點（唔好搵到太舊嘅深低）
-          // 由高位向前行，一直到跌返落嚟夠深（低過高位 8%）就停 = 旗桿底
           let poleLow=d.l[hiIdx];
           for(let i=hiIdx;i>=0;i--){
             poleLow=Math.min(poleLow, d.l[i]);
             if((hi-poleLow)/hi>=0.08) break;  // 升幅夠 8% 就當搵到旗桿底，停
           }
-          // 高位之後嘅低（旗形回調底）
           const postLow=hiIdx<n-1?Math.min(...d.l.slice(hiIdx)):poleLow;
           swingLo=Math.min(poleLow, postLow);
-          document.getElementById('fibA').placeholder='高 ('+(hi.toFixed(2))+')';
-          document.getElementById('fibB').placeholder='低 ('+(swingLo.toFixed(2))+')';
+          document.getElementById('fibA').placeholder='低 ('+(swingLo.toFixed(2))+')';
+          document.getElementById('fibB').placeholder='高 ('+(hi.toFixed(2))+')';
         }
         const range=hi-swingLo;
         fibLevels.forEach(([lv,col])=>{
@@ -851,6 +854,12 @@
       const saveAB=()=>{
         const a=document.getElementById('fibA').value;
         const b=document.getElementById('fibB').value;
+        // localStorage：任何股都記住（同一部電腦，close 個圖再開都仲喺度）
+        try{
+          if(a||b)localStorage.setItem('fibAB_'+ticker.toUpperCase(),JSON.stringify({a:parseFloat(a)||'',b:parseFloat(b)||''}));
+          else localStorage.removeItem('fibAB_'+ticker.toUpperCase());
+        }catch(e){}
+        // watchlist 股：另外存 Google Sheet（跨裝置）
         if(wlSet.has(ticker.toUpperCase())){
           try{fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'ab',ticker,a:parseFloat(a)||'',b:parseFloat(b)||''})});}catch(e){}
         }
