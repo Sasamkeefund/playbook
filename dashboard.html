@@ -857,8 +857,22 @@
           sH1.setData([{time:d.t[0],value:h1},{time:d.t[n-1],value:h1}]);
           fibSeries.push(sH1);
           const cur=d.c[n-1];
-          if(cur>h1) h1txt=' · <span style="color:#2ee6a6;font-weight:700">✓ 升穿頸線 = 可入場</span>';
-          else{const away=((h1-cur)/cur*100).toFixed(1);h1txt=' · <span style="color:#ff9838">頸線 $'+h1.toFixed(2)+'（差 '+away+'% 突破）</span>';}
+          const stk=globalData.stocks.find(x=>x.ticker===ticker)||{};
+          const rv=stk.rvol;
+          if(cur>h1){
+            // 升穿頸線 → 睇 RVOL 分手法
+            let method='';
+            if(rv!==null&&rv!==undefined){
+              if(rv>=1.5) method=' <span style="color:#2ee6a6;font-weight:700">→ 手法A（放量 RVOL '+rv+'）</span>';
+              else method=' <span style="color:#ff9838;font-weight:700">→ 手法C（縮量 RVOL '+rv+' ⚠️假突破風險）</span>';
+            }else{
+              method=' <span style="color:var(--dim)">(冇成交量數據，重新掃描)</span>';
+            }
+            h1txt=' · <span style="color:#2ee6a6;font-weight:700">✓ 升穿頸線</span>'+method;
+          }else{
+            const away=((h1-cur)/cur*100).toFixed(1);
+            h1txt=' · <span style="color:#ff9838">頸線 $'+h1.toFixed(2)+'（差 '+away+'% 突破）</span>';
+          }
         }
         document.getElementById('fibInfo').innerHTML=manualBadge+`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`+h1txt;
       }
