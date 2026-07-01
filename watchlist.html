@@ -91,7 +91,7 @@
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th style="text-align:center">A點</th><th style="text-align:center">B點</th><th>筆記</th><th style="text-align:center">移除</th></tr>
+          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th>筆記</th><th style="text-align:center">移除</th></tr>
         </thead>
         <tbody id="tbody"><tr><td colspan="9" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
       </table>
@@ -125,7 +125,7 @@ const _MODES=['trader','work','mobile'];
 
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
     const STRAT={S1:'順勢',S2:'趨結',S3:'突破',S4:'假突',S5:'支阻',S6:'圖表'};
-    let list=[], dataMap={};
+    let list=[], dataMap={}, fibMap={};
     async function loadData(){
       try{
         const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
@@ -144,6 +144,8 @@ const _MODES=['trader','work','mobile'];
       }catch(e){
         document.getElementById('status').textContent='❌ 讀取失敗';
       }
+      // 讀 FibAB 表（A/B/頸線）
+      try{const fr=await fetch(WL_API+'?action=fib_all&t='+Date.now());fibMap=await fr.json()||{};}catch(e){fibMap={};}
       render();
     }
     function stratBadges(ticker){
@@ -173,21 +175,30 @@ const _MODES=['trader','work','mobile'];
     }
     function render(){
       const tb=document.getElementById('tbody');
-      if(!list.length){tb.innerHTML='<tr><td colspan="9" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
-      tb.innerHTML=list.map(item=>`<tr>
+      if(!list.length){tb.innerHTML='<tr><td colspan="10" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
+      tb.innerHTML=list.map(item=>{
+        const fb=fibMap[item.ticker.toUpperCase()]||{};
+        const a=fb.a||'', b=fb.b||'', h1=fb.h1||'';
+        return `<tr>
         <td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${item.ticker}');return false;">${item.ticker} 📈</a></td>
         <td style="text-align:right">${priceCell(item.ticker)}</td>
         <td style="text-align:right">${ema20Cell(item.ticker)}</td>
         <td style="text-align:right">${rsiCell(item.ticker)}</td>
         <td>${stratBadges(item.ticker)}</td>
-        <td style="text-align:center"><input type="number" class="note-input" value="${(item.a||'').toString().replace(/"/g,'&quot;')}" step="0.01" onchange="saveAB('${item.ticker}',this.value,'${item.b||''}')" style="width:70px" placeholder="A高"></td>
-        <td style="text-align:center"><input type="number" class="note-input" value="${(item.b||'').toString().replace(/"/g,'&quot;')}" step="0.01" onchange="saveAB('${item.ticker}','${item.a||''}',this.value)" style="width:70px" placeholder="B低"></td>
+        <td style="text-align:center"><input type="number" class="note-input" value="${a}" step="0.01" onchange="saveFib('${item.ticker}',this.value,null,null)" style="width:70px" placeholder="低"></td>
+        <td style="text-align:center"><input type="number" class="note-input" value="${b}" step="0.01" onchange="saveFib('${item.ticker}',null,this.value,null)" style="width:70px" placeholder="高"></td>
+        <td style="text-align:center"><input type="number" class="note-input" value="${h1}" step="0.01" onchange="saveFib('${item.ticker}',null,null,this.value)" style="width:70px;border-color:#ff9838" placeholder="頸線"></td>
         <td><input type="text" class="note-input" value="${(item.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${item.ticker}',this.value)" placeholder="加筆記"></td>
         <td style="text-align:center"><button class="del-btn" onclick="removeStock('${item.ticker}')">🗑️</button></td>
-      </tr>`).join('');
+      </tr>`;}).join('');
     }
-    async function saveAB(ticker,a,b){
-      try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'ab',ticker,a:parseFloat(a)||'',b:parseFloat(b)||''})});}catch(e){}
+    async function saveFib(ticker,a,b,h1){
+      const cur=fibMap[ticker.toUpperCase()]||{a:'',b:'',h1:''};
+      if(a!==null)cur.a=parseFloat(a)||'';
+      if(b!==null)cur.b=parseFloat(b)||'';
+      if(h1!==null)cur.h1=parseFloat(h1)||'';
+      fibMap[ticker.toUpperCase()]=cur;
+      try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'fib_set',ticker,a:cur.a,b:cur.b,h1:cur.h1})});}catch(e){}
     }
     async function removeStock(ticker){
       list=list.filter(x=>x.ticker!==ticker);
