@@ -132,6 +132,28 @@ function switchPT(m){
   document.getElementById('ptSub').textContent=m==='S7'?'入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA':'入場：你睇圖人手揀 ｜ 止損：1.5ATR 或 前面最底 ｜ 止賺：T1(通知) / T2(1.618)';
   renderCurrent();
 }
+async function removeS1(ticker, entry){
+  if(!confirm('確定刪除 '+ticker+' 呢個 S1 test 單？（成行消失，好似冇買過）'))return;
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_remove',ticker,group:'S1',entry})});
+    alert('已刪除 '+ticker+'。1-2秒後刷新頁面就見到。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('刪除失敗，再試');}
+}
+async function manualCloseS1(ticker, entry){
+  const px=prompt('手動平倉 '+ticker+'，輸入平倉價：');
+  if(px===null||px==='')return;
+  const exitPx=parseFloat(px);
+  if(isNaN(exitPx)){alert('請輸入數字');return;}
+  const today=new Date().toISOString().slice(0,10);
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_manual_close',ticker,group:'S1',exitPx,exitDate:today})});
+    alert('已平倉 '+ticker+' @ $'+exitPx+'。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('平倉失敗，再試');}
+}
 function renderCurrent(){
   if(_ptMode==='S1')renderS1(_allOpen.filter(p=>p.group==='S1'), _allClosed.filter(p=>p.group==='S1'));
   else render(_allOpen.filter(p=>p.group!=='S1'), _allClosed.filter(p=>p.group!=='S1'));
@@ -251,7 +273,7 @@ function renderS1(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>圖</th>'
+      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const t1hit=(p.t1hit==='Y'||p.t1hit==='y')?'<span class="green">✓掂咗</span>':'—';
@@ -273,6 +295,7 @@ function renderS1(openP, closed){
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
         +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
+        +'<td style="white-space:nowrap"><button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseS1(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeS1(\''+p.ticker+'\','+p.entry+')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
