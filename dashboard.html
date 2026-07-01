@@ -362,6 +362,7 @@
           <button onclick="navChart(1)" title="下一隻 (→)" style="padding:5px 11px;font-size:14px;border-radius:8px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);cursor:pointer">›</button>
         </div>
         <div style="display:flex;gap:12px;align-items:center">
+          <button id="chartStarBtn" onclick="toggleChartStar()" style="padding:6px 13px;font-size:13px;border-radius:8px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);cursor:pointer">☆ Watchlist</button>
           <a id="chartOpenTV" href="#" target="_blank" rel="noopener" style="font-size:13px;color:var(--accent-2);text-decoration:none">喺 TradingView 開 ↗</a>
           <button onclick="closeChart()" class="modal-close">✕</button>
         </div>
@@ -682,6 +683,21 @@
         await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:on?'remove':'add',ticker})});
       }catch(e){/* 寫去 Google，唔阻 UI */}
     }
+    function updateChartStarBtn(ticker){
+      const on=wlSet.has(ticker.toUpperCase());
+      const b=document.getElementById('chartStarBtn');
+      if(b){b.textContent=on?'⭐ 已加入':'☆ Watchlist';b.style.color=on?'#f5b945':'var(--text)';b.style.borderColor=on?'#f5b945':'var(--border-2)';}
+    }
+    async function toggleChartStar(){
+      const ticker=document.getElementById('chartTitle').textContent.toUpperCase();
+      if(!ticker||ticker==='—')return;
+      const on=wlSet.has(ticker);
+      if(on){wlSet.delete(ticker);}else{wlSet.add(ticker);}
+      updateChartStarBtn(ticker);
+      try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:on?'remove':'add',ticker})});}catch(e){}
+      // 同步更新表格個星（如果表格重畫）
+      if(typeof render==='function'){/* 表格會下次 render 更新 */}
+    }
     async function ensureCharts(){
       if(chartsCache)return chartsCache;
       const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/charts.json?t='+Date.now());
@@ -724,6 +740,7 @@
     async function openChart(ticker){
       document.getElementById('chartTitle').textContent=ticker;
       document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol='+ticker;
+      updateChartStarBtn(ticker);
       fillChartInfo(ticker);
       const c=document.getElementById('chartContainer');
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
