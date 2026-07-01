@@ -154,6 +154,15 @@ async function manualCloseS1(ticker, entry){
     setTimeout(()=>load(),1500);
   }catch(e){alert('平倉失敗，再試');}
 }
+async function removeS1Closed(ticker, entry){
+  if(!confirm('確定刪除已平倉記錄 '+ticker+'？（成行消失）'))return;
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_remove',ticker,group:'S1',entry,status:'closed'})});
+    alert('已刪除 '+ticker+'。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('刪除失敗，再試');}
+}
 function renderCurrent(){
   if(_ptMode==='S1')renderS1(_allOpen.filter(p=>p.group==='S1'), _allClosed.filter(p=>p.group==='S1'));
   else render(_allOpen.filter(p=>p.group!=='S1'), _allClosed.filter(p=>p.group!=='S1'));
@@ -307,7 +316,7 @@ function renderS1(openP, closed){
   if(cl.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
       +'<th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th>'
-      +'<th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>跌穿</th>'
+      +'<th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>跌穿</th><th>操作</th>'
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
@@ -330,6 +339,7 @@ function renderS1(openP, closed){
         +'<td class="mono" style="text-align:center">'+(t.bonus||'—')+'/5</td>'
         +'<td class="mono" style="text-align:center">'+(t.trend||'—')+'</td>'
         +'<td class="mono" style="text-align:center">'+(t.pullback!==''&&t.pullback!==undefined?t.pullback+'日':'—')+'</td>'
+        +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeS1Closed(\''+t.ticker+'\','+t.entry+')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
