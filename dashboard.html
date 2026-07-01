@@ -816,9 +816,18 @@
         if(!isNaN(aInput)&&!isNaN(bInput)){
           hi=aInput; swingLo=bInput;
         }else{
-          hi=Math.max(...d.h); 
+          hi=Math.max(...d.h);
           const hiIdx=d.h.indexOf(hi);
-          swingLo=hiIdx<n-1?Math.min(...d.l.slice(hiIdx)):Math.min(...d.l);
+          // 旗桿起點 = 高位之前，最近一次明顯升浪嘅起點（唔好搵到太舊嘅深低）
+          // 由高位向前行，一直到跌返落嚟夠深（低過高位 8%）就停 = 旗桿底
+          let poleLow=d.l[hiIdx];
+          for(let i=hiIdx;i>=0;i--){
+            poleLow=Math.min(poleLow, d.l[i]);
+            if((hi-poleLow)/hi>=0.08) break;  // 升幅夠 8% 就當搵到旗桿底，停
+          }
+          // 高位之後嘅低（旗形回調底）
+          const postLow=hiIdx<n-1?Math.min(...d.l.slice(hiIdx)):poleLow;
+          swingLo=Math.min(poleLow, postLow);
           document.getElementById('fibA').placeholder='高 ('+(hi.toFixed(2))+')';
           document.getElementById('fibB').placeholder='低 ('+(swingLo.toFixed(2))+')';
         }
