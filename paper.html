@@ -305,10 +305,32 @@ function renderS1(openP, closed){
   // 已平倉
   h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
   if(cl.length){
-    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th><th>Bonus</th></tr></thead><tbody>';
+    h+='<div style="overflow-x:auto"><table><thead><tr>'
+      +'<th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th>'
+      +'<th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>跌穿</th>'
+      +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
-      h+='<tr><td><b>'+t.ticker+'</b></td><td class="mono">'+fmtDate(t.entryDate)+'</td><td class="mono">'+fmtDate(t.exitDate)+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+t.reason+'</td><td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td><td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td><td class="mono" style="text-align:center">'+(t.bonus||'—')+'/5</td></tr>';
+      const t1hit=(t.t1hit==='Y'||t.t1hit==='y')?'<span class="green">✓</span>':'—';
+      h+='<tr>'
+        +'<td><b>'+t.ticker+'</b></td>'
+        +'<td class="mono">'+fmtDate(t.entryDate)+'</td>'
+        +'<td class="mono">'+fmtDate(t.exitDate)+'</td>'
+        +'<td class="mono">$'+t.entry+'</td>'
+        +'<td class="mono">$'+t.exitPx+'</td>'
+        +'<td style="font-size:11px">'+t.reason+'</td>'
+        +'<td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td>'
+        +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
+        +'<td class="mono red">$'+(t.stop||'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--dim)">'+(t.state||'').replace('S1 ','')+'</td>'
+        +'<td class="mono green">$'+(t.t1||'—')+'</td>'
+        +'<td class="mono green">$'+(t.t2||'—')+'</td>'
+        +'<td style="text-align:center">'+t1hit+'</td>'
+        +'<td class="mono">'+(t.rsi||'—')+'</td>'
+        +'<td class="mono" style="text-align:center">'+(t.bonus||'—')+'/5</td>'
+        +'<td class="mono" style="text-align:center">'+(t.trend||'—')+'</td>'
+        +'<td class="mono" style="text-align:center">'+(t.pullback!==''&&t.pullback!==undefined?t.pullback+'日':'—')+'</td>'
+        +'</tr>';
     });
     h+='</tbody></table></div>';
   }else h+='<div class="sub">仲未有平倉記錄</div>';
