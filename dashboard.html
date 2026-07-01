@@ -767,6 +767,8 @@
           <input type="number" id="fibA" placeholder="低" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
           <label style="font-size:11px;color:var(--dim)">B(高):</label>
           <input type="number" id="fibB" placeholder="高" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)">
+          <label style="font-size:11px;color:#ff9838">頸線H1:</label>
+          <input type="number" id="fibH1" placeholder="突破位" step="0.01" style="width:70px;padding:4px 8px;font-size:11px;border-radius:6px;border:1px solid #ff9838;background:var(--surface);color:var(--text)">
         </div>
         <span id="fibInfo" style="color:var(--amber)"></span>`;
       c.appendChild(bar);
@@ -807,7 +809,7 @@
       // swing low = 高位之後嘅最低（旗形整固低點）
       let swingLo=lo;
       if(hiIdx<n-1){swingLo=Math.min(...d.l.slice(hiIdx));}
-      const fibLevels=[[0,'#5b6075'],[0.236,'#f5b945'],[0.382,'#888'],[0.5,'#888'],[0.618,'#888'],[0.786,'#4d8dff'],[1,'#5b6075']];
+      const fibLevels=[[0,'#5b6075'],[0.236,'#f5b945'],[1,'#5b6075']];
       let fibSeries=[];
       function drawFib(on){
         fibSeries.forEach(s=>chart.removeSeries(s));fibSeries=[];
@@ -847,21 +849,38 @@
         const f236=(hi-range*0.236);
         const broke=d.c[n-1]<f236;
         const manualBadge=isManual?'<span style="color:#c77dff;font-weight:700">✎ 手動</span> · ':'';
-        document.getElementById('fibInfo').innerHTML=manualBadge+`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`;
+        // 手打頸線/突破位（H1）→ 畫橙線 + 突破判斷
+        let h1txt='';
+        const h1=parseFloat(document.getElementById('fibH1').value);
+        if(!isNaN(h1)){
+          const sH1=chart.addLineSeries({color:'#ff9838',lineWidth:2,lineStyle:0,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:'頸線H1'});
+          sH1.setData([{time:d.t[0],value:h1},{time:d.t[n-1],value:h1}]);
+          fibSeries.push(sH1);
+          const cur=d.c[n-1];
+          if(cur>h1) h1txt=' · <span style="color:#2ee6a6;font-weight:700">✓ 升穿頸線 = 可入場</span>';
+          else{const away=((h1-cur)/cur*100).toFixed(1);h1txt=' · <span style="color:#ff9838">頸線 $'+h1.toFixed(2)+'（差 '+away+'% 突破）</span>';}
+        }
+        document.getElementById('fibInfo').innerHTML=manualBadge+`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`+h1txt;
       }
       const ft=document.getElementById('fibToggle');
-      // 填返 Google Sheet 嘅 A/B 值（drawChart 重建咗 input 後先填）
+      // 填返 A/B/H1 值（drawChart 重建咗 input 後先填）
       if(pendingAB.a)document.getElementById('fibA').value=pendingAB.a;
       if(pendingAB.b)document.getElementById('fibB').value=pendingAB.b;
+      // H1 頸線由 localStorage 讀（任何股）
+      try{const lh=JSON.parse(localStorage.getItem('fibH1_'+ticker.toUpperCase())||'null');
+        if(lh&&lh.h1)document.getElementById('fibH1').value=lh.h1;}catch(e){}
       ft.addEventListener('change',e=>drawFib(e.target.checked));
-      // A/B 改變 → 寫返 Google Sheet（公司電腦零痕跡）
+      // A/B/H1 改變 → 存住 + 重畫
       const saveAB=()=>{
         const a=document.getElementById('fibA').value;
         const b=document.getElementById('fibB').value;
-        // localStorage：任何股都記住（同一部電腦，close 個圖再開都仲喺度）
+        const h1=document.getElementById('fibH1').value;
+        // localStorage：任何股都記住（同一部電腦）
         try{
           if(a||b)localStorage.setItem('fibAB_'+ticker.toUpperCase(),JSON.stringify({a:parseFloat(a)||'',b:parseFloat(b)||''}));
           else localStorage.removeItem('fibAB_'+ticker.toUpperCase());
+          if(h1)localStorage.setItem('fibH1_'+ticker.toUpperCase(),JSON.stringify({h1:parseFloat(h1)||''}));
+          else localStorage.removeItem('fibH1_'+ticker.toUpperCase());
         }catch(e){}
         // watchlist 股：另外存 Google Sheet（跨裝置）
         if(wlSet.has(ticker.toUpperCase())){
@@ -871,6 +890,7 @@
       };
       document.getElementById('fibA').addEventListener('change',saveAB);
       document.getElementById('fibB').addEventListener('change',saveAB);
+      document.getElementById('fibH1').addEventListener('change',saveAB);
       // S6 或者已經有 A/B → 自動開 Fib
       if(activeTab==='S6'||pendingAB.a){ft.checked=true;drawFib(true);}
 
