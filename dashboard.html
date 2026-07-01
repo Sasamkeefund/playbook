@@ -817,9 +817,9 @@
         // 用手動輸入或自動偵測（A=低 swingLo，B=高 hi）
         const aInput=parseFloat(document.getElementById('fibA').value);  // 低
         const bInput=parseFloat(document.getElementById('fibB').value);  // 高
-        let hi,swingLo;
+        let hi,swingLo,isManual=false;
         if(!isNaN(aInput)&&!isNaN(bInput)){
-          swingLo=aInput; hi=bInput;
+          swingLo=aInput; hi=bInput; isManual=true;
         }else{
           hi=Math.max(...d.h);
           const hiIdx=d.h.indexOf(hi);
@@ -835,15 +835,19 @@
           document.getElementById('fibB').placeholder='高 ('+(hi.toFixed(2))+')';
         }
         const range=hi-swingLo;
+        // 人手改過 → 啲線變紫色（等你知係自己改，唔係自動）
+        const manualCol='#c77dff';  // 紫
         fibLevels.forEach(([lv,col])=>{
+          const useCol=isManual?(lv===0.236?'#e0aaff':manualCol):col;
           const price=hi-range*lv;
-          const s=chart.addLineSeries({color:col,lineWidth:lv===0.236?2:1,lineStyle:lv===0.236?0:2,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:lv===0?'A':lv===1?'B':lv.toFixed(3)});
+          const s=chart.addLineSeries({color:useCol,lineWidth:lv===0.236?2:1,lineStyle:lv===0.236?0:2,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:lv===0?'A':lv===1?'B':lv.toFixed(3)});
           s.setData([{time:d.t[0],value:price},{time:d.t[n-1],value:price}]);
           fibSeries.push(s);
         });
         const f236=(hi-range*0.236);
         const broke=d.c[n-1]<f236;
-        document.getElementById('fibInfo').innerHTML=`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`;
+        const manualBadge=isManual?'<span style="color:#c77dff;font-weight:700">✎ 手動</span> · ':'';
+        document.getElementById('fibInfo').innerHTML=manualBadge+`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`;
       }
       const ft=document.getElementById('fibToggle');
       // 填返 Google Sheet 嘅 A/B 值（drawChart 重建咗 input 後先填）
