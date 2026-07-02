@@ -39,6 +39,9 @@
     .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow-x:auto}
     table{width:100%;border-collapse:collapse}
     thead{background:var(--surface-2)}
+    .wltab{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--dim);cursor:pointer;font-size:13px;font-weight:600}
+    .wltab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    body.work .wltab.active{background:#444;border-color:#444}
     th{padding:13px 12px;text-align:left;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
     td{padding:12px;border-top:1px solid var(--border);font-size:13px}
     tbody tr:hover{background:var(--surface-2)}
@@ -88,12 +91,20 @@
 
   <div class="container">
     <div class="section-title">📌 My Watchlist <span id="status" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)"></span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">
+      <button class="wltab active" data-s="ALL" onclick="switchWL('ALL')">全部</button>
+      <button class="wltab" data-s="S1" onclick="switchWL('S1')">S1 順勢</button>
+      <button class="wltab" data-s="S2" onclick="switchWL('S2')">S2</button>
+      <button class="wltab" data-s="S3" onclick="switchWL('S3')">S3</button>
+      <button class="wltab" data-s="S4" onclick="switchWL('S4')">S4</button>
+      <button class="wltab" data-s="S5" onclick="switchWL('S5')">S5</button>
+      <button class="wltab" data-s="S6" onclick="switchWL('S6')">S6 旗形</button>
+      <button class="wltab" data-s="S7" onclick="switchWL('S7')">S7 VCP</button>
+    </div>
     <div class="tablewrap">
       <table>
-        <thead>
-          <tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th>筆記</th><th style="text-align:center">移除</th></tr>
-        </thead>
-        <tbody id="tbody"><tr><td colspan="9" class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
+        <thead id="thead"></thead>
+        <tbody id="tbody"><tr><td class="empty"><span class="dot"></span> 讀緊…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -173,24 +184,80 @@ const _MODES=['trader','work','mobile'];
       if(!s)return '<span style="color:var(--faint)">—</span>';
       return `<span class="mono" style="font-size:12px">${s.rsi.toFixed(1)}</span>`;
     }
+    let wlTab='ALL';
+    function switchWL(s){
+      wlTab=s;
+      document.querySelectorAll('.wltab').forEach(b=>b.classList.toggle('active',b.dataset.s===s));
+      render();
+    }
+    function ck(v){return v?'<span style="color:#2ee6a6">✓</span>':'<span style="color:#ff5d6c">✗</span>';}
     function render(){
-      const tb=document.getElementById('tbody');
-      if(!list.length){tb.innerHTML='<tr><td colspan="10" class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
-      tb.innerHTML=list.map(item=>{
-        const fb=fibMap[item.ticker.toUpperCase()]||{};
-        const a=fb.a||'', b=fb.b||'', h1=fb.h1||'';
-        return `<tr>
-        <td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${item.ticker}');return false;">${item.ticker} 📈</a></td>
-        <td style="text-align:right">${priceCell(item.ticker)}</td>
-        <td style="text-align:right">${ema20Cell(item.ticker)}</td>
-        <td style="text-align:right">${rsiCell(item.ticker)}</td>
-        <td>${stratBadges(item.ticker)}</td>
-        <td style="text-align:center"><input type="number" class="note-input" value="${a}" step="0.01" onchange="saveFib('${item.ticker}',this.value,null,null)" style="width:70px" placeholder="低"></td>
-        <td style="text-align:center"><input type="number" class="note-input" value="${b}" step="0.01" onchange="saveFib('${item.ticker}',null,this.value,null)" style="width:70px" placeholder="高"></td>
-        <td style="text-align:center"><input type="number" class="note-input" value="${h1}" step="0.01" onchange="saveFib('${item.ticker}',null,null,this.value)" style="width:70px;border-color:#ff9838" placeholder="頸線"></td>
-        <td><input type="text" class="note-input" value="${(item.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${item.ticker}',this.value)" placeholder="加筆記"></td>
-        <td style="text-align:center"><button class="del-btn" onclick="removeStock('${item.ticker}')">🗑️</button></td>
-      </tr>`;}).join('');
+      const th=document.getElementById('thead'), tb=document.getElementById('tbody');
+      if(!list.length){th.innerHTML='';tb.innerHTML='<tr><td class="empty">仲未 mark 任何股票，去 🔍 Screener 撳⭐</td></tr>';return;}
+      // 篩選：ALL=全部；否則淨係嗰個 strategy ready 嘅
+      let rows=list;
+      if(wlTab!=='ALL'){
+        rows=list.filter(it=>{const s=dataMap[it.ticker.toUpperCase()];return s&&s.strategies[wlTab]&&s.strategies[wlTab].ready;});
+      }
+      if(!rows.length){th.innerHTML='';tb.innerHTML='<tr><td class="empty">呢個策略暫時冇 ready 嘅 watchlist 股</td></tr>';return;}
+
+      const linkCell=it=>`<td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${it.ticker}');return false;">${it.ticker} 📈</a></td>`;
+      const noteCell=it=>`<td><input type="text" class="note-input" value="${(it.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${it.ticker}',this.value)" placeholder="加筆記" style="width:120px"></td>`;
+      const delCell=it=>`<td style="text-align:center"><button class="del-btn" onclick="removeStock('${it.ticker}')">🗑️</button></td>`;
+
+      if(wlTab==='S1'){
+        // S1：跟 paper trade 欄（RSI/C1-C5/REQ/Bonus/Streak/趨勢/跌穿/企返）
+        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close</th><th style="text-align:right">RSI</th><th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th><th style="text-align:center">REQ</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th><th style="text-align:center">趨勢</th><th style="text-align:center">跌穿</th><th style="text-align:center">企返</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        tb.innerHTML=rows.map(it=>{
+          const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
+          const k=s.strategies.S1||{}; const cd=k.conds||[];
+          const pb=(k.pullbackDaysAgo!==undefined&&k.pullbackDaysAgo>=0)?k.pullbackDaysAgo+'日':'—';
+          return '<tr>'+linkCell(it)
+            +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
+            +`<td style="text-align:right" class="mono">${s.rsi.toFixed(1)}</td>`
+            +`<td style="text-align:center">${ck(cd[0])}</td><td style="text-align:center">${ck(cd[1])}</td><td style="text-align:center">${ck(cd[2])}</td><td style="text-align:center">${ck(cd[3])}</td><td style="text-align:center">${ck(cd[4])}</td>`
+            +`<td style="text-align:center" class="mono">${k.score||'—'}</td>`
+            +`<td style="text-align:center" class="mono">${k.bonusScore||'—'}/5</td>`
+            +`<td style="text-align:center" class="mono">${k.streak||'—'}</td>`
+            +`<td style="text-align:center" class="mono">${k.recentMaxStreak||'—'}</td>`
+            +`<td style="text-align:center" class="mono">${pb}</td>`
+            +`<td style="text-align:center">${k.aboveNow?'<span style="color:#2ee6a6">✓</span>':'—'}</td>`
+            +noteCell(it)+delCell(it)+'</tr>';
+        }).join('');
+      }else if(wlTab==='S6'){
+        // S6：A/B/頸線H1 + 今日RV + 手法A/C
+        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th style="text-align:center">今日RV</th><th style="text-align:center">狀態</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        tb.innerHTML=rows.map(it=>{
+          const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
+          const fb=fibMap[it.ticker.toUpperCase()]||{};
+          const a=fb.a||'',b=fb.b||'',h1=fb.h1||'';
+          const rv=s.rvol;
+          // 狀態：升穿頸線 + RV 判手法
+          let stat='—';
+          if(h1&&s.close>parseFloat(h1)){
+            if(rv>=1.5)stat='<span style="color:#2ee6a6;font-weight:700">突破·手法A</span>';
+            else if(rv!=null)stat='<span style="color:#ff9838;font-weight:700">突破·手法C縮量</span>';
+            else stat='<span style="color:#2ee6a6">升穿頸線</span>';
+          }else if(h1){const away=((parseFloat(h1)-s.close)/s.close*100).toFixed(1);stat='<span style="color:var(--dim)">差 '+away+'%</span>';}
+          return '<tr>'+linkCell(it)
+            +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
+            +`<td style="text-align:center"><input type="number" class="note-input" value="${a}" step="0.01" onchange="saveFib('${it.ticker}',this.value,null,null)" style="width:66px" placeholder="低"></td>`
+            +`<td style="text-align:center"><input type="number" class="note-input" value="${b}" step="0.01" onchange="saveFib('${it.ticker}',null,this.value,null)" style="width:66px" placeholder="高"></td>`
+            +`<td style="text-align:center"><input type="number" class="note-input" value="${h1}" step="0.01" onchange="saveFib('${it.ticker}',null,null,this.value)" style="width:66px;border-color:#ff9838" placeholder="頸線"></td>`
+            +`<td style="text-align:center" class="mono" style="color:${rv>=1.5?'#2ee6a6':'var(--dim)'}">${rv!=null?rv:'—'}</td>`
+            +`<td style="text-align:center">${stat}</td>`
+            +noteCell(it)+delCell(it)+'</tr>';
+        }).join('');
+      }else{
+        // ALL 同 其他策略：通用欄（Close/EMA20/RSI/Ready策略）
+        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        tb.innerHTML=rows.map(it=>'<tr>'+linkCell(it)
+          +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
+          +`<td style="text-align:right">${ema20Cell(it.ticker)}</td>`
+          +`<td style="text-align:right">${rsiCell(it.ticker)}</td>`
+          +`<td>${stratBadges(it.ticker)}</td>`
+          +noteCell(it)+delCell(it)+'</tr>').join('');
+      }
     }
     async function saveFib(ticker,a,b,h1){
       const cur=fibMap[ticker.toUpperCase()]||{a:'',b:'',h1:''};
@@ -199,6 +266,7 @@ const _MODES=['trader','work','mobile'];
       if(h1!==null)cur.h1=parseFloat(h1)||'';
       fibMap[ticker.toUpperCase()]=cur;
       try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'fib_set',ticker,a:cur.a,b:cur.b,h1:cur.h1})});}catch(e){}
+      if(wlTab==='S6')render();
     }
     async function removeStock(ticker){
       list=list.filter(x=>x.ticker!==ticker);
