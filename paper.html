@@ -282,7 +282,7 @@ function renderS1(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>圖</th><th>操作</th>'
+      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const t1hit=(p.t1hit==='Y'||p.t1hit==='y')?'<span class="green">✓掂咗</span>':'—';
@@ -303,6 +303,7 @@ function renderS1(openP, closed){
         +'<td style="text-align:center">'+t1hit+'</td>'
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
         +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
+        +'<td class="mono" style="text-align:center">'+(p.trend||'—')+'</td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
         +'<td style="white-space:nowrap"><button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseS1(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeS1(\''+p.ticker+'\','+p.entry+')">刪除</button></td>'
         +'</tr>';
