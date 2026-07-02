@@ -36,3 +36,6 @@ jobs:
 
       - name: Run S7 paper trade
         run: python paper_trade.py
+
+      - name: Lock S6 breakout RV
+        run: python s6_breakout.py
