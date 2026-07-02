@@ -127,37 +127,45 @@
     body.mobile table{min-width:900px}
     body.mobile th, body.mobile td{font-size:14px;padding:14px 12px}
     body.mobile tr.colfilter select{font-size:13px;padding:6px 4px}
-    /* 第 2 欄（Ticker）固定 */
-    body.mobile thead th:nth-child(2),
-    body.mobile tbody td:nth-child(2){
-      position:sticky;left:0;z-index:5;
+    /* 第 1 欄（⭐ Watchlist）固定 */
+    body.mobile thead th:nth-child(1),
+    body.mobile tbody td:nth-child(1){
+      position:sticky;left:0;z-index:6;
+      min-width:40px;width:40px;
+      background:var(--surface-2)}
+    body.mobile tbody td:nth-child(1){background:var(--surface)}
+    body.mobile.work thead th:nth-child(1){background:#f3f3f3}
+    body.mobile.work tbody td:nth-child(1){background:#fff}
+    /* 第 3 欄（Ticker）固定，貼住 ⭐ 欄右邊 */
+    body.mobile thead th:nth-child(3),
+    body.mobile tbody td:nth-child(3){
+      position:sticky;left:40px;z-index:5;
       background:var(--surface-2);
       box-shadow:2px 0 4px rgba(0,0,0,.25)}
-    body.mobile tbody td:nth-child(2){background:var(--surface)}
-    body.mobile.work thead th:nth-child(2){background:#f3f3f3}
-    body.mobile.work tbody td:nth-child(2){background:#fff}
-    /* Mobile 隱藏第 1 欄 NEW（慳位）*/
-    body.mobile thead th:nth-child(1),
-    body.mobile tbody td:nth-child(1),
-    body.mobile tr.colfilter th:nth-child(1){display:none}
-    /* Column 顯示控制：table 加 class hide-cN 就隱藏第 N 欄 */
-    .hide-c3 td:nth-child(3),.hide-c3 th:nth-child(3){display:none}
-    .hide-c4 td:nth-child(4),.hide-c4 th:nth-child(4){display:none}
-    .hide-c5 td:nth-child(5),.hide-c5 th:nth-child(5){display:none}
-    .hide-c6 td:nth-child(6),.hide-c6 th:nth-child(6){display:none}
-    .hide-cC td:nth-child(7),.hide-cC th:nth-child(7),
+    body.mobile tbody td:nth-child(3){background:var(--surface)}
+    body.mobile.work thead th:nth-child(3){background:#f3f3f3}
+    body.mobile.work tbody td:nth-child(3){background:#fff}
+    /* Mobile 隱藏第 2 欄 NEW（慳位）*/
+    body.mobile thead th:nth-child(2),
+    body.mobile tbody td:nth-child(2),
+    body.mobile tr.colfilter th:nth-child(2){display:none}
+    /* Column 顯示控制：table 加 class hide-cN 就隱藏第 N 欄（跟返新嘅欄位次序） */
+    .hide-c3 td:nth-child(4),.hide-c3 th:nth-child(4){display:none}
+    .hide-c4 td:nth-child(5),.hide-c4 th:nth-child(5){display:none}
+    .hide-c5 td:nth-child(6),.hide-c5 th:nth-child(6){display:none}
+    .hide-c6 td:nth-child(7),.hide-c6 th:nth-child(7){display:none}
     .hide-cC td:nth-child(8),.hide-cC th:nth-child(8),
     .hide-cC td:nth-child(9),.hide-cC th:nth-child(9),
     .hide-cC td:nth-child(10),.hide-cC th:nth-child(10),
-    .hide-cC td:nth-child(11),.hide-cC th:nth-child(11){display:none}
-    .hide-c12 td:nth-child(12),.hide-c12 th:nth-child(12){display:none}
-    .hide-c13 td:nth-child(13),.hide-c13 th:nth-child(13){display:none}
-    .hide-c14 td:nth-child(14),.hide-c14 th:nth-child(14){display:none}
-    .hide-c15 td:nth-child(15),.hide-c15 th:nth-child(15){display:none}
-    .hide-c16 td:nth-child(16),.hide-c16 th:nth-child(16){display:none}
-    .hide-c17 td:nth-child(17),.hide-c17 th:nth-child(17){display:none}
-    .hide-c18 td:nth-child(18),.hide-c18 th:nth-child(18){display:none}
-    .hide-c19 td:nth-child(19),.hide-c19 th:nth-child(19){display:none}
+    .hide-cC td:nth-child(11),.hide-cC th:nth-child(11),
+    .hide-cC td:nth-child(12),.hide-cC th:nth-child(12){display:none}
+    .hide-c12 td:nth-child(13),.hide-c12 th:nth-child(13){display:none}
+    .hide-c13 td:nth-child(14),.hide-c13 th:nth-child(14){display:none}
+    .hide-c14 td:nth-child(15),.hide-c14 th:nth-child(15){display:none}
+    .hide-c15 td:nth-child(16),.hide-c15 th:nth-child(16){display:none}
+    .hide-c16 td:nth-child(17),.hide-c16 th:nth-child(17){display:none}
+    .hide-c17 td:nth-child(18),.hide-c17 th:nth-child(18){display:none}
+    .hide-c18 td:nth-child(19),.hide-c18 th:nth-child(19){display:none}
     /* Column picker 面板 */
     #colPicker{display:none;position:fixed;top:60px;right:20px;z-index:2000;background:var(--surface);
       border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:280px}
@@ -286,7 +294,7 @@
       <table>
         <thead>
           <tr>
-            <th>NEW</th><th class="sortable" onclick="sortBy('ticker')">Ticker <span class="sarr" data-k="ticker"></span></th>
+            <th style="text-align:center">⭐</th><th>NEW</th><th class="sortable" onclick="sortBy('ticker')">Ticker <span class="sarr" data-k="ticker"></span></th>
             <th class="sortable" style="text-align:right" onclick="sortBy('close')">Close <span class="sarr" data-k="close"></span></th>
             <th class="sortable" style="text-align:right" onclick="sortBy('chgPct')">1D% <span class="sarr" data-k="chgPct"></span></th>
             <th style="text-align:right">EMA</th>
@@ -299,10 +307,9 @@
             <th class="sortable s1col" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次收市 close 跌穿 EMA20 係幾多日前">跌穿 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
             <th class="s1col" style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
             <th>入場建議</th>
-            <th style="text-align:center">⭐</th>
           </tr>
           <tr class="colfilter">
-            <th></th><th></th><th></th><th></th><th></th>
+            <th></th><th></th><th></th><th></th><th></th><th></th>
             <th><select id="cfRsi" onchange="applyColFilter(this);render()">
               <option value="">RSI</option>
               <option value="40-70">40-70</option>
@@ -341,7 +348,7 @@
               <option value="2">≤2日</option>
               <option value="3">≤3日</option>
             </select></th>
-            <th class="s1col"></th><th></th><th></th>
+            <th class="s1col"></th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -596,6 +603,7 @@
         const cell=(i)=>{ if(i===4&&!c5Exist)return '<td class="c na">–</td>';
           return `<td class="c ${st.conds[i]?'ok':'no'}">${st.conds[i]?'✓':'✗'}</td>`;};
         return `<tr>
+          <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（21日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
           <td>${st.isNew?'<span class="new-badge">NEW</span>':''}</td>
           <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a></td>
           <td class="mono" style="text-align:right">$${s.close.toFixed(2)}</td>
@@ -618,7 +626,6 @@
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():''}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
-          <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（21日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
         </tr>`;
       }).join('');
     }
@@ -1070,12 +1077,12 @@
     (function(){try{var m=(document.cookie.match(/uimode=(\w+)/)||[])[1];if(m&&MODES.includes(m))setMode(m);}catch(e){}})();
 
     // ── Column 顯示控制（每個 mode 記唔同設定）──
-    // key = hide class；label = 顯示名。Ticker(第2欄)永遠 show，唔列出。
+    // key = hide class；label = 顯示名。⭐(第1欄)同 Ticker(第3欄)永遠 show，唔列出。
     const COLDEFS=[
       {k:'c3',label:'Close'},{k:'c4',label:'1D%'},{k:'c5',label:'EMA'},{k:'c6',label:'RSI'},
       {k:'cC',label:'C1–C5'},{k:'c12',label:'Req'},{k:'c13',label:'Bonus'},{k:'c14',label:'Streak'},
-      {k:'c15',label:'趨勢 (S1)'},{k:'c16',label:'跌穿 (S1)'},{k:'c17',label:'企返 (S1)'},
-      {k:'c18',label:'入場建議'},{k:'c19',label:'⭐'}
+      {k:'c15',label:'趨勢 (S1)'},{k:'c16',label:'跌穿 (S1)'},{k:'c17',label:'企返 (S1)'}
+      ,{k:'c18',label:'入場建議'}
     ];
     // 每個 mode 嘅「隱藏」清單。預設：全部 show（hidden 空）
     let colHidden={trader:[],work:[],mobile:[]};
