@@ -226,25 +226,30 @@ const _MODES=['trader','work','mobile'];
         }).join('');
       }else if(wlTab==='S6'){
         // S6：A/B/頸線H1 + 今日RV + 手法A/C
-        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th style="text-align:center">今日RV</th><th style="text-align:center">狀態</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th style="text-align:center">突破RV</th><th style="text-align:center">狀態</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>{
           const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
           const fb=fibMap[it.ticker.toUpperCase()]||{};
           const a=fb.a||'',b=fb.b||'',h1=fb.h1||'';
-          const rv=s.rvol;
-          // 狀態：升穿頸線 + RV 判手法
+          const broke=!!fb.breakoutDate;
+          // 已鎖定突破 → 用鎖定嗰日嘅 RV/手法；未突破 → 用即時 RV
+          const rv=broke?fb.breakoutRV:s.rvol;
           let stat='—';
-          if(h1&&s.close>parseFloat(h1)){
-            if(rv>=1.5)stat='<span style="color:#2ee6a6;font-weight:700">突破·手法A</span>';
-            else if(rv!=null)stat='<span style="color:#ff9838;font-weight:700">突破·手法C縮量</span>';
-            else stat='<span style="color:#2ee6a6">升穿頸線</span>';
-          }else if(h1){const away=((parseFloat(h1)-s.close)/s.close*100).toFixed(1);stat='<span style="color:var(--dim)">差 '+away+'%</span>';}
+          if(broke){
+            const mLabel=fb.method==='A'?'手法A放量':'手法C縮量';
+            const mColor=fb.method==='A'?'#2ee6a6':'#ff9838';
+            stat=`<span style="color:${mColor};font-weight:700">突破·${mLabel}</span><br><span style="color:var(--faint);font-size:10.5px">${fb.breakoutDate}</span>`;
+          }else if(h1){
+            const away=((parseFloat(h1)-s.close)/s.close*100).toFixed(1);
+            stat='<span style="color:var(--dim)">差 '+away+'%</span>';
+          }
+          const rvColor=broke?(fb.method==='A'?'#2ee6a6':'#ff9838'):(rv>=1.5?'#2ee6a6':'var(--dim)');
           return '<tr>'+linkCell(it)
             +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
             +`<td style="text-align:center"><input type="number" class="note-input" value="${a}" step="0.01" onchange="saveFib('${it.ticker}',this.value,null,null)" style="width:66px" placeholder="低"></td>`
             +`<td style="text-align:center"><input type="number" class="note-input" value="${b}" step="0.01" onchange="saveFib('${it.ticker}',null,this.value,null)" style="width:66px" placeholder="高"></td>`
-            +`<td style="text-align:center"><input type="number" class="note-input" value="${h1}" step="0.01" onchange="saveFib('${it.ticker}',null,null,this.value)" style="width:66px;border-color:#ff9838" placeholder="頸線"></td>`
-            +`<td style="text-align:center" class="mono" style="color:${rv>=1.5?'#2ee6a6':'var(--dim)'}">${rv!=null?rv:'—'}</td>`
+            +`<td style="text-align:center"><input type="number" class="note-input" value="${h1}" step="0.01" onchange="saveFib('${it.ticker}',null,null,this.value)" style="width:66px;border-color:#ff9838" ${broke?'disabled':''} placeholder="頸線"></td>`
+            +`<td style="text-align:center" class="mono" style="color:${rvColor}">${rv!=null?rv:'—'}${broke?' 🔒':''}</td>`
             +`<td style="text-align:center">${stat}</td>`
             +noteCell(it)+delCell(it)+'</tr>';
         }).join('');
