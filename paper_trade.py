@@ -68,6 +68,30 @@ def _num(x):
     except (ValueError, TypeError):
         return None
 
+# S7 止賺保護期：入場後要曾經升穿呢個 buffer 先當「真正止賺」，
+# 未升到就淨係用硬止損睇住，唔會一有正常回調篤穿 MA 就篤走（未賺過錢）
+S7_BUFFER_MULT = 0.5  # buffer = entry + 0.5 × ATR(估算)
+
+def max_close_since(charts, ticker, entry_date_str):
+    """揾返 ticker 喺 charts.json 入面，entryDate 至今嘅最高 close。
+    冇歷史數據就 return None（外面會 fallback 用當日 close）。"""
+    hist = charts.get(ticker)
+    if not hist or not hist.get("t") or not hist.get("c"):
+        return None
+    ed = _norm_date(entry_date_str)
+    if not ed:
+        return None
+    ed_date = datetime.date(ed[0], ed[1], ed[2])
+    mx = None
+    for ts, c in zip(hist["t"], hist["c"]):
+        try:
+            d = datetime.datetime.utcfromtimestamp(ts).date()
+        except (ValueError, OSError, OverflowError):
+            continue
+        if d >= ed_date and c is not None:
+            mx = c if mx is None else max(mx, c)
+    return mx
+
 def main():
     # 0. 周末唔好跑（美股冇開市，數據冇更新會搞亂平倉）
     wd = datetime.datetime.utcnow().weekday()  # 0=Mon ... 5=Sat 6=Sun
@@ -78,6 +102,10 @@ def main():
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
     stocks = {s["ticker"]: s for s in data["stocks"]}
+    try:
+        charts = json.load(open("charts.json"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        charts = {}
 
     # 2. 攞現有 paper 持倉（Google Sheet "Paper" tab）
     pf = gv_get("paper_list")
@@ -148,7 +176,16 @@ def main():
         if close <= stop:
             exit_reason = "止蝕(1.5×ATR)"
         elif trail and close < trail:
-            exit_reason = "止賺(跌穿" + trail_name + ")"
+            # 保護期：要曾經升穿 entry + 0.5×ATR(估算) 先當「真正止賺」，
+            # 未升到就當未達標，唔平倉（避免入場即回調、未賺過錢就俾正常波動篤穿MA走）
+            atr_est = (entry - stop) / 1.5 if entry > stop else 0
+            buffer_px = entry + S7_BUFFER_MULT * atr_est
+            mx = max_close_since(charts, tk, ed)
+            if mx is None:
+                mx = max(close, st.get("high", close))  # 冇歷史數據 fallback
+            if mx >= buffer_px:
+                exit_reason = "止賺(跌穿" + trail_name + ")" if close > entry else "止蝕(曾達標後打返轉，跌穿" + trail_name + ")"
+            # else：未升穿保護buffer，唔平倉，繼續持有等硬止損
         if exit_reason:
             r_mult = (close - entry) / (entry - stop) if entry > stop else 0
             pct = (close - entry) / entry * 100
