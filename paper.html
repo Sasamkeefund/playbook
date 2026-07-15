@@ -298,8 +298,10 @@ function renderS1(openP, closed){
       +'<th>股</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
-      const t1hit=(p.t1hit==='Y'||p.t1hit==='y')?'<span class="green">✓掂咗</span>':'—';
+      const t1hitBool=(p.t1hit==='Y'||p.t1hit==='y');
+      const t1hit=t1hitBool?'<span class="green">✓掂咗</span>':'—';
       const e=Number(p.entry), st=Number(p.stop), t1=Number(p.t1), t2=Number(p.t2);
+      const effStop=(t1hitBool&&t1)?(e+(t1-e)*0.5):st;
       const risk=e-st;
       const rr1=(risk>0&&t1)?'1:'+((t1-e)/risk).toFixed(1):'—';
       const rr2=(risk>0&&t2)?'1:'+((t2-e)/risk).toFixed(1):'—';
@@ -315,7 +317,7 @@ function renderS1(openP, closed){
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
         +'<td class="mono">$'+p.entry+'</td>'
         +curCell
-        +'<td class="mono red">$'+p.stop+'</td>'
+        +'<td class="mono red">$'+effStop.toFixed(2)+(t1hitBool?'<br><span style="font-size:10px;color:var(--faint)">🔒掂T1後上調</span>':'')+'</td>'
         +'<td style="font-size:11px;color:var(--dim)">'+(p.state||'').replace('S1 ','')+'</td>'
         +'<td class="mono green">$'+(p.t1||'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr1+'</td>'
