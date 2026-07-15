@@ -641,6 +641,7 @@ def get_sp500_tickers():
         pass
     # 2) GitHub 上公開嘅 S&P500 成份股 CSV（穩陣好多，GH Actions 唔會俾 block）
     try:
+        import csv, io
         url = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/master/data/constituents.csv"
         resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=15)
         if resp.status_code == 200 and len(resp.text) > 3000:
