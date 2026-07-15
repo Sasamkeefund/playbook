@@ -625,6 +625,7 @@ def get_russell1000_tickers():
 
 
 def get_sp500_tickers():
+    # 1) Wikipedia（有時俾 block / 結構變咗攞唔到）
     try:
         url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
         resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=15)
@@ -636,13 +637,33 @@ def get_sp500_tickers():
             out = [t for t in tickers if not (t in seen or seen.add(t))]
             if len(out) > 400:
                 return out
-    except:
+    except Exception:
         pass
+    # 2) GitHub 上公開嘅 S&P500 成份股 CSV（穩陣好多，GH Actions 唔會俾 block）
+    try:
+        url = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/master/data/constituents.csv"
+        resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=15)
+        if resp.status_code == 200 and len(resp.text) > 3000:
+            rd = csv.DictReader(io.StringIO(resp.text))
+            out = []
+            seen = set()
+            for row in rd:
+                sym = (row.get("Symbol") or "").strip().upper().replace(".", "-")
+                if sym and sym not in seen:
+                    seen.add(sym)
+                    out.append(sym)
+            if len(out) > 400:
+                return out
+    except Exception:
+        pass
+    # 3) 本地 tickers.txt
     try:
         with open("tickers.txt") as f:
             return [ln.strip().upper() for ln in f if ln.strip()]
     except FileNotFoundError:
-        return ["AAPL", "MSFT", "NVDA", "AMD", "PLTR", "CRWD", "AVGO", "META", "TSLA"]
+        pass
+    # 4) 最後手段：極細清單（3個 source 都失敗先會用到，理論上唔應該行到呢度）
+    return ["AAPL", "MSFT", "NVDA", "AMD", "PLTR", "CRWD", "AVGO", "META", "TSLA"]
 
 
 # ─────────────────────────────────────────────────────────────
