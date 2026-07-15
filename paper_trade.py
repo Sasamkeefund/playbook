@@ -143,10 +143,14 @@ def main():
             t1hit = str(p.get("t1hit", "")).upper() == "Y"
             exit_reason = None
             exit_px = None
-            # 止損優先（保守）：當日 Low ≤ 止損
-            if low <= stop:
-                exit_reason = "止蝕(跌穿止損)"
-                exit_px = stop
+            # 掂咗 T1 之後：止損搬去 entry 同 T1 中間點（鎖定部分利潤，留返少少回調空間）
+            eff_stop = stop
+            if t1hit and t1 is not None:
+                eff_stop = entry + (t1 - entry) * 0.5
+            # 止損優先（保守）：當日 Low ≤ (新)止損
+            if low <= eff_stop:
+                exit_reason = "止蝕(跌穿保本止損@T1中間點)" if t1hit else "止蝕(跌穿止損)"
+                exit_px = eff_stop
             # T2 止賺：當日 High ≥ T2
             elif t2 and high >= t2:
                 exit_reason = "止賺(到T2 1.618)"
@@ -160,9 +164,10 @@ def main():
                 print(f"平倉 [S1] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
                 held.discard((tk, "S1"))
             elif t1 and high >= t1 and not t1hit:
-                # 掂咗 T1 → 標記（通知，唔平倉）
+                # 掂咗 T1 → 標記（通知，止損同步搬去 entry/T1 中間點，唔即刻平）
                 gv_post({"action": "paper_t1hit", "ticker": tk, "group": "S1", "t1hit": "Y"})
-                print(f"📍 [S1] {tk}: 掂咗 T1 ${t1}（通知，繼續持倉等 T2）")
+                new_stop = entry + (t1 - entry) * 0.5
+                print(f"📍 [S1] {tk}: 掂咗 T1 ${t1}（止損搬去 ${new_stop:.2f}，繼續持倉等 T2）")
             continue
 
         # ── S7 組（A/B/C/D）：用收市價 + trail ──
