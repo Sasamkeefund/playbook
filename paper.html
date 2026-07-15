@@ -116,12 +116,17 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
   document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
 }});
 
-let _allOpen=[], _allClosed=[], _ptMode='S7';
+let _allOpen=[], _allClosed=[], _ptMode='S7', _liveData={};
 async function load(){
   let d;
   try{ d=await (await fetch(WL_API+"?action=paper_list")).json(); }
   catch(e){ document.getElementById('content').innerHTML='<div class="warn">載入失敗。請確認 Apps Script 已更新（加咗 Paper trade）。</div>'; return; }
   _allOpen=d.open||[]; _allClosed=d.closed||[];
+  try{
+    const dj=await (await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now())).json();
+    _liveData={};
+    (dj.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
+  }catch(e){ _liveData={}; }
   renderCurrent();
 }
 function switchPT(m){
@@ -214,18 +219,26 @@ function render(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>組</th><th>股</th><th>入場日</th><th>買入價</th><th>止損</th><th>風險</th><th>跑贏大盤</th><th>Bonus</th><th>止賺</th><th>圖</th>'
+      +'<th>組</th><th>股</th><th>入場日</th><th>買入價</th><th>現價</th><th>止損</th><th>風險</th><th>跑贏大盤</th><th>Bonus</th><th>止賺</th><th>圖</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const risk=(p.entry&&p.stop)?((p.entry-p.stop)/p.entry*100).toFixed(1)+'%':'—';
       const rs=(p.m1!=null&&p.spy1m!=null)?(p.m1+'% vs '+p.spy1m+'%'):'—';
       const g=p.group||'A';
       const gc=g==='B'?'#7c5cff':'#4d8dff';
+      const live7=_liveData[p.ticker.toUpperCase()];
+      const cur7=live7?live7.close:null;
+      const curPct7=(cur7!=null&&p.entry)?((cur7-p.entry)/p.entry*100):null;
+      const curColor7=curPct7==null?'':(curPct7>=0?'green':'red');
+      const curCell7=cur7!=null
+        ?'<td class="mono '+curColor7+'">$'+cur7.toFixed(2)+'<br><span style="font-size:10px">'+(curPct7>=0?'+':'')+curPct7.toFixed(1)+'%</span></td>'
+        :'<td class="mono" style="color:var(--faint)">—</td>';
       h+='<tr>'
         +'<td style="font-weight:700;color:'+gc+'">'+g+'</td>'
         +'<td><b>'+p.ticker+'</b></td>'
         +'<td class="mono">'+p.entryDate+'</td>'
         +'<td class="mono">$'+p.entry+'</td>'
+        +curCell7
         +'<td class="mono red">$'+p.stop+'</td>'
         +'<td class="mono">'+risk+'</td>'
         +'<td class="mono" style="font-size:11px">'+rs+'</td>'
@@ -282,7 +295,7 @@ function renderS1(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>入場日</th><th>買入</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>圖</th><th>操作</th>'
+      +'<th>股</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const t1hit=(p.t1hit==='Y'||p.t1hit==='y')?'<span class="green">✓掂咗</span>':'—';
@@ -290,10 +303,18 @@ function renderS1(openP, closed){
       const risk=e-st;
       const rr1=(risk>0&&t1)?'1:'+((t1-e)/risk).toFixed(1):'—';
       const rr2=(risk>0&&t2)?'1:'+((t2-e)/risk).toFixed(1):'—';
+      const live=_liveData[p.ticker.toUpperCase()];
+      const cur=live?live.close:null;
+      const curPct=(cur!=null&&e)?((cur-e)/e*100):null;
+      const curColor=curPct==null?'':(curPct>=0?'green':'red');
+      const curCell=cur!=null
+        ?'<td class="mono '+curColor+'">$'+cur.toFixed(2)+'<br><span style="font-size:10px">'+(curPct>=0?'+':'')+curPct.toFixed(1)+'%</span></td>'
+        :'<td class="mono" style="color:var(--faint)">—</td>';
       h+='<tr>'
         +'<td><b>'+p.ticker+'</b></td>'
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
         +'<td class="mono">$'+p.entry+'</td>'
+        +curCell
         +'<td class="mono red">$'+p.stop+'</td>'
         +'<td style="font-size:11px;color:var(--dim)">'+(p.state||'').replace('S1 ','')+'</td>'
         +'<td class="mono green">$'+(p.t1||'—')+'</td>'
