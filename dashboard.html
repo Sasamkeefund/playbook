@@ -309,7 +309,7 @@
             <th class="sortable" style="text-align:center" onclick="sortBy('score')">Req <span class="sarr" data-k="score"></span></th>
             <th class="sortable" style="text-align:center" onclick="sortBy('bonusScore')">Bonus <span class="sarr" data-k="bonusScore"></span></th>
             <th class="sortable" style="text-align:center" onclick="sortBy('streak')">Streak <span class="sarr" data-k="streak"></span></th>
-            <th class="sortable s1col" style="text-align:center" onclick="sortBy('recentMaxStreak')" title="過去20日內最高連續 5/5 日數（趨勢健康度）">趨勢 <span class="sarr" data-k="recentMaxStreak"></span></th>
+            <th class="sortable s1col" style="text-align:center" onclick="sortBy('recentMaxStreak')" title="呢次跌穿EMA20之前，連續幾多日5/5 ready（冇偵測到跌穿就 fallback 用近20日內最高連續日數）">趨勢 <span class="sarr" data-k="recentMaxStreak"></span></th>
             <th class="sortable s1col" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次收市 close 跌穿 EMA20 係幾多日前">跌穿 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
             <th class="s1col" style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
             <th>入場建議</th>
@@ -424,7 +424,7 @@
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5'||tab==='S6')?4:(tab==='S7'?6:5);
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
-        const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.recentMaxStreak||0;
+        const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.streakBefore||strat.recentMaxStreak||0;
         // 趨勢質素標籤 — 跟 checklist：25日+ 🔥／7-14日 ✓／3-6日 ⚠️保守／<3日 ✗唔入
         const qLabel=rms>=25?'主升浪('+rms+'日)':rms>=7?'趨勢健康('+rms+'日)':rms>=3?'趨勢轉弱('+rms+'日,保守)':'趨勢唔支持('+rms+'日)';
         const qMark=rms>=7?'✓':rms>=3?'⚠️':'🛑';
@@ -545,7 +545,7 @@
       const cfStreak=document.getElementById('cfStreak')?document.getElementById('cfStreak').value:'';
       if(cfStreak)s=s.filter(x=>x.strategies[activeTab].streak>=parseInt(cfStreak));
       const cfTrend=document.getElementById('cfTrend')?document.getElementById('cfTrend').value:'';
-      if(cfTrend)s=s.filter(x=>(x.strategies[activeTab].recentMaxStreak||0)>=parseInt(cfTrend));
+      if(cfTrend)s=s.filter(x=>((x.strategies[activeTab].streakBefore||x.strategies[activeTab].recentMaxStreak)||0)>=parseInt(cfTrend));
       const cfPb=document.getElementById('cfPb')?document.getElementById('cfPb').value:'';
       if(cfPb)s=s.filter(x=>{const p=x.strategies[activeTab].pullbackDaysAgo;return p!==null&&p!==undefined&&p>=0&&p<=parseInt(cfPb);});
       if(activeTab==='S1'&&ff){
@@ -630,7 +630,7 @@
           <td style="text-align:center"><span class="badge ${st.bonusScore>=3?'perfect':''}">${st.bonusScore}/${mxB}</span></td>
           <td class="mono" style="text-align:center;font-weight:700">${st.streak}</td>
           ${activeTab==='S1'?(function(){
-            const rms=st.recentMaxStreak||0, touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow;
+            const rms=st.streakBefore||st.recentMaxStreak||0, touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow;
             const rmsCol=rms>=7?'#2ee6a6':rms>=3?'#f5b945':'#ff5d6c';
             const agoTxt=touch?(ago===0?'今日':ago+'日前'):'—';
             const agoCol=(touch&&ago<=1)?'#2ee6a6':'var(--dim)';
@@ -733,14 +733,16 @@
       return chartsCache;
     }
     function fakeoutBadge(st){
-      const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.recentMaxStreak;
-      const trendTxt=rms!==undefined?`（趨勢 ${rms}日${rms>=7?' ✓健康':rms>=3?' ⚠️一般':' 🔻弱'}）`:'';
+      const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.streakBefore||st.recentMaxStreak||0;
+      const trendTxt=`（趨勢 ${rms}日${rms>=7?' ✓健康':rms>=3?' ⚠️保守':' 🛑唔支持'}）`;
       if(!touch)return `<span style="color:var(--faint)">近6日收市未跌穿 EMA20 ${trendTxt}</span>`;
       if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，等收市企返上 ${trendTxt}</span>`;
+      if(rms<3)return `<span style="color:#ff5d6c">🛑 大趨勢唔支持，唔入 ${trendTxt}</span>`;
       // 已企返：升返第幾日
       const day=ago+1; // ago0=升返第1日
-      if(ago<=1)return `<span style="color:#2ee6a6">🔥 升返第${day}日（入場窗口）${trendTxt}</span>`;
-      return `<span style="color:var(--faint)">升返第${day}日 — 過咗入場窗口，太遲 SKIP ${trendTxt}</span>`;
+      if(ago>=3)return `<span style="color:#ff5d6c">升返第${day}日(4日+) — 唔入，Setup唔成立 ${trendTxt}</span>`;
+      if(ago===2)return `<span style="color:#f5b945">3日升返 — 較弱，考慮細position ${trendTxt}</span>`;
+      return `<span style="color:#2ee6a6">🔥 升返第${day}日（入場窗口）${trendTxt}</span>`;
     }
     function fillChartInfo(ticker){
       const box=document.getElementById('chartInfo');
@@ -1025,7 +1027,7 @@
       const cd=s1.conds||[];
       const snap={
         rsi:stk.rsi||'', c1:cd[0]?1:0, c2:cd[1]?1:0, c3:cd[2]?1:0, c4:cd[3]?1:0, c5:cd[4]?1:0,
-        req:s1.score||'', streak:s1.streak||'', trend:s1.recentMaxStreak||'',
+        req:s1.score||'', streak:s1.streak||'', trend:s1.streakBefore||s1.recentMaxStreak||'',
         pullback:(s1.pullbackDaysAgo!==undefined&&s1.pullbackDaysAgo>=0)?s1.pullbackDaysAgo:'',
         aboveEma20:s1.aboveNow?1:0
       };
