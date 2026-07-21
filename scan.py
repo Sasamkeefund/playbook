@@ -43,6 +43,7 @@ YF_HEADERS = {
 # 六個策略 metadata
 STRATEGY_META = {
     "S1": {"name": "順勢交易",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
+    "S1V1": {"name": "順勢交易(原版·前頂)", "dir": "Long", "live": True, "reqMax": 4, "bonusMax": 3},
     "S2": {"name": "趨勢終結",  "dir": "Short",      "live": False, "reqMax": 5, "bonusMax": 5},
     "S3": {"name": "突破交易",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
     "S4": {"name": "假突破",    "dir": "Long/Short", "live": False, "reqMax": 4, "bonusMax": 4},
@@ -280,6 +281,107 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S1"]["pullbackTouch"] = pullback_touch
     res["S1"]["pullbackDaysAgo"] = pullback_days_ago
     res["S1"]["aboveNow"] = above_now
+
+    # ── S1V1 原版（前頂支撐版，非 EMA20）──
+    # 入場邏輯：Wave1 頂（前頂）→ Wave2 突破前頂（適中距離）→ 略跌穿前頂（假突破）→ 急速反彈返上前頂
+    # R1 過度延伸／R2 突破距離／R3 假突破蠟燭質素／R4 急速反彈 = Required 4項
+    # b1 回調快／b2 回調縮量／b3 第2浪速度≥第1浪 = Bonus 3項
+    v1 = {"ready": False, "score": 0, "bonusScore": 0, "conds": [False, False, False, False],
+          "bonus": [False, False, False], "keyvals": {}, "wave1Top": None, "wave2Top": None, "breachLow": None,
+          "breakoutDistPct": None, "daysToBreach": None, "daysRecover": None, "aboveNow": None,
+          "entry": None, "stop": None, "t1": None, "t2": None}
+    try:
+        win = 70
+        lo_bound = max(0, idx - win)
+        seg_h, seg_l, seg_c, seg_v = highs[lo_bound:idx+1], lows[lo_bound:idx+1], closes[lo_bound:idx+1], volumes[lo_bound:idx+1]
+        n = len(seg_h)
+        if n >= 30:
+            # 揾晒窗口入面所有局部高位（swing high：3日之內最高）
+            span = 3
+            piv = [i for i in range(span, n - span) if seg_h[i] == max(seg_h[i-span:i+span+1])]
+            # 揾最遲(最貼近今日)一對合資格嘅 (Wave1頂, Wave2頂)：
+            #   Wave2 > Wave1，突破距離 3-12%，中間要有真正回調（跌返最少1.5%）
+            best = None
+            for a in range(len(piv)):
+                for bpos in range(a+1, len(piv)):
+                    i1, i2 = piv[a], piv[bpos]
+                    p1, p2 = seg_h[i1], seg_h[i2]
+                    if p2 <= p1:
+                        continue
+                    dist_pct = (p2 - p1) / p1 * 100
+                    if not (3 <= dist_pct <= 12):
+                        continue
+                    between_low = min(seg_l[i1:i2+1]) if i2 > i1 else p1
+                    if (p1 - between_low) / p1 * 100 < 1.5:
+                        continue
+                    if best is None or i2 > best[1]:
+                        best = (i1, i2)
+            if best:
+                wave1_idx, wave2_idx = best
+                wave1_top, wave2_top = seg_h[wave1_idx], seg_h[wave2_idx]
+                breakout_dist_pct = (wave2_top - wave1_top) / wave1_top * 100
+                wave1_low = min(seg_l[max(0, wave1_idx-15):wave1_idx+1])
+                wave1_days = wave1_idx - seg_l[max(0, wave1_idx-15):wave1_idx+1].index(wave1_low) if wave1_idx > 0 else 1
+                wave1_days = max(wave1_days, 1)
+                wave1_speed = ((wave1_top - wave1_low) / wave1_low * 100 / wave1_days) if wave1_low else 0
+                wave2_days = max(wave2_idx - wave1_idx, 1)
+                wave2_speed = breakout_dist_pct / wave2_days
+                # Wave2頂之後，揾第一個 low 跌返落 wave1_top 或以下（假突破/略跌穿）
+                post_l = seg_l[wave2_idx+1:]
+                post_c = seg_c[wave2_idx+1:]
+                post_h = seg_h[wave2_idx+1:]
+                post_v = seg_v[wave2_idx+1:]
+                breach_pos = next((i for i, l in enumerate(post_l) if l <= wave1_top), None)
+                if breach_pos is not None:
+                    breach_low = min(post_l[breach_pos:breach_pos+3])  # 跌穿後3日內嘅最低（防單日插針）
+                    # 跌穿之後，幾多日先收返上 wave1_top（急速反彈）
+                    recover_i = next((i for i in range(breach_pos, len(post_c)) if post_c[i] > wave1_top), None)
+                    days_recover_v1 = (recover_i - breach_pos) if recover_i is not None else None
+                    today_above = close > wave1_top
+                    # ── Required ──
+                    # R1：Wave2 攀升段有冇過度延伸（10日升幅極端 + 天量）
+                    look = min(10, wave2_days)
+                    seg10_c = seg_c[max(0, wave2_idx-look+1):wave2_idx+1]
+                    seg10_v = seg_v[max(0, wave2_idx-look+1):wave2_idx+1]
+                    run10 = (seg10_c[-1] - seg10_c[0]) / seg10_c[0] * 100 if len(seg10_c) >= 2 and seg10_c[0] else 0
+                    vol_avg = sma_at(volumes, idx, 60) or 1
+                    vol_spike = any(v > vol_avg * 2.5 for v in seg10_v) if seg10_v else False
+                    r1_ok = not (run10 > 40 and vol_spike)
+                    # R2：突破距離適中（3%~12%，篩選 pivot pair 嗰陣已經確保）
+                    r2_ok = True
+                    # R3：假突破蠟燭質素（breach 嗰日：細蠋身 或 長下影線）
+                    r3_ok = False
+                    if breach_pos < len(post_h):
+                        bh, bl, bc = post_h[breach_pos], post_l[breach_pos], post_c[breach_pos]
+                        prior_i = wave2_idx + breach_pos  # breach 前一日喺 seg_c 嘅位置
+                        bo = seg_c[prior_i] if 0 <= prior_i < len(seg_c) else bc
+                        day_range = bh - bl
+                        body = abs(bc - bo)
+                        lower_wick = min(bo, bc) - bl
+                        r3_ok = day_range > 0 and (body / day_range < 0.35 or lower_wick / day_range > 0.4)
+                    # R4：急速反彈返上前頂（3日內收返上）
+                    r4_ok = days_recover_v1 is not None and days_recover_v1 <= 3
+                    conds = [r1_ok, r2_ok, r3_ok, r4_ok]
+                    # ── Bonus ──
+                    b1_ok = breach_pos <= 5  # 回調快（Wave2頂到跌穿前頂，≤5日）
+                    pullback_vol = (sum(post_v[:breach_pos+1]) / len(post_v[:breach_pos+1])) if breach_pos >= 0 and post_v[:breach_pos+1] else None
+                    b2_ok = (pullback_vol is not None and vol_avg and pullback_vol < vol_avg * 0.8)
+                    b3_ok = wave2_speed >= wave1_speed
+                    bonus = [b1_ok, b2_ok, b3_ok]
+                    score = sum(conds)
+                    v1.update({
+                        "ready": score == 4, "score": score, "bonusScore": sum(bonus),
+                        "conds": conds, "bonus": bonus,
+                        "wave1Top": round(wave1_top, 2), "wave2Top": round(wave2_top, 2),
+                        "breachLow": round(breach_low, 2), "breakoutDistPct": round(breakout_dist_pct, 1),
+                        "daysToBreach": breach_pos, "daysRecover": days_recover_v1, "aboveNow": today_above,
+                        "entry": round(wave1_top * 1.003, 2), "stop": round(breach_low, 2),
+                        "t1": round(wave2_top, 2),
+                        "t2": round(wave1_top * 1.003 + (wave2_top - breach_low) * 1.618, 2),
+                    })
+    except Exception:
+        pass
+    res["S1V1"] = v1
 
     # ── S2 趨勢終結（Required 4/5, Bonus 5/5）──
     c = [
@@ -748,6 +850,14 @@ def build_record(ticker, hist):
                 else:
                     run = 0
             strategies[s]["recentMaxStreak"] = recent_max
+        # S1V1 原版（前頂支撐）：pass-through 波段價位 + entry/stop/T1/T2
+        if s == "S1V1":
+            for k in ("wave1Top", "wave2Top", "breachLow", "breakoutDistPct",
+                      "daysToBreach", "daysRecover", "aboveNow", "entry", "stop", "t1", "t2"):
+                strategies[s][k] = today[s].get(k)
+            # 粗篩用：借 S1(EMA20版) 嘅 streak + EMA200斜率，做「大趨勢確認」參考（V1 checklist Step0 要求）
+            strategies[s]["macroStreak"] = streaks.get("S1", 0)
+            strategies[s]["macroEma200Up"] = bool(today["S1"]["conds"][2]) if len(today["S1"]["conds"]) > 2 else None
         # S7 距52週高
         if s == "S7":
             strategies[s]["pctFromHigh"] = today[s].get("pctFromHigh")
