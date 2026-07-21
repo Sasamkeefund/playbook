@@ -169,6 +169,33 @@ def rs_strong(idx, lookback=126, buf=0.97):
     return rl[idx] >= max(seg) * buf
 
 
+def zigzag_pivots(highs, lows, min_pct=3.0):
+    """標準 ZigZag：一定要跌／升夠 min_pct% 先確認轉勢，先算一個 pivot。
+    Return: list of (idx, price, 'H'|'L')，按時間順序。
+    呢個保證任何兩個連續嘅 'H' pivot 之間，一定有真正嘅回調（唔會好似前頂升少少即刻又破頂咁誤判）。"""
+    n = len(highs)
+    pivots = []
+    if n < 3:
+        return pivots
+    ext_type = 'H'
+    ext_idx, ext_val = 0, highs[0]
+    for i in range(1, n):
+        if ext_type == 'H':
+            if highs[i] >= ext_val:
+                ext_val, ext_idx = highs[i], i
+            elif ext_val and (ext_val - lows[i]) / ext_val * 100 >= min_pct:
+                pivots.append((ext_idx, ext_val, 'H'))
+                ext_type, ext_val, ext_idx = 'L', lows[i], i
+        else:
+            if lows[i] <= ext_val:
+                ext_val, ext_idx = lows[i], i
+            elif ext_val and (highs[i] - ext_val) / ext_val * 100 >= min_pct:
+                pivots.append((ext_idx, ext_val, 'L'))
+                ext_type, ext_val, ext_idx = 'H', highs[i], i
+    pivots.append((ext_idx, ext_val, ext_type))
+    return pivots
+
+
 def eval_strategies(idx, closes, highs, lows, volumes,
                     ema20a, ema50a, ema200a, rsia, atr5a, atr14a):
     """返回 {S1:{conds, bonus, score, bonusScore, ready, keyvals}, ...}。"""
@@ -297,10 +324,11 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         seg_h, seg_l, seg_c, seg_v = highs[lo_bound:idx+1], lows[lo_bound:idx+1], closes[lo_bound:idx+1], volumes[lo_bound:idx+1]
         n = len(seg_h)
         if n >= 30:
-            # 揾晒窗口入面所有局部高位（swing high：3日之內最高）
-            span = 3
-            piv = [i for i in range(span, n - span) if seg_h[i] == max(seg_h[i-span:i+span+1])]
-            # 揾合資格嘅 (Wave1頂, Wave2頂) 配對：Wave2>Wave1，突破距離3-12%，中間有真正回調（≥1.5%）
+            # 揾晒窗口入面嘅真正 swing high（ZigZag：一定要回調夠 4% 先確認個頂，
+            # 避免好似單日插針咁嘅雜訊被當做前頂 —— 用真實數據 backtest 過先定呢個門檻）
+            zz = zigzag_pivots(seg_h, seg_l, min_pct=4.0)
+            piv = [i for i, price, typ in zz if typ == 'H']
+            # 揾合資格嘅 (Wave1頂, Wave2頂) 配對：Wave2>Wave1，突破距離2-15%（ZigZag已經確保中間有回調）
             # 再要求：跌穿前頂之後嘅反彈，一定要「新鮮」（反彈完成嗰日 = 今日或前2日內），
             #        揀當中反彈最新鮮嗰一對（唔係揀 wave2 最遲嗰對 —— 舊 setup 就算 wave2 好遲都唔算數）
             best = None
@@ -311,7 +339,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                     if p2 <= p1:
                         continue
                     dist_pct = (p2 - p1) / p1 * 100
-                    if not (3 <= dist_pct <= 12):
+                    if not (2 <= dist_pct <= 15):
                         continue
                     between_low = min(seg_l[i1:i2+1]) if i2 > i1 else p1
                     if (p1 - between_low) / p1 * 100 < 1.5:
@@ -359,7 +387,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 vol_avg = sma_at(volumes, idx, 60) or 1
                 vol_spike = any(v > vol_avg * 2.5 for v in seg10_v) if seg10_v else False
                 r1_ok = not (run10 > 40 and vol_spike)
-                # R2：突破距離適中（3%~12%，篩選 pivot pair 嗰陣已經確保）
+                # R2：突破距離適中（2%~15%，篩選 pivot pair 嗰陣已經確保）
                 r2_ok = True
                 # R3：假突破蠟燭質素（breach 嗰日：細蠋身 或 長下影線）
                 r3_ok = False
