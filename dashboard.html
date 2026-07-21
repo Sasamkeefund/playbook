@@ -268,6 +268,12 @@
         <option value="touched">收市跌穿過（近6日）</option>
         <option value="below">收市跌穿但仲喺下面</option>
       </select>
+      <select id="filterVerdict">
+        <option value="">入場建議 不限</option>
+        <option value="green">🟢 可考慮（頂級/良好/突破/setup）</option>
+        <option value="amber">🟡 一般/觀察（細倉或續watch）</option>
+        <option value="red">🔴 未夠班/跳過</option>
+      </select>
       <select id="filterRetrace" class="s6filter" title="只 S6 有效（Patreon: 回調 ≤ 0.236）">
         <option value="">回調深度 不限</option>
         <option value="0.236">✅ 回調 ≤ 0.236（合格旗形）</option>
@@ -542,6 +548,8 @@
         else if(ff==='touched')s=s.filter(x=>x.strategies.S1.pullbackTouch);
         else if(ff==='below')s=s.filter(x=>x.strategies.S1.pullbackTouch&&!x.strategies.S1.aboveNow);
       }
+      const vf=document.getElementById('filterVerdict')?document.getElementById('filterVerdict').value:'';
+      if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab]).color===vf);
       // 排序
       if(sortKey){
         const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo'];
@@ -642,6 +650,7 @@
     document.getElementById('filterStreak').addEventListener('change',renderTable);
     document.getElementById('filterEma20').addEventListener('change',renderTable);
     document.getElementById('filterFakeout').addEventListener('change',renderTable);
+    document.getElementById('filterVerdict').addEventListener('change',renderTable);
     document.getElementById('filterRetrace').addEventListener('change',renderTable);
 
     let chartsCache=null, lwChart=null;
