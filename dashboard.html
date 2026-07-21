@@ -643,6 +643,7 @@
       document.getElementById('searchTicker').value='';
       document.getElementById('filterScore').value='';
       document.getElementById('filterStreak').value='';
+      document.getElementById('filterVerdict').value=(t==='S6')?'green':'';
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     document.getElementById('searchTicker').addEventListener('input',renderTable);
