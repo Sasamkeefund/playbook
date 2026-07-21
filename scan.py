@@ -877,7 +877,7 @@ def build_record(ticker, hist):
         # S1V1 原版（前頂支撐）：pass-through 波段價位 + entry/stop/T1/T2
         if s == "S1V1":
             for k in ("wave1Top", "wave2Top", "breachLow", "breakoutDistPct",
-                      "daysToBreach", "daysRecover", "aboveNow", "entry", "stop", "t1", "t2"):
+                      "daysToBreach", "daysRecover", "daysSinceRecover", "aboveNow", "entry", "stop", "t1", "t2"):
                 strategies[s][k] = today[s].get(k)
             # 粗篩用：借 S1(EMA20版) 嘅 streak + EMA200斜率，做「大趨勢確認」參考（V1 checklist Step0 要求）
             strategies[s]["macroStreak"] = streaks.get("_v1MacroStreak", 0)
