@@ -425,20 +425,22 @@
       const reqMax=(tab==='S4'||tab==='S5'||tab==='S6')?4:(tab==='S7'?6:5);
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
         const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.recentMaxStreak||0;
-        // 趨勢質素標籤（唔 block，只標示）
-        const qLabel=rms>=7?'趨勢健康('+rms+'日)':rms>=3?'趨勢一般('+rms+'日,保守)':'趨勢弱('+rms+'日,低質細注)';
-        const qMark=rms>=7?'✓':rms>=3?'⚠️':'🔻';
+        // 趨勢質素標籤 — 跟 checklist：25日+ 🔥／7-14日 ✓／3-6日 ⚠️保守／<3日 ✗唔入
+        const qLabel=rms>=25?'主升浪('+rms+'日)':rms>=7?'趨勢健康('+rms+'日)':rms>=3?'趨勢轉弱('+rms+'日,保守)':'趨勢唔支持('+rms+'日)';
+        const qMark=rms>=7?'✓':rms>=3?'⚠️':'🛑';
         // 核心 gate = 假突破形態
         if(!touch)return{text:'📈 近6日收市未跌穿 EMA20 — 等回調',color:'amber'};
         if(!above)return{text:'⬇ '+ago+'日前收市跌穿，等收市企返上 ｜ '+qLabel,color:'amber'};
-        // 已企返：升返第1-2日 = 入場窗口；第3日+ = 太遲
-        if(ago>=2)return{text:'⏰ 升返第'+(ago+1)+'日 — 過咗入場窗口（第1-2日），太遲，SKIP',color:'red'};
-        // ago 0-1 = 升返第1-2日，入場窗口 → 用趨勢標質素 + Bonus
+        // 跌穿前連續日數（趨勢）— checklist：<3日 直接唔入
+        if(rms<3)return{text:'🛑 唔入 — 跌穿EMA20之前連續日數唔夠('+rms+'日 < 3日)，大趨勢未確認健康',color:'red'};
+        // 升返日數 — checklist：1-2日 ✅／3日 ⚠️細倉／4日+ ❌唔入
+        if(ago>=3)return{text:'❌ 唔入 — 升返第'+(ago+1)+'日(4日+)，Setup唔成立，唔係假突破係真跌穿',color:'red'};
         const tail=' ｜ '+qMark+' '+qLabel+' ｜ R:R OK 先入，TradingView confirm';
-        if(bonus>=4&&rms>=7)return{text:'🔥 高質 setup：升返第'+(ago+1)+'日（入場窗口）+ Bonus高'+tail,color:'green'};
-        if(rms>=7)return{text:'✅ setup：升返第'+(ago+1)+'日（入場窗口）'+tail,color:'green'};
-        if(rms>=3)return{text:'✅ setup（保守注）：升返第'+(ago+1)+'日'+tail,color:'green'};
-        return{text:'⚠️ setup（低質細注）：升返第'+(ago+1)+'日'+tail,color:'amber'};}
+        if(ago===2)return{text:'⚠️ 3日升返 — 訊號較弱，考慮細position'+tail,color:'amber'};
+        // ago 0-1（升返第1-2日）且 rms≥3：再睇趨勢質素分綠/黃
+        if(rms<7)return{text:'⚠️ setup（趨勢轉弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'amber'};
+        if(bonus>=4)return{text:'🔥 高質 setup：升返第'+(ago+1)+'日（入場窗口）+ Bonus高'+tail,color:'green'};
+        return{text:'✅ setup：升返第'+(ago+1)+'日（入場窗口）'+tail,color:'green'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
         const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1, fr=strat.flagRetrace, streak=strat.streak||0;
@@ -478,6 +480,9 @@
         const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
         globalData=await r.json();
         document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated);
+        if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
+          document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1')?'green':'';
+        }
         render();
       }catch(e){document.getElementById('updated').textContent='❌ 無法讀取 data.json';}
     }
@@ -643,7 +648,7 @@
       document.getElementById('searchTicker').value='';
       document.getElementById('filterScore').value='';
       document.getElementById('filterStreak').value='';
-      document.getElementById('filterVerdict').value=(t==='S6')?'green':'';
+      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1')?'green':'';
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     document.getElementById('searchTicker').addEventListener('input',renderTable);
@@ -651,7 +656,7 @@
     document.getElementById('filterStreak').addEventListener('change',renderTable);
     document.getElementById('filterEma20').addEventListener('change',renderTable);
     document.getElementById('filterFakeout').addEventListener('change',renderTable);
-    document.getElementById('filterVerdict').addEventListener('change',renderTable);
+    document.getElementById('filterVerdict').addEventListener('change',function(){this.dataset.touched='1';renderTable();});
     document.getElementById('filterRetrace').addEventListener('change',renderTable);
 
     let chartsCache=null, lwChart=null;
