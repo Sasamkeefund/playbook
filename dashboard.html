@@ -869,6 +869,25 @@
       const line=(arr,color)=>{const s=chart.addLineSeries({color,lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
         s.setData(d.t.map((t,i)=>arr[i]==null?null:({time:t,value:arr[i]})).filter(Boolean));return s;};
       line(d.e20,col.e20);line(d.e50,col.e50);line(d.e200,col.e200);
+      // S1V1：喺圖度畫返前頂/Wave2頂/止蝕/entry/T2 做參考線（等你人手核對演算法揾嘅位啱唔啱）
+      if(activeTab==='S1V1'){
+        const s1v1Stock=globalData.stocks.find(x=>x.ticker===ticker);
+        const v1=s1v1Stock?s1v1Stock.strategies.S1V1:null;
+        if(v1&&v1.wave1Top!=null){
+          const t0=d.t[0], t1t=d.t[d.t.length-1];
+          const hline=(price,color,label,dashed)=>{
+            const s=chart.addLineSeries({color,lineWidth:dashed?1:2,lineStyle:dashed?2:0,
+              lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:label});
+            s.setData([{time:t0,value:price},{time:t1t,value:price}]);
+            return s;
+          };
+          hline(v1.wave1Top,'#ffd700','前頂',false);
+          if(v1.wave2Top!=null)hline(v1.wave2Top,'#6aabf0','Wave2頂/T1',true);
+          if(v1.breachLow!=null)hline(v1.breachLow,'#ff5d6c','止蝕',true);
+          if(v1.entry!=null)hline(v1.entry,'#2ee6a6','入場',true);
+          if(v1.t2!=null)hline(v1.t2,'#c77dff','T2',true);
+        }
+      }
       const nbars=d.t.length;
       const showRecent=()=>{chart.timeScale().setVisibleLogicalRange({from:Math.max(0,nbars-50),to:nbars});
         document.getElementById('zoomRecent').style.background='var(--surface-3)';document.getElementById('zoomRecent').style.color='var(--text)';
