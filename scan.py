@@ -575,6 +575,8 @@ def compute_streaks(closes, highs, lows, volumes,
     last = n - 1
     streaks = {s: 0 for s in STRATEGY_META}
     broken = {s: False for s in STRATEGY_META}
+    v1_macro_streak = 0
+    v1_macro_broken = False
     start = max(0, last - STREAK_LOOKBACK)
     for idx in range(last, start - 1, -1):
         ev = eval_strategies(idx, closes, highs, lows, volumes,
@@ -587,6 +589,15 @@ def compute_streaks(closes, highs, lows, volumes,
                     streaks[s] += 1
                 else:
                     broken[s] = True
+        # S1V1 macro streak：只計 S1(EMA20版) conds[2:5]（EMA200↑/RSI40-70/perf3m1m），
+        # 唔理 c1/c2（EMA20/EMA50）—— 跟 V1 checklist「詳細 Scanner 只睇三個條件」原文
+        if not v1_macro_broken:
+            s1c = ev["S1"]["conds"]
+            if len(s1c) >= 5 and all(s1c[2:5]):
+                v1_macro_streak += 1
+            else:
+                v1_macro_broken = True
+    streaks["_v1MacroStreak"] = v1_macro_streak
     return streaks
 
 
@@ -856,7 +867,7 @@ def build_record(ticker, hist):
                       "daysToBreach", "daysRecover", "aboveNow", "entry", "stop", "t1", "t2"):
                 strategies[s][k] = today[s].get(k)
             # 粗篩用：借 S1(EMA20版) 嘅 streak + EMA200斜率，做「大趨勢確認」參考（V1 checklist Step0 要求）
-            strategies[s]["macroStreak"] = streaks.get("S1", 0)
+            strategies[s]["macroStreak"] = streaks.get("_v1MacroStreak", 0)
             strategies[s]["macroEma200Up"] = bool(today["S1"]["conds"][2]) if len(today["S1"]["conds"]) > 2 else None
         # S7 距52週高
         if s == "S7":
