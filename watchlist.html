@@ -91,6 +91,12 @@
 
   <div class="container">
     <div class="section-title">📌 My Watchlist <span id="status" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)"></span></div>
+    <div style="display:flex;gap:8px;align-items:center;margin:12px 0">
+      <input id="addTickerInput" type="text" placeholder="加入 Ticker（例如 UNH）" style="padding:8px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;width:180px;text-transform:uppercase"
+        onkeydown="if(event.key==='Enter')addTickerManual()">
+      <button class="btn" onclick="addTickerManual()">➕ 加入 Watchlist</button>
+      <span style="font-size:11px;color:var(--faint)">（唔理你揀緊邊個 tab 都可以加）</span>
+    </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">
       <button class="wltab active" data-s="ALL" onclick="switchWL('ALL')">全部</button>
       <button class="wltab" data-s="S1" onclick="switchWL('S1')">S1 順勢</button>
@@ -143,6 +149,18 @@ const _MODES=['trader','work','mobile'];
         const d=await r.json();
         (d.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
       }catch(e){}
+    }
+    async function addTickerManual(){
+      const input=document.getElementById('addTickerInput');
+      const ticker=(input.value||'').trim().toUpperCase();
+      if(!ticker){alert('入返個 ticker 先');return;}
+      try{
+        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body:JSON.stringify({action:'add',ticker})});
+        input.value='';
+        alert('已加 '+ticker+' 入 Watchlist。1-2秒後刷新。');
+        setTimeout(()=>loadList(),1500);
+      }catch(e){alert('加入失敗，再試');}
     }
     async function loadList(){
       document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊…';
@@ -241,7 +259,10 @@ const _MODES=['trader','work','mobile'];
             stat=`<span style="color:${mColor};font-weight:700">突破·${mLabel}</span><br><span style="color:var(--faint);font-size:10.5px">${fb.breakoutDate}</span>`;
           }else if(h1){
             const away=((parseFloat(h1)-s.close)/s.close*100).toFixed(1);
-            stat='<span style="color:var(--dim)">差 '+away+'%</span>';
+            const previewOk=rv!=null&&rv!=='';
+            const previewLabel=previewOk?(rv>=1.5?'手法A放量':'手法C縮量'):'—';
+            const previewColor=previewOk?(rv>=1.5?'#2ee6a6':'#ff9838'):'var(--faint)';
+            stat='<span style="color:var(--dim)">差 '+away+'%</span><br><span style="font-size:10.5px;color:'+previewColor+'">現RV '+(previewOk?rv+'x':'—')+' → 若今日突破：'+previewLabel+'</span>';
           }
           const rvColor=broke?(fb.method==='A'?'#2ee6a6':'#ff9838'):(rv>=1.5?'#2ee6a6':'var(--dim)');
           return '<tr>'+linkCell(it)
