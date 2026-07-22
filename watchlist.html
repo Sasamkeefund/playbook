@@ -222,15 +222,16 @@ const _MODES=['trader','work','mobile'];
       const linkCell=it=>`<td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${it.ticker}');return false;">${it.ticker} 📈</a></td>`;
       const noteCell=it=>`<td><input type="text" class="note-input" value="${(it.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${it.ticker}',this.value)" placeholder="加筆記" style="width:120px"></td>`;
       const delCell=it=>`<td style="text-align:center"><button class="del-btn" onclick="removeStock('${it.ticker}')">🗑️</button></td>`;
+      const dateCell=it=>`<td class="mono" style="font-size:11.5px;color:var(--dim);white-space:nowrap">${it.dateAdded||'—'}</td>`;
 
       if(wlTab==='S1'){
         // S1：跟 paper trade 欄（RSI/C1-C5/REQ/Bonus/Streak/趨勢/跌穿/企返）
-        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close</th><th style="text-align:right">RSI</th><th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th><th style="text-align:center">REQ</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th><th style="text-align:center">趨勢</th><th style="text-align:center">跌穿</th><th style="text-align:center">企返</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:right">RSI</th><th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th><th style="text-align:center">REQ</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th><th style="text-align:center">趨勢</th><th style="text-align:center">跌穿</th><th style="text-align:center">企返</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>{
           const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
           const k=s.strategies.S1||{}; const cd=k.conds||[];
           const pb=(k.pullbackDaysAgo!==undefined&&k.pullbackDaysAgo>=0)?k.pullbackDaysAgo+'日':'—';
-          return '<tr>'+linkCell(it)
+          return '<tr>'+linkCell(it)+dateCell(it)
             +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
             +`<td style="text-align:right" class="mono">${s.rsi.toFixed(1)}</td>`
             +`<td style="text-align:center">${ck(cd[0])}</td><td style="text-align:center">${ck(cd[1])}</td><td style="text-align:center">${ck(cd[2])}</td><td style="text-align:center">${ck(cd[3])}</td><td style="text-align:center">${ck(cd[4])}</td>`
@@ -244,7 +245,7 @@ const _MODES=['trader','work','mobile'];
         }).join('');
       }else if(wlTab==='S6'){
         // S6：A/B/頸線H1 + 今日RV + 手法A/C
-        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th style="text-align:center">突破RV</th><th style="text-align:center">狀態</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th style="text-align:center">突破RV</th><th style="text-align:center">狀態</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>{
           const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
           const fb=fibMap[it.ticker.toUpperCase()]||{};
@@ -265,7 +266,7 @@ const _MODES=['trader','work','mobile'];
             stat='<span style="color:var(--dim)">差 '+away+'%</span><br><span style="font-size:10.5px;color:'+previewColor+'">現RV '+(previewOk?rv+'x':'—')+' → 若今日突破：'+previewLabel+'</span>';
           }
           const rvColor=broke?(fb.method==='A'?'#2ee6a6':'#ff9838'):(rv>=1.5?'#2ee6a6':'var(--dim)');
-          return '<tr>'+linkCell(it)
+          return '<tr>'+linkCell(it)+dateCell(it)
             +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
             +`<td style="text-align:center"><input type="number" class="note-input" value="${a}" step="0.01" onchange="saveFib('${it.ticker}',this.value,null,null)" style="width:66px" placeholder="低"></td>`
             +`<td style="text-align:center"><input type="number" class="note-input" value="${b}" step="0.01" onchange="saveFib('${it.ticker}',null,this.value,null)" style="width:66px" placeholder="高"></td>`
@@ -276,8 +277,8 @@ const _MODES=['trader','work','mobile'];
         }).join('');
       }else{
         // ALL 同 其他策略：通用欄（Close/EMA20/RSI/Ready策略）
-        th.innerHTML='<tr><th>Ticker</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
-        tb.innerHTML=rows.map(it=>'<tr>'+linkCell(it)
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        tb.innerHTML=rows.map(it=>'<tr>'+linkCell(it)+dateCell(it)
           +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
           +`<td style="text-align:right">${ema20Cell(it.ticker)}</td>`
           +`<td style="text-align:right">${rsiCell(it.ticker)}</td>`
