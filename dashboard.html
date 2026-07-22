@@ -420,12 +420,12 @@
       return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} HKT`;
     }
 
-    function getVerdict(tab,strat){
+    function getVerdict(tab,strat,curClose){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5'||tab==='S6'||tab==='S1V1')?4:(tab==='S7'?6:5);
       if(tab==='S1V1'){
         if(req<reqMax)return{text:'— 未 ready（未搵到完整 Wave1→Wave2→假突破→反彈 形態，或者反彈已經唔新鮮）',color:'red'};
-        const w1=strat.wave1Top, w2=strat.wave2Top, stopPx=strat.stop, t1=strat.t1, t2=strat.t2, dsr=strat.daysSinceRecover;
+        const w1=strat.wave1Top, w2=strat.wave2Top, stopPx=strat.stop, t1=strat.t1, t2=strat.t2, dsr=strat.daysSinceRecover, entryPx=strat.entry;
         const macroStreak=strat.macroStreak||0, macroUp=strat.macroEma200Up;
         const ptype=strat.patternType||'';
         const ptypeIcon=ptype==='長線支撐回試'?'🕰️':'⚡';
@@ -433,11 +433,17 @@
         const freshTxt=dsr!=null?(' ｜ 反彈'+(dsr===0?'今日':dsr+'日前')):'';
         const macroTxt=' ｜ 大趨勢(EMA20版streak) '+macroStreak+'日'+(macroUp?' + EMA200↑':' + EMA200未升');
         const priceTxt=(w1!=null)?(' ｜ 前頂$'+w1+' → Wave2$'+w2+'（+'+strat.breakoutDistPct+'%）｜ 止蝕$'+stopPx+' T1$'+t1+' T2$'+t2):'';
-        if(macroStreak<7){
-          return{text:'⚠️ 形態齊，但大趨勢未夠7日確認（現'+macroStreak+'日）— 保守處理'+ptypeTxt+freshTxt+priceTxt+macroTxt,color:'amber'};
+        // 現價偏離 entry 幾多%——先至係真正決定「仲追唔追得」嘅關鍵，唔淨係睇反彈日數
+        const drift=(curClose!=null&&entryPx)?((curClose-entryPx)/entryPx*100):null;
+        const driftTxt=drift!=null?(' ｜ 現價距entry '+(drift>=0?'+':'')+drift.toFixed(1)+'%'):'';
+        if(drift!=null&&drift>3){
+          return{text:'⚠️ 形態齊，但現價已經飛離entry '+drift.toFixed(1)+'%，追落去止蝕距離同R:R已經唔同晒，唔建議追'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt,color:'amber'};
         }
-        if(bonus>=2)return{text:'🔥 高質 Setup — R1-R4 全過 + Bonus '+bonus+'/3'+ptypeTxt+freshTxt+priceTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
-        return{text:'✅ Setup — R1-R4 全過'+ptypeTxt+freshTxt+priceTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
+        if(macroStreak<7){
+          return{text:'⚠️ 形態齊，但大趨勢未夠7日確認（現'+macroStreak+'日）— 保守處理'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt,color:'amber'};
+        }
+        if(bonus>=2)return{text:'🔥 高質 Setup — R1-R4 全過 + Bonus '+bonus+'/3'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
+        return{text:'✅ Setup — R1-R4 全過'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
       }
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
         const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.streakBefore||strat.recentMaxStreak||0;
@@ -570,7 +576,7 @@
         else if(ff==='below')s=s.filter(x=>x.strategies.S1.pullbackTouch&&!x.strategies.S1.aboveNow);
       }
       const vf=document.getElementById('filterVerdict')?document.getElementById('filterVerdict').value:'';
-      if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab]).color===vf);
+      if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close).color===vf);
       // 排序
       if(sortKey){
         const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo'];
@@ -642,7 +648,7 @@
       tb.innerHTML=stocks.map(s=>{
         const st=s.strategies[activeTab];
         const ch=s.chgPct>0?'up':s.chgPct<0?'down':'flat';
-        const v=getVerdict(activeTab,st);
+        const v=getVerdict(activeTab,st,s.close);
         const cell=(i)=>{ if(i===4&&!c5Exist)return '<td class="c na">–</td>';
           return `<td class="c ${st.conds[i]?'ok':'no'}">${st.conds[i]?'✓':'✗'}</td>`;};
         return `<tr>
@@ -788,7 +794,7 @@
       const s=globalData.stocks.find(x=>x.ticker===ticker);
       if(!s){box.innerHTML='';return;}
       const st=s.strategies[activeTab];
-      const v=getVerdict(activeTab,st);
+      const v=getVerdict(activeTab,st,s.close);
       const chCol=s.chgPct>0?'#2ee6a6':s.chgPct<0?'#ff5d6c':'var(--dim)';
       const vCol=v.color==='green'?'#2ee6a6':v.color==='amber'?'#f5b945':'#ff5d6c';
       const b=st.bonus||[];
