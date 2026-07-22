@@ -797,15 +797,24 @@
       const v=getVerdict(activeTab,st,s.close);
       const chCol=s.chgPct>0?'#2ee6a6':s.chgPct<0?'#ff5d6c':'var(--dim)';
       const vCol=v.color==='green'?'#2ee6a6':v.color==='amber'?'#f5b945':'#ff5d6c';
+      const cd=st.conds||[];
       const b=st.bonus||[];
-      const cks=b.map((x,i)=>`<span style="color:${x?'#2ee6a6':'#ff5d6c'}">C${i+1}${x?'✓':'✗'}</span>`).join(' ');
+      // Required 條件標籤：S1V1 用有意義嘅 R1-R4 名，其他 tab 沿用通用 C1-C5
+      const reqLabels=activeTab==='S1V1'
+        ?['R1 過度延伸','R2 突破距離','R3 假突破蠟燭','R4 急速反彈']
+        :cd.map((_,i)=>'C'+(i+1));
+      const reqTitles=activeTab==='S1V1'
+        ?['Wave2攀升段有冇過度延伸(10日升幅+天量)','突破距離係咪適中(2%~15%)','跌穿嗰日蠟燭質素(細蠋身/長下影)','跌穿之後幾多日內反彈返上前頂(≤3日)']
+        :[];
+      const reqCks=cd.map((x,i)=>`<span title="${reqTitles[i]||''}" style="color:${x?'#2ee6a6':'#ff5d6c'}">${reqLabels[i]}${x?'✓':'✗'}</span>`).join(' ');
+      const bonusCks=b.map((x,i)=>`<span style="color:${x?'#2ee6a6':'#ff5d6c'}">b${i+1}${x?'✓':'✗'}</span>`).join(' ');
       box.innerHTML=`
         <span><b class="mono" style="font-size:14px">${activeTab}</b></span>
         <span class="mono">$${s.close.toFixed(2)} <span style="color:${chCol}">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</span></span>
         <span style="color:var(--dim)">RSI <span class="mono" style="color:var(--text)">${s.rsi.toFixed(1)}</span></span>
-        <span style="display:flex;gap:7px">${cks}</span>
+        <span style="display:flex;gap:7px;flex-wrap:wrap">${reqCks}</span>
         <span style="color:var(--dim)">REQ <b class="mono" style="color:var(--text)">${st.score}</b></span>
-        <span style="color:var(--dim)">Bonus <b class="mono" style="color:var(--text)">${st.bonusScore}/5</b></span>
+        <span style="display:flex;gap:6px;align-items:center"><span style="color:var(--dim)">Bonus</span>${bonusCks}</span>
         <span style="color:var(--dim)">Streak <b class="mono" style="color:var(--text)">${st.streak}</b></span>
         ${activeTab==='S1'?fakeoutBadge(st):''}
         <span style="margin-left:auto;color:${vCol};font-weight:600">${v.text}</span>`;
