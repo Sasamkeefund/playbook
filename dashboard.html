@@ -313,6 +313,7 @@
             <th class="sortable s1col" id="s1colTh2" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次收市 close 跌穿 EMA20 係幾多日前">跌穿 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
             <th class="s1col" id="s1colTh3" style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
             <th>入場建議</th>
+            <th style="text-align:center" title="Tick咗會自動加去 Paper Trade「我的記錄(TradingView)」tab，買賣價你之後喺嗰度補">📝TV</th>
           </tr>
           <tr class="colfilter">
             <th></th><th></th><th></th><th></th><th></th><th></th>
@@ -354,7 +355,7 @@
               <option value="2">≤2日</option>
               <option value="3">≤3日</option>
             </select></th>
-            <th class="s1col"></th><th></th>
+            <th class="s1col"></th><th></th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -497,6 +498,7 @@
       return{text:'—',color:'red'};
     }
 
+    let tvOpenSet=new Set();
     async function loadData(){
       try{
         const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
@@ -505,6 +507,11 @@
         if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
           document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1')?'green':'';
         }
+        try{
+          const pr=await fetch(WL_API+'?action=paper_list&t='+Date.now());
+          const pd=await pr.json();
+          tvOpenSet=new Set((pd.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()));
+        }catch(e){tvOpenSet=new Set();}
         render();
       }catch(e){document.getElementById('updated').textContent='❌ 無法讀取 data.json';}
     }
@@ -643,7 +650,7 @@
       // 回調深度 filter 只喺 S6
       document.querySelectorAll('.s6filter').forEach(el=>{el.style.display=(activeTab==='S6')?'':'none';});
       const tb=document.getElementById('tbody');
-      const cspan=(activeTab==='S1'||activeTab==='S1V1')?19:16;
+      const cspan=(activeTab==='S1'||activeTab==='S1V1')?20:17;
       if(!stocks.length){tb.innerHTML='<tr><td colspan="'+cspan+'" class="empty">No stocks match filters</td></tr>';return;}
       tb.innerHTML=stocks.map(s=>{
         const st=s.strategies[activeTab];
@@ -685,6 +692,7 @@
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():''}
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
+          <td style="text-align:center"><input type="checkbox" ${tvOpenSet.has(s.ticker.toUpperCase())?'checked':''} onchange="toggleTVTrack('${s.ticker}',this)" style="width:16px;height:16px;cursor:pointer"></td>
         </tr>`;
       }).join('');
     }
@@ -744,6 +752,32 @@
       const b=document.getElementById('showSkipBtn');
       if(b){b.style.background=showSkipped?'var(--accent)':'var(--surface)';b.style.color=showSkipped?'#fff':'var(--dim)';}
       renderTable();
+    }
+    async function toggleTVTrack(ticker,checkbox){
+      ticker=ticker.toUpperCase();
+      if(checkbox.checked){
+        const stk=globalData.stocks.find(x=>x.ticker===ticker);
+        const strat=stk?stk.strategies[activeTab]:null;
+        const cd=(strat&&strat.conds)||[];
+        const today=new Date().toISOString().slice(0,10);
+        const trendVal=strat?(strat.streakBefore||strat.recentMaxStreak||strat.macroStreak||''):'';
+        try{
+          await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate:today,entry:'',stop:'',
+              state:activeTab+' | ',
+              rsi:stk?stk.rsi:'', c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+              req:strat?strat.score:'', streak:strat?strat.streak:'', trend:trendVal,
+              bonus:strat?strat.bonusScore:''})});
+          tvOpenSet.add(ticker);
+        }catch(e){alert('加入失敗，再試');checkbox.checked=false;}
+      }else{
+        if(!confirm('確定由「我的記錄」移除 '+ticker+'？（未平倉都會直接刪走）')){checkbox.checked=true;return;}
+        try{
+          await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body:JSON.stringify({action:'paper_remove',ticker,group:'TV',status:'open'})});
+          tvOpenSet.delete(ticker);
+        }catch(e){alert('移除失敗，再試');checkbox.checked=true;}
+      }
     }
     async function toggleStar(ticker,btn){
       ticker=ticker.toUpperCase();
