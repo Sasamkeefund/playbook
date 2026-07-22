@@ -418,41 +418,50 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>筆記</th><th>圖</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>掂T1</th><th>T2</th><th>RSI</th><th>REQ</th><th>Bonus</th><th>Streak/趨勢</th><th>筆記</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
+      const pending = (p.entry===''||p.entry==null||p.stop===''||p.stop==null);
       const e=Number(p.entry), stp=Number(p.stop);
+      const t1hitBool=(p.t1hit==='Y'||p.t1hit==='y');
+      const t1n=Number(p.t1);
+      const effStop=(t1hitBool&&t1n&&!pending)?(e+(t1n-e)*0.5):stp;
       const live=_liveData[p.ticker.toUpperCase()];
       const cur=live?live.close:null;
-      const curPct=(cur!=null&&e)?((cur-e)/e*100):null;
+      const curPct=(cur!=null&&!pending&&e)?((cur-e)/e*100):null;
       const curColor=curPct==null?'':(curPct>=0?'green':'red');
       const curCell=cur!=null
-        ?'<td class="mono '+curColor+'">$'+cur.toFixed(2)+'<br><span style="font-size:10px">'+(curPct>=0?'+':'')+curPct.toFixed(1)+'%</span></td>'
+        ?'<td class="mono '+curColor+'">$'+cur.toFixed(2)+(curPct!=null?'<br><span style="font-size:10px">'+(curPct>=0?'+':'')+curPct.toFixed(1)+'%</span>':'')+'</td>'
         :'<td class="mono" style="color:var(--faint)">—</td>';
-      h+='<tr>'
-        +'<td><b>'+p.ticker+'</b></td>'
+      h+='<tr'+(pending?' style="background:rgba(245,185,69,.06)"':'')+'>'
+        +'<td><b>'+p.ticker+'</b>'+(pending?'<br><span style="font-size:10px;color:var(--amber)">⏳待補買賣價</span>':'')+'</td>'
         +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+'</td>'
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
-        +'<td class="mono">$'+p.entry+'</td>'
+        +'<td class="mono">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+p.entry)+'</td>'
         +curCell
-        +'<td class="mono red">$'+(p.stop||'—')+'</td>'
+        +'<td class="mono red">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+effStop.toFixed(2)+(t1hitBool?'<br><span style="font-size:10px;color:var(--faint)">🔒掂T1後上調</span>':''))+'</td>'
         +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+'</td>'
-        +'<td class="mono green">$'+(p.t1||'—')+'</td>'
-        +'<td class="mono green">$'+(p.t2||'—')+'</td>'
-        +'<td style="font-size:11px;max-width:180px">'+(p.bonus||'—')+'</td>'
-        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
-        +'<td style="white-space:nowrap"><button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+p.entry+',\'open\')">刪除</button></td>'
+        +'<td class="mono green">'+(p.t1?'$'+p.t1:'—')+'</td>'
+        +'<td style="text-align:center">'+(t1hitBool?'<span class="green">✓掂咗</span>':'—')+'</td>'
+        +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
+        +'<td class="mono">'+(p.rsi||'—')+'</td>'
+        +'<td style="text-align:center">'+(p.req!==''&&p.req!=null?p.req+'/4':'—')+'</td>'
+        +'<td style="text-align:center">'+(p.bonus!==''&&p.bonus!=null?p.bonus:'—')+'</td>'
+        +'<td style="text-align:center">'+(p.streak||'—')+' / '+(p.trend||'—')+'</td>'
+        +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
+        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
+        +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+p.entry+',\'open\')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
-  }else h+='<div class="sub">仲未有記錄。喺上面「新增記錄」填低第一筆。</div>';
+  }else h+='<div class="sub">仲未有記錄。喺上面「新增記錄」填低第一筆，或者喺 Screener 度 tick 「📝TV」欄。</div>';
   h+='</div>';
 
   // 已平倉
   h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
   if(cl.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>筆記</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>REQ</th><th>Bonus</th><th>筆記</th><th>操作</th>'
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
@@ -465,7 +474,9 @@ function renderTV(openP, closed){
         +'<td class="mono">$'+t.exitPx+'</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
-        +'<td style="font-size:11px;max-width:200px">'+(t.bonus||'—')+'</td>'
+        +'<td style="text-align:center">'+(t.req!==''&&t.req!=null?t.req+'/4':'—')+'</td>'
+        +'<td style="text-align:center">'+(t.bonus!==''&&t.bonus!=null?t.bonus:'—')+'</td>'
+        +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
         +'</tr>';
     });
@@ -504,10 +515,32 @@ async function addTV(){
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate,entry,stop,
-        state:strategy+' | '+stopMethod, t1, t2, bonus:notes})});
+        state:strategy+' | '+stopMethod, t1, t2, notes})});
     alert('已新增 '+ticker+'。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('新增失敗，再試');}
+}
+async function editTV(ticker){
+  const rec=_allOpen.find(p=>p.ticker===ticker&&p.group==='TV');
+  if(!rec){alert('搵唔到記錄');return;}
+  const entryStr=prompt('買入價（留空=唔改）：', rec.entry||'');
+  if(entryStr===null)return;
+  const stopStr=prompt('止損（留空=唔改）：', rec.stop||'');
+  if(stopStr===null)return;
+  const t1Str=prompt('T1（留空=唔改）：', rec.t1||'');
+  if(t1Str===null)return;
+  const t2Str=prompt('T2（留空=唔改）：', rec.t2||'');
+  if(t2Str===null)return;
+  const payload={action:'paper_edit',ticker,group:'TV'};
+  if(entryStr!=='')payload.entry=parseFloat(entryStr);
+  if(stopStr!=='')payload.stop=parseFloat(stopStr);
+  if(t1Str!=='')payload.t1=parseFloat(t1Str);
+  if(t2Str!=='')payload.t2=parseFloat(t2Str);
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    alert('已更新 '+ticker+'。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('更新失敗，再試');}
 }
 async function manualCloseTV(ticker, entry){
   const px=prompt('平倉 '+ticker+'，輸入平倉價：');
