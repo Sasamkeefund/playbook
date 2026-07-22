@@ -427,14 +427,17 @@
         if(req<reqMax)return{text:'— 未 ready（未搵到完整 Wave1→Wave2→假突破→反彈 形態，或者反彈已經唔新鮮）',color:'red'};
         const w1=strat.wave1Top, w2=strat.wave2Top, stopPx=strat.stop, t1=strat.t1, t2=strat.t2, dsr=strat.daysSinceRecover;
         const macroStreak=strat.macroStreak||0, macroUp=strat.macroEma200Up;
+        const ptype=strat.patternType||'';
+        const ptypeIcon=ptype==='長線支撐回試'?'🕰️':'⚡';
+        const ptypeTxt=ptype?(' ｜ '+ptypeIcon+ptype):'';
         const freshTxt=dsr!=null?(' ｜ 反彈'+(dsr===0?'今日':dsr+'日前')):'';
         const macroTxt=' ｜ 大趨勢(EMA20版streak) '+macroStreak+'日'+(macroUp?' + EMA200↑':' + EMA200未升');
         const priceTxt=(w1!=null)?(' ｜ 前頂$'+w1+' → Wave2$'+w2+'（+'+strat.breakoutDistPct+'%）｜ 止蝕$'+stopPx+' T1$'+t1+' T2$'+t2):'';
         if(macroStreak<7){
-          return{text:'⚠️ 形態齊，但大趨勢未夠7日確認（現'+macroStreak+'日）— 保守處理'+freshTxt+priceTxt+macroTxt,color:'amber'};
+          return{text:'⚠️ 形態齊，但大趨勢未夠7日確認（現'+macroStreak+'日）— 保守處理'+ptypeTxt+freshTxt+priceTxt+macroTxt,color:'amber'};
         }
-        if(bonus>=2)return{text:'🔥 高質 Setup — R1-R4 全過 + Bonus '+bonus+'/3'+freshTxt+priceTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
-        return{text:'✅ Setup — R1-R4 全過'+freshTxt+priceTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
+        if(bonus>=2)return{text:'🔥 高質 Setup — R1-R4 全過 + Bonus '+bonus+'/3'+ptypeTxt+freshTxt+priceTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
+        return{text:'✅ Setup — R1-R4 全過'+ptypeTxt+freshTxt+priceTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
       }
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
         const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.streakBefore||strat.recentMaxStreak||0;
