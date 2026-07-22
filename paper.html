@@ -434,14 +434,17 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>掂T1</th><th>T2</th><th>RSI</th><th>REQ</th><th>Bonus</th><th>Streak/趨勢</th><th>筆記</th><th>連結</th><th>圖</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>掂T1</th><th>T2</th><th>R:R→T2</th><th>RSI</th><th>REQ</th><th>Bonus</th><th>Streak/趨勢</th><th>筆記</th><th>連結</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const pending = (p.entry===''||p.entry==null||p.stop===''||p.stop==null);
       const e=Number(p.entry), stp=Number(p.stop);
       const t1hitBool=(p.t1hit==='Y'||p.t1hit==='y');
-      const t1n=Number(p.t1);
+      const t1n=Number(p.t1), t2n=Number(p.t2);
       const effStop=(t1hitBool&&t1n&&!pending)?(e+(t1n-e)*0.5):stp;
+      const risk=e-stp;
+      const rr1=(!pending&&risk>0&&p.t1)?'1:'+((t1n-e)/risk).toFixed(1):'—';
+      const rr2=(!pending&&risk>0&&p.t2)?'1:'+((t2n-e)/risk).toFixed(1):'—';
       const live=_liveData[p.ticker.toUpperCase()];
       const cur=live?live.close:null;
       const curPct=(cur!=null&&!pending&&e)?((cur-e)/e*100):null;
@@ -458,8 +461,10 @@ function renderTV(openP, closed){
         +'<td class="mono red">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+effStop.toFixed(2)+(t1hitBool?'<br><span style="font-size:10px;color:var(--faint)">🔒掂T1後上調</span>':''))+'</td>'
         +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+'</td>'
         +'<td class="mono green">'+(p.t1?'$'+p.t1:'—')+'</td>'
+        +'<td class="mono" style="font-size:11px">'+rr1+'</td>'
         +'<td style="text-align:center">'+(t1hitBool?'<span class="green">✓掂咗</span>':'—')+'</td>'
         +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
+        +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
         +'<td style="text-align:center">'+(p.req!==''&&p.req!=null?p.req+'/4':'—')+'</td>'
         +'<td style="text-align:center">'+(p.bonus!==''&&p.bonus!=null?p.bonus:'—')+'</td>'
