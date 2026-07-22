@@ -627,7 +627,7 @@
       if(th1&&th2&&th3){
         if(activeTab==='S1V1'){
           th1.innerHTML='前頂'; th1.title='Wave1頂（前頂支撐位）';
-          th2.innerHTML='反彈日數'; th2.title='跌穿前頂之後，幾多日先收返上前頂（急速反彈）';
+          th2.innerHTML='反彈'; th2.title='反彈返上前頂嗰日，距今幾多日（0=今日，即係入場窗口）';
           th3.innerHTML='企返'; th3.title='今日 close 是否企返前頂之上';
         }else{
           th1.innerHTML='趨勢 <span class="sarr" data-k="recentMaxStreak"></span>'; th1.title='呢次跌穿EMA20之前，連續幾多日5/5 ready';
@@ -674,10 +674,10 @@
               +'<td class="s1col mono" style="text-align:center;color:'+agoCol+';font-weight:'+((touch&&ago<=1)?'700':'400')+'">'+agoTxt+'</td>'
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():activeTab==='S1V1'?(function(){
-            const w1=st.wave1Top, dRec=st.daysRecover, above=st.aboveNow;
+            const w1=st.wave1Top, dsr=st.daysSinceRecover, above=st.aboveNow;
             const w1Txt=w1!=null?'$'+w1:'—';
-            const recTxt=dRec!=null?(dRec===0?'今日':dRec+'日'):'—';
-            const recCol=(dRec!=null&&dRec<=3)?'#2ee6a6':'var(--dim)';
+            const recTxt=dsr!=null?(dsr===0?'今日':dsr+'日前'):'—';
+            const recCol=(dsr!=null&&dsr<=1)?'#2ee6a6':(dsr!=null&&dsr<=2)?'#f5b945':'var(--dim)';
             const aboveTxt=w1==null?'—':(above?'✓':'✗');
             const aboveCol=w1==null?'var(--faint)':(above?'#2ee6a6':'#ff5d6c');
             return '<td class="s1col mono" style="text-align:center;font-weight:700">'+w1Txt+'</td>'
