@@ -102,6 +102,7 @@
         <div><label class="sub">T1</label><input id="etT1" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
         <div><label class="sub">T2</label><input id="etT2" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
       </div>
+      <div id="etEntryMethodWrap" style="display:none;margin-top:10px"><label class="sub">入場手法</label><select id="etEntryMethod" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"><option value="手法A(放量)">手法A(放量)</option><option value="手法C(縮量)">手法C(縮量)</option></select></div>
       <div style="margin-top:10px"><label class="sub">TradingView 連結</label><input id="etLink" type="url" placeholder="https://www.tradingview.com/x/..." style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
       <div style="margin-top:10px"><label class="sub">筆記</label><textarea id="etNotes" rows="2" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit"></textarea></div>
       <button class="btn primary" style="margin-top:14px;background:var(--accent);color:#fff;width:100%" onclick="saveEditTV()">儲存</button>
@@ -417,8 +418,9 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>➕ 新增記錄</h2>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">'
     +'<div><label class="sub">股票 Ticker</label><input id="tvTicker" placeholder="例如 UNH" onchange="suggestTVStop()" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
-    +'<div><label class="sub">策略</label><select id="tvStrategy" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)">'
+    +'<div><label class="sub">策略</label><select id="tvStrategy" onchange="toggleTVEntryMethod()" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)">'
     +'<option>S1</option><option>S1V1</option><option>S2</option><option>S3</option><option>S4</option><option>S5</option><option>S6</option><option>S7</option><option>其他</option></select></div>'
+    +'<div id="tvEntryMethodWrap" style="display:none"><label class="sub">入場手法</label><select id="tvEntryMethod" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"><option value="手法A(放量)">手法A(放量)</option><option value="手法C(縮量)">手法C(縮量)</option></select></div>'
     +'<div><label class="sub">入場日</label><input id="tvDate" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
     +'<div><label class="sub">買入價</label><input id="tvEntry" type="number" step="0.01" onchange="suggestTVStop()" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
     +'<div><label class="sub">止損</label><input id="tvStop" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
@@ -459,14 +461,14 @@ function renderTV(openP, closed){
         +'<td class="mono">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+p.entry)+'</td>'
         +curCell
         +'<td class="mono red">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+effStop.toFixed(2)+(t1hitBool?'<br><span style="font-size:10px;color:var(--faint)">🔒掂T1後上調</span>':''))+'</td>'
-        +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+'</td>'
+        +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+(((p.state||'').split('|')[2]||'').trim()?'<br><span style="color:var(--accent)">'+((p.state||'').split('|')[2]||'').trim()+'</span>':'')+'</td>'
         +'<td class="mono green">'+(p.t1?'$'+p.t1:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr1+'</td>'
         +'<td style="text-align:center">'+(t1hitBool?'<span class="green">✓掂咗</span>':'—')+'</td>'
         +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
-        +'<td style="text-align:center">'+(p.req!==''&&p.req!=null?p.req+'/4':'—')+'</td>'
+        +'<td style="text-align:center">'+(p.req!==''&&p.req!=null?p.req:'—')+'</td>'
         +'<td style="text-align:center">'+(p.bonus!==''&&p.bonus!=null?p.bonus:'—')+'</td>'
         +'<td style="text-align:center">'+(p.streak||'—')+' / '+(p.trend||'—')+'</td>'
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
@@ -496,7 +498,7 @@ function renderTV(openP, closed){
         +'<td class="mono">$'+t.exitPx+'</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
-        +'<td style="text-align:center">'+(t.req!==''&&t.req!=null?t.req+'/4':'—')+'</td>'
+        +'<td style="text-align:center">'+(t.req!==''&&t.req!=null?t.req:'—')+'</td>'
         +'<td style="text-align:center">'+(t.bonus!==''&&t.bonus!=null?t.bonus:'—')+'</td>'
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
@@ -523,6 +525,10 @@ function suggestTVStop(){
   document.getElementById('tvStop').value=stop;
   if(!entryEl.value)entryEl.value=live.close;
 }
+function toggleTVEntryMethod(){
+  const s=document.getElementById('tvStrategy').value;
+  document.getElementById('tvEntryMethodWrap').style.display=(s==='S6')?'':'none';
+}
 async function addTV(){
   const ticker=(document.getElementById('tvTicker').value||'').trim().toUpperCase();
   const strategy=document.getElementById('tvStrategy').value;
@@ -530,6 +536,7 @@ async function addTV(){
   const entry=document.getElementById('tvEntry').value;
   const stop=document.getElementById('tvStop').value;
   const stopMethod=document.getElementById('tvStopMethod').value;
+  const entryMethod=(strategy==='S6')?document.getElementById('tvEntryMethod').value:'';
   const t1=document.getElementById('tvT1').value;
   const t2=document.getElementById('tvT2').value;
   const notes=document.getElementById('tvNotes').value;
@@ -537,7 +544,7 @@ async function addTV(){
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate,entry,stop,
-        state:strategy+' | '+stopMethod, t1, t2, notes})});
+        state:strategy+' | '+stopMethod+(entryMethod?' | '+entryMethod:''), t1, t2, notes})});
     alert('已新增 '+ticker+'。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('新增失敗，再試');}
@@ -554,6 +561,8 @@ function editTV(ticker){
   document.getElementById('etEntry').value=rec.entry||'';
   document.getElementById('etStop').value=rec.stop||'';
   document.getElementById('etStopMethod').value=(parts[1]||'前底').trim()==='1.5×ATR'?'1.5×ATR':'前底';
+  document.getElementById('etEntryMethodWrap').style.display=(_editTVStrategy==='S6')?'':'none';
+  if(_editTVStrategy==='S6')document.getElementById('etEntryMethod').value=(parts[2]||'').trim()==='手法C(縮量)'?'手法C(縮量)':'手法A(放量)';
   document.getElementById('etT1').value=rec.t1||'';
   document.getElementById('etT2').value=rec.t2||'';
   document.getElementById('etLink').value=rec.tvLink||'';
@@ -578,6 +587,7 @@ async function saveEditTV(){
   const entry=document.getElementById('etEntry').value;
   const stop=document.getElementById('etStop').value;
   const stopMethod=document.getElementById('etStopMethod').value;
+  const entryMethod=(_editTVStrategy==='S6')?document.getElementById('etEntryMethod').value:'';
   const t1=document.getElementById('etT1').value;
   const t2=document.getElementById('etT2').value;
   const link=document.getElementById('etLink').value;
@@ -586,7 +596,7 @@ async function saveEditTV(){
   if(stop!=='')payload.stop=parseFloat(stop);
   if(t1!=='')payload.t1=parseFloat(t1);
   if(t2!=='')payload.t2=parseFloat(t2);
-  payload.state=(_editTVStrategy||'')+' | '+stopMethod;
+  payload.state=(_editTVStrategy||'')+' | '+stopMethod+(entryMethod?' | '+entryMethod:'');
   payload.tvLink=link;
   payload.notes=notes;
   try{
