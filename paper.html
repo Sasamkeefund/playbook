@@ -79,6 +79,7 @@
     <div style="display:flex;gap:8px;margin:14px 0">
       <button id="tabS7" class="ptab active" onclick="switchPT('S7')">🤖 S7 機械</button>
       <button id="tabS1" class="ptab" onclick="switchPT('S1')">✋ S1 人手揀</button>
+      <button id="tabTV" class="ptab" onclick="switchPT('TV')">📝 我的記錄(TradingView)</button>
     </div>
     <div id="content"><div class="loading">載入緊…</div></div>
   </div>
@@ -133,8 +134,9 @@ function switchPT(m){
   _ptMode=m;
   document.getElementById('tabS7').classList.toggle('active',m==='S7');
   document.getElementById('tabS1').classList.toggle('active',m==='S1');
-  document.getElementById('ptTitle').textContent=m==='S7'?'📒 S7 Paper Trade — 機械模擬（跟 J Law）':'📒 S1 Paper Trade — 人手揀股（假突破回測）';
-  document.getElementById('ptSub').textContent=m==='S7'?'入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA':'入場：你睇圖人手揀 ｜ 止損：1.5ATR 或 前面最底 ｜ 止賺：T1(通知) / T2(1.618)';
+  document.getElementById('tabTV').classList.toggle('active',m==='TV');
+  document.getElementById('ptTitle').textContent=m==='S7'?'📒 S7 Paper Trade — 機械模擬（跟 J Law）':m==='S1'?'📒 S1 Paper Trade — 人手揀股（假突破回測）':'📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade';
+  document.getElementById('ptSub').textContent=m==='S7'?'入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA':m==='S1'?'入場：你睇圖人手揀 ｜ 止損：1.5ATR 或 前面最底 ｜ 止賺：T1(通知) / T2(1.618)':'記低你自己喺 TradingView 落嘅 paper trade，留返個原因，儲返自己嘅trade record';
   renderCurrent();
 }
 async function removeS1(ticker, entry){
@@ -170,7 +172,8 @@ async function removeS1Closed(ticker, entry){
 }
 function renderCurrent(){
   if(_ptMode==='S1')renderS1(_allOpen.filter(p=>p.group==='S1'), _allClosed.filter(p=>p.group==='S1'));
-  else render(_allOpen.filter(p=>p.group!=='S1'), _allClosed.filter(p=>p.group!=='S1'));
+  else if(_ptMode==='TV')renderTV(_allOpen.filter(p=>p.group==='TV'), _allClosed.filter(p=>p.group==='TV'));
+  else render(_allOpen.filter(p=>p.group!=='S1'&&p.group!=='TV'), _allClosed.filter(p=>p.group!=='S1'&&p.group!=='TV'));
 }
 
 function render(openP, closed){
@@ -374,6 +377,148 @@ function renderS1(openP, closed){
 
   document.getElementById('content').innerHTML=h;
 }
+
+function renderTV(openP, closed){
+  closed = closed.filter(t=>{
+    const rOk = t.r!==''&&t.r!==null&&t.r!==undefined&&!isNaN(Number(t.r));
+    return rOk;
+  });
+  let h='';
+  const cl=closed, w=cl.filter(t=>Number(t.r)>0);
+  const tR=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
+  h+='<div class="panel"><h2>📊 我的記錄 統計</h2>';
+  h+='<div style="display:flex;gap:24px;flex-wrap:wrap">';
+  h+='<div><div class="sub">持倉中</div><div style="font-size:24px;font-weight:700">'+openP.length+'</div></div>';
+  h+='<div><div class="sub">已平倉</div><div style="font-size:24px;font-weight:700">'+cl.length+'</div></div>';
+  h+='<div><div class="sub">勝率</div><div style="font-size:24px;font-weight:700">'+(cl.length?Math.round(w.length/cl.length*100)+'%':'—')+'</div></div>';
+  h+='<div><div class="sub">每單期望</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR/cl.length>=0?'+':'')+(tR/cl.length).toFixed(2)+'R':'—')+'</div></div>';
+  h+='<div><div class="sub">累計R</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR>=0?'+':'')+tR.toFixed(1)+'R':'—')+'</div></div>';
+  h+='</div></div>';
+
+  h+='<div class="why">📝 <b>我的記錄</b>　你自己喺 TradingView 開圖判斷、真係落咗 paper trade order，喺呢度記低。想儲低邊隻策略(S1/S1V1/S6/S7…)、entry/stop/T1/T2、同你入場嘅原因，之後可以自己覆盤。</div>';
+
+  // 新增表單
+  h+='<div class="panel"><h2>➕ 新增記錄</h2>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">'
+    +'<div><label class="sub">股票 Ticker</label><input id="tvTicker" placeholder="例如 UNH" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'<div><label class="sub">策略</label><select id="tvStrategy" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)">'
+    +'<option>S1</option><option>S1V1</option><option>S2</option><option>S3</option><option>S4</option><option>S5</option><option>S6</option><option>S7</option><option>其他</option></select></div>'
+    +'<div><label class="sub">入場日</label><input id="tvDate" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'<div><label class="sub">買入價</label><input id="tvEntry" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'<div><label class="sub">止損</label><input id="tvStop" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'<div><label class="sub">止損法</label><input id="tvStopMethod" placeholder="例如 前面最底" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'<div><label class="sub">T1</label><input id="tvT1" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'<div><label class="sub">T2</label><input id="tvT2" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'</div>'
+    +'<div style="margin-top:10px"><label class="sub">入場原因 / 筆記</label><textarea id="tvNotes" rows="2" placeholder="點解入呢隻？睇到咩訊號？" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit"></textarea></div>'
+    +'<button class="btn primary" style="margin-top:10px;background:var(--accent);color:#fff" onclick="addTV()">新增</button>'
+    +'</div>';
+
+  // 持倉中
+  h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
+  if(openP.length){
+    h+='<div style="overflow-x:auto"><table><thead><tr>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>筆記</th><th>圖</th><th>操作</th>'
+      +'</tr></thead><tbody>';
+    openP.forEach(p=>{
+      const e=Number(p.entry), stp=Number(p.stop);
+      const live=_liveData[p.ticker.toUpperCase()];
+      const cur=live?live.close:null;
+      const curPct=(cur!=null&&e)?((cur-e)/e*100):null;
+      const curColor=curPct==null?'':(curPct>=0?'green':'red');
+      const curCell=cur!=null
+        ?'<td class="mono '+curColor+'">$'+cur.toFixed(2)+'<br><span style="font-size:10px">'+(curPct>=0?'+':'')+curPct.toFixed(1)+'%</span></td>'
+        :'<td class="mono" style="color:var(--faint)">—</td>';
+      h+='<tr>'
+        +'<td><b>'+p.ticker+'</b></td>'
+        +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+'</td>'
+        +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
+        +'<td class="mono">$'+p.entry+'</td>'
+        +curCell
+        +'<td class="mono red">$'+(p.stop||'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+'</td>'
+        +'<td class="mono green">$'+(p.t1||'—')+'</td>'
+        +'<td class="mono green">$'+(p.t2||'—')+'</td>'
+        +'<td style="font-size:11px;max-width:180px">'+(p.bonus||'—')+'</td>'
+        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
+        +'<td style="white-space:nowrap"><button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+p.entry+',\'open\')">刪除</button></td>'
+        +'</tr>';
+    });
+    h+='</tbody></table></div>';
+  }else h+='<div class="sub">仲未有記錄。喺上面「新增記錄」填低第一筆。</div>';
+  h+='</div>';
+
+  // 已平倉
+  h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
+  if(cl.length){
+    h+='<div style="overflow-x:auto"><table><thead><tr>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>筆記</th><th>操作</th>'
+      +'</tr></thead><tbody>';
+    cl.slice().reverse().forEach(t=>{
+      const rcol=Number(t.r)>=0?'green':'red';
+      h+='<tr>'
+        +'<td><b>'+t.ticker+'</b></td>'
+        +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(t.state||'—').split('|')[0].trim()+'</td>'
+        +'<td class="mono">'+fmtDate(t.entryDate)+'</td>'
+        +'<td class="mono">'+fmtDate(t.exitDate)+'</td>'
+        +'<td class="mono">$'+t.entry+'</td>'
+        +'<td class="mono">$'+t.exitPx+'</td>'
+        +'<td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td>'
+        +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
+        +'<td style="font-size:11px;max-width:200px">'+(t.bonus||'—')+'</td>'
+        +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
+        +'</tr>';
+    });
+    h+='</tbody></table></div>';
+  }else h+='<div class="sub">仲未有已平倉記錄。</div>';
+  h+='</div>';
+
+  h+='<div class="warn"><b>📝 呢個係你自己嘅 trade journal。</b>入場原因/筆記存喺「策略」隔籬嗰個位，平倉時可以自己覆盤返點解贏/點解輸。</div>';
+
+  document.getElementById('content').innerHTML=h;
+}
+async function addTV(){
+  const ticker=(document.getElementById('tvTicker').value||'').trim().toUpperCase();
+  const strategy=document.getElementById('tvStrategy').value;
+  const entryDate=document.getElementById('tvDate').value;
+  const entry=document.getElementById('tvEntry').value;
+  const stop=document.getElementById('tvStop').value;
+  const stopMethod=document.getElementById('tvStopMethod').value;
+  const t1=document.getElementById('tvT1').value;
+  const t2=document.getElementById('tvT2').value;
+  const notes=document.getElementById('tvNotes').value;
+  if(!ticker||!entry||!stop){alert('至少要填 Ticker、買入價、止損');return;}
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate,entry,stop,
+        state:strategy+' | '+stopMethod, t1, t2, bonus:notes})});
+    alert('已新增 '+ticker+'。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('新增失敗，再試');}
+}
+async function manualCloseTV(ticker, entry){
+  const px=prompt('平倉 '+ticker+'，輸入平倉價：');
+  if(px===null||px==='')return;
+  const exitPx=parseFloat(px);
+  if(isNaN(exitPx)){alert('請輸入數字');return;}
+  const today=new Date().toISOString().slice(0,10);
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_manual_close',ticker,group:'TV',exitPx,exitDate:today})});
+    alert('已平倉 '+ticker+' @ $'+exitPx+'。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('平倉失敗，再試');}
+}
+async function removeTV(ticker, entry, status){
+  if(!confirm('確定刪除 '+ticker+' 呢筆記錄？（成行消失）'))return;
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_remove',ticker,group:'TV',entry,status})});
+    alert('已刪除 '+ticker+'。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('刪除失敗，再試');}
+}
+
 function fmtDate(s){
   if(!s)return '—';
   s=String(s);
