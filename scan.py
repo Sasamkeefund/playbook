@@ -316,7 +316,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     # 關鍵：「反彈」一定要新鮮（今日或前2日內），否則就係舊聞，唔可以話「而家可以入場」
     v1 = {"ready": False, "score": 0, "bonusScore": 0, "conds": [False, False, False, False],
           "bonus": [False, False, False], "keyvals": {}, "wave1Top": None, "wave2Top": None, "breachLow": None,
-          "breakoutDistPct": None, "daysToBreach": None, "daysRecover": None, "daysSinceRecover": None,
+          "breakoutDistPct": None, "daysToBreach": None, "daysRecover": None, "daysSinceRecover": None, "patternType": None,
           "aboveNow": None, "entry": None, "stop": None, "t1": None, "t2": None}
     try:
         win = 70
@@ -378,6 +378,9 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 days_since_recover = best["days_since_recover"]
                 breach_low = min(post_l[breach_pos:breach_pos+3])  # 跌穿後3日內嘅最低（防單日插針）
                 today_above = close > wave1_top
+                # Wave2頂 到 跌穿前頂 隔咗幾多日：分類但唔篩走（未有數據判斷邊種好，兩種都留低畀你儲經驗）
+                # ≤20日 = 短線（跟checklist原本嘅緊湊節奏）；>20日 = 長線支撐回試（舊阻力位變支撐，另一種形態）
+                pattern_type = "短線" if breach_pos <= 20 else "長線支撐回試"
                 # ── Required ──
                 # R1：Wave2 攀升段有冇過度延伸（10日升幅極端 + 天量）
                 look = min(10, wave2_days)
@@ -414,7 +417,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                     "conds": conds, "bonus": bonus,
                     "wave1Top": round(wave1_top, 2), "wave2Top": round(wave2_top, 2),
                     "breachLow": round(breach_low, 2), "breakoutDistPct": round(breakout_dist_pct, 1),
-                    "daysToBreach": breach_pos, "daysRecover": days_recover_v1,
+                    "daysToBreach": breach_pos, "daysRecover": days_recover_v1, "patternType": pattern_type,
                     "daysSinceRecover": days_since_recover, "aboveNow": today_above,
                     "entry": round(wave1_top * 1.003, 2), "stop": round(breach_low, 2),
                     "t1": round(wave2_top, 2),
@@ -905,7 +908,7 @@ def build_record(ticker, hist):
         # S1V1 原版（前頂支撐）：pass-through 波段價位 + entry/stop/T1/T2
         if s == "S1V1":
             for k in ("wave1Top", "wave2Top", "breachLow", "breakoutDistPct",
-                      "daysToBreach", "daysRecover", "daysSinceRecover", "aboveNow", "entry", "stop", "t1", "t2"):
+                      "daysToBreach", "daysRecover", "daysSinceRecover", "patternType", "aboveNow", "entry", "stop", "t1", "t2"):
                 strategies[s][k] = today[s].get(k)
             # 粗篩用：借 S1(EMA20版) 嘅 streak + EMA200斜率，做「大趨勢確認」參考（V1 checklist Step0 要求）
             strategies[s]["macroStreak"] = streaks.get("_v1MacroStreak", 0)
