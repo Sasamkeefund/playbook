@@ -103,7 +103,19 @@
     .scard .new{font-size:11px;color:var(--up);font-weight:700}
     .footer{margin-top:1.6rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--faint)}
     .loading{text-align:center;padding:2rem;color:var(--dim)}
-  
+
+    .alert-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
+    .alert-card.red{border-color:rgba(255,93,108,.4);background:rgba(255,93,108,.06)}
+    .alert-card.green{border-color:rgba(46,230,166,.4);background:rgba(46,230,166,.06)}
+    .alert-card.amber{border-color:rgba(245,185,69,.4);background:rgba(245,185,69,.06)}
+    .alert-card .ic{font-size:20px;line-height:1}
+    .alert-card .body{flex:1}
+    .alert-card .tk{font-weight:700;font-size:15px;color:var(--accent-2)}
+    .alert-card .tk a{color:inherit;text-decoration:none}
+    .alert-card .msg{font-size:13px;color:var(--text);margin-top:2px}
+    .alert-card .sub2{font-size:11.5px;color:var(--dim);margin-top:3px}
+    .empty-note{text-align:center;padding:1.4rem;color:var(--faint);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:1.4rem}
+
     body.mobile table{font-size:14px}
     body.mobile th,body.mobile td{padding:13px 10px}
     body.mobile thead th:first-child,body.mobile tbody td:first-child{position:sticky;left:0;background:var(--surface);z-index:5;box-shadow:2px 0 4px rgba(0,0,0,.2)}
@@ -136,6 +148,12 @@
     <div class="sect">今日策略總覽</div>
     <div class="grid" id="stratGrid"></div>
 
+    <div class="sect">📒 Paper Trade 提醒</div>
+    <div id="paperAlerts" class="loading">讀緊…</div>
+
+    <div class="sect">⭐ Watchlist 提醒（S6 旗形）</div>
+    <div id="s6Alerts" class="loading">讀緊…</div>
+
     <div class="footer">
       <p id="marketTime">大市數據：…</p>
       <p id="scanTime">掃描數據：…</p>
@@ -144,6 +162,52 @@
 
   <script>
     const STRATEGY_NAMES={S1:'順勢交易',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態',S7:'52週新高'};
+    const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
+    // 由 dashboard.html 搬過嚟，確保「可考慮」判斷同 Screener 完全一致
+    function getVerdict(tab,strat,curClose){
+      const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
+      const reqMax=(tab==='S4'||tab==='S5'||tab==='S6'||tab==='S1V1')?4:(tab==='S7'?6:5);
+      if(tab==='S1V1'){
+        if(req<reqMax)return{color:'red'};
+        const entryPx=strat.entry;
+        const macroStreak=strat.macroStreak||0;
+        const drift=(curClose!=null&&entryPx)?((curClose-entryPx)/entryPx*100):null;
+        if(drift!=null&&drift>3)return{color:'amber'};
+        if(macroStreak<7)return{color:'amber'};
+        return{color:'green'};
+      }
+      if(tab==='S1'){
+        const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.streakBefore||strat.recentMaxStreak||0;
+        if(!touch)return{color:'amber'};
+        if(!above)return{color:'amber'};
+        if(rms<3)return{color:'red'};
+        if(ago>=3)return{color:'red'};
+        if(ago===2)return{color:'amber'};
+        if(rms<7)return{color:'amber'};
+        return{color:'green'};
+      }
+      if(tab==='S6'){const b1=b[0],b5=b[4];
+        if(req<reqMax)return{color:'red'};
+        const broke=strat.brokeH1, streak=strat.streak||0;
+        if(broke)return{color:'green'};
+        if(streak<5)return{color:'amber'};
+        if(b1&&b5)return{color:'green'};
+        if(b1||b5)return{color:'green'};
+        if(bonus>=3)return{color:'amber'};
+        return{color:'red'};}
+      if(tab==='S3'){
+        if(req<reqMax)return{color:'red'};
+        if(bonus>=2)return{color:'green'};
+        return{color:'amber'};}
+      if(tab==='S5'){
+        if(req<reqMax)return{color:'red'};
+        return{color:'green'};}
+      if(tab==='S7'){
+        if(req<reqMax)return{color:'amber'};
+        return{color:'green'};}
+      if(req>=reqMax||strat.ready)return{color:'amber'};
+      return{color:'red'};
+    }
     function toHKT(s){
       if(!s)return s;
       const m=s.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
@@ -154,10 +218,14 @@
       return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} HKT`;
     }
     async function load(){
-      let market=null,scan=null;
+      let market=null,scan=null,paperData=null,fibMap={};
       try{market=await(await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t='+Date.now())).json();}catch(e){}
       try{scan=await(await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now())).json();}catch(e){}
+      try{paperData=await(await fetch(WL_API+'?action=paper_list&t='+Date.now())).json();}catch(e){}
+      try{fibMap=await(await fetch(WL_API+'?action=fib_all&t='+Date.now())).json()||{};}catch(e){fibMap={};}
       renderMarket(market);renderStrategies(scan);
+      renderPaperAlerts(paperData,scan);
+      renderS6Alerts(fibMap,scan);
       document.getElementById('updated').textContent='開市前大市檢查 · Limit Order 影響';
       document.getElementById('marketTime').textContent='大市數據：'+(market?toHKT(market.updated):'攞唔到');
       document.getElementById('scanTime').textContent='掃描數據：'+(scan?toHKT(scan.updated):'攞唔到');
@@ -177,9 +245,113 @@
       if(!scan){g.innerHTML='<div class="loading">攞唔到掃描數據</div>';return;}
       g.innerHTML=Object.keys(STRATEGY_NAMES).map(s=>{
         const sum=scan.summary[s]||{count:0};
-        let nc=0;if(scan.stocks)nc=scan.stocks.filter(x=>x.strategies[s]&&x.strategies[s].isNew).length;
-        return `<a class="scard" href="dashboard.html"><div class="code">${s}</div><div class="nm">${STRATEGY_NAMES[s]}</div><div class="cnt">${sum.count}</div>${nc>0?`<div class="new">+${nc} NEW</div>`:''}</a>`;
+        let nc=0,greenCount=0;
+        if(scan.stocks){
+          scan.stocks.forEach(x=>{
+            const st=x.strategies[s];
+            if(!st)return;
+            if(st.isNew)nc++;
+            if(st.ready&&getVerdict(s,st,x.close).color==='green')greenCount++;
+          });
+        }
+        return `<a class="scard" href="dashboard.html"><div class="code">${s}</div><div class="nm">${STRATEGY_NAMES[s]}</div><div class="cnt">${sum.count}</div>`
+          +`<div class="sub2" style="margin-top:4px">🟢 可考慮 <b style="color:var(--up)">${greenCount}</b></div>`
+          +`${nc>0?`<div class="new">+${nc} NEW</div>`:''}</a>`;
       }).join('');
+    }
+    function renderPaperAlerts(paperData,scan){
+      const box=document.getElementById('paperAlerts');
+      if(!paperData||!paperData.open){box.innerHTML='<div class="empty-note">攞唔到 Paper Trade 數據</div>';return;}
+      const stockMap={};
+      if(scan&&scan.stocks)scan.stocks.forEach(x=>{stockMap[x.ticker.toUpperCase()]=x;});
+      const positions=paperData.open.filter(p=>(p.group==='S1'||p.group==='TV')&&p.entry!==''&&p.entry!=null&&p.stop!==''&&p.stop!=null);
+      const cards=[];
+      positions.forEach(p=>{
+        const tk=p.ticker.toUpperCase();
+        const s=stockMap[tk];
+        const close=s?s.close:null;
+        const entry=Number(p.entry), stop=Number(p.stop), t1=Number(p.t1)||null, t2=Number(p.t2)||null;
+        const t1hitBool=(p.t1hit==='Y'||p.t1hit==='y');
+        const effStop=(t1hitBool&&t1)?(entry+(t1-entry)*0.5):stop;
+        const stratTag=(p.state||'').split('|')[0].trim()||p.group;
+        if(close==null)return;
+        // 已跌穿止蝕／已到T2 → 今晚 workflow 好大機會自動平倉
+        if(close<=effStop){
+          cards.push({color:'red',ic:'🔴',ticker:p.ticker,strat:stratTag,
+            msg:'已跌穿止蝕 $'+effStop.toFixed(2)+(t1hitBool?'（保本止損）':'')+'，今晚 workflow 好大機會自動止蝕平倉',
+            sub:'現價 $'+close.toFixed(2)+' ｜ 入場 $'+entry});
+        }else if(t2&&close>=t2){
+          cards.push({color:'green',ic:'🟢',ticker:p.ticker,strat:stratTag,
+            msg:'已到 T2 $'+t2+'，今晚 workflow 好大機會自動止賺平倉',
+            sub:'現價 $'+close.toFixed(2)+' ｜ 入場 $'+entry});
+        }else{
+          // 掂咗 T1，仲未到 T2 → 提你止損已上調
+          if(t1hitBool){
+            cards.push({color:'amber',ic:'🎯',ticker:p.ticker,strat:stratTag,
+              msg:'已掂 T1 $'+t1+'，止損已上調保本至 $'+effStop.toFixed(2)+'，繼續持有等 T2 $'+(t2||'—'),
+              sub:'現價 $'+close.toFixed(2)});
+          }
+          // 貼近止蝕（距離 < 3%）→ 留意
+          const distPct=((close-effStop)/close*100);
+          if(distPct>0&&distPct<3){
+            cards.push({color:'amber',ic:'⚠️',ticker:p.ticker,strat:stratTag,
+              msg:'貼近止蝕，仲差 '+distPct.toFixed(1)+'% 就跌穿 $'+effStop.toFixed(2)+'，留意',
+              sub:'現價 $'+close.toFixed(2)+' ｜ 入場 $'+entry});
+          }
+          // 貼近 T1（未掂）→ 留意
+          if(!t1hitBool&&t1){
+            const distT1=((t1-close)/close*100);
+            if(distT1>0&&distT1<3){
+              cards.push({color:'green',ic:'👀',ticker:p.ticker,strat:stratTag,
+                msg:'貼近 T1 $'+t1+'，仲差 '+distT1.toFixed(1)+'%',
+                sub:'現價 $'+close.toFixed(2)});
+            }
+          }
+        }
+      });
+      if(!cards.length){box.innerHTML='<div class="empty-note">'+(positions.length?'持倉中嘅單暫時冇特別要留意（未貼近止蝕/T1/T2）':'暫時冇持倉')+'</div>';return;}
+      box.innerHTML=cards.map(c=>`<div class="alert-card ${c.color}"><div class="ic">${c.ic}</div><div class="body">`
+        +`<div class="tk"><a href="paper.html">${c.ticker}</a> <span style="font-size:11px;color:var(--dim);font-weight:400">${c.strat}</span></div>`
+        +`<div class="msg">${c.msg}</div><div class="sub2">${c.sub}</div></div></div>`).join('');
+    }
+    function renderS6Alerts(fibMap,scan){
+      const box=document.getElementById('s6Alerts');
+      if(!fibMap||!Object.keys(fibMap).length){box.innerHTML='<div class="empty-note">Watchlist 暫時冇 S6 股票設咗頸線</div>';return;}
+      const stockMap={};
+      if(scan&&scan.stocks)scan.stocks.forEach(x=>{stockMap[x.ticker.toUpperCase()]=x;});
+      const today=new Date();
+      const todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+      const cards=[];
+      Object.keys(fibMap).forEach(tk=>{
+        const fb=fibMap[tk];
+        const s=stockMap[tk];
+        if(!s||!fb.h1)return;
+        const h1=parseFloat(fb.h1);
+        if(fb.breakoutDate){
+          if(fb.breakoutDate===todayStr){
+            const mLabel=fb.method==='A'?'手法A(放量)':'手法C(縮量)';
+            cards.push({color:'green',ic:'🔥',ticker:tk,
+              msg:'今日突破頸線 $'+h1+'，'+mLabel+'，可以入場',
+              sub:'現價 $'+s.close.toFixed(2)});
+          }
+          return; // 已突破（唔係今日）就唔使再提
+        }
+        const away=((h1-s.close)/s.close*100);
+        if(away>0&&away<3){
+          cards.push({color:'amber',ic:'👀',ticker:tk,
+            msg:'貼近頸線 $'+h1+'，仲差 '+away.toFixed(1)+'%，留意',
+            sub:'現價 $'+s.close.toFixed(2)+(s.rvol!=null?' ｜ 現RV '+s.rvol+'x':'')});
+        }else if(s.close>h1){
+          // 理論上呢個情況應該已經有 breakoutDate，但以防萬一（例如未跑到today嘅scan）
+          cards.push({color:'green',ic:'🔥',ticker:tk,
+            msg:'現價已升穿頸線 $'+h1+'，留意突破RV，未鎖定手法（等下次scan）',
+            sub:'現價 $'+s.close.toFixed(2)});
+        }
+      });
+      if(!cards.length){box.innerHTML='<div class="empty-note">S6 暫時冇股票貼近或突破頸線</div>';return;}
+      box.innerHTML=cards.map(c=>`<div class="alert-card ${c.color}"><div class="ic">${c.ic}</div><div class="body">`
+        +`<div class="tk"><a href="watchlist.html">${c.ticker}</a></div>`
+        +`<div class="msg">${c.msg}</div><div class="sub2">${c.sub}</div></div></div>`).join('');
     }
     const _MODES=['trader','work','mobile'];
     const _LBL={trader:'🌙 Trader Mode',work:'🕶 返工 Mode',mobile:'📱 Mobile Mode'};
