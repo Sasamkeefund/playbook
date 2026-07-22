@@ -74,12 +74,12 @@
   </div></div>
 
   <div class="wrap">
-    <h1 id="ptTitle">📒 S7 Paper Trade — 機械模擬（跟 J Law）</h1>
-    <div class="sub" id="ptSub">入場：J Law 強勢股(跑贏大盤×2) ｜ 止損：1.5×ATR ｜ 止賺：跌穿20MA</div>
+    <h1 id="ptTitle">📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade</h1>
+    <div class="sub" id="ptSub">記低你自己喺 TradingView 落嘅 paper trade，留返個原因，儲返自己嘅trade record</div>
     <div style="display:flex;gap:8px;margin:14px 0">
-      <button id="tabS7" class="ptab active" onclick="switchPT('S7')">🤖 S7 機械</button>
+      <button id="tabTV" class="ptab active" onclick="switchPT('TV')">📝 我的記錄(TradingView)</button>
+      <button id="tabS7" class="ptab" onclick="switchPT('S7')">🤖 S7 機械</button>
       <button id="tabS1" class="ptab" onclick="switchPT('S1')">✋ S1 人手揀</button>
-      <button id="tabTV" class="ptab" onclick="switchPT('TV')">📝 我的記錄(TradingView)</button>
     </div>
     <div id="content"><div class="loading">載入緊…</div></div>
   </div>
@@ -133,7 +133,7 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
   document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
 }});
 
-let _allOpen=[], _allClosed=[], _ptMode='S7', _liveData={};
+let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={};
 async function load(){
   let d;
   try{ d=await (await fetch(WL_API+"?action=paper_list")).json(); }
