@@ -759,17 +759,21 @@
         const stk=globalData.stocks.find(x=>x.ticker===ticker);
         const strat=stk?stk.strategies[activeTab]:null;
         const cd=(strat&&strat.conds)||[];
+        const bn=(strat&&strat.bonus)||[];
         const today=new Date().toISOString().slice(0,10);
         const trendVal=strat?(strat.streakBefore||strat.recentMaxStreak||strat.macroStreak||''):'';
         const reqMax=(activeTab==='S5'||activeTab==='S4'||activeTab==='S1V1')?4:(activeTab==='S7'?6:5);
         const reqTxt=strat?(strat.score+'/'+reqMax):'';
+        // Bonus 帶埋逐項breakdown，用 :: 分隔（前面數字係分數，後面係b1..bN 邊個中）方便顯示tooltip
+        const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
+        const bonusTxt=strat?(strat.bonusScore+'::'+bonusBreak):'';
         try{
           await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
             body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate:today,entry:'',stop:'',
               state:activeTab+' | ',
               rsi:stk?stk.rsi:'', c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
               req:reqTxt, streak:strat?strat.streak:'', trend:trendVal,
-              bonus:strat?strat.bonusScore:''})});
+              bonus:bonusTxt})});
           tvOpenSet.add(ticker);
         }catch(e){alert('加入失敗，再試');checkbox.checked=false;}
       }else{
