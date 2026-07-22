@@ -446,6 +446,10 @@ function renderTV(openP, closed){
       const effStop=(t1hitBool&&t1n&&!pending)?(e+(t1n-e)*0.5):stp;
       const risk=e-stp;
       const rr1=(!pending&&risk>0&&p.t1)?'1:'+((t1n-e)/risk).toFixed(1):'—';
+      const reqCk=['c1','c2','c3','c4','c5'].map((k,i)=>p[k]!=null&&p[k]!==''?('C'+(i+1)+(Number(p[k])?'✓':'✗')):'').filter(Boolean).join(' ');
+      const bonusParts=(p.bonus||'').toString().split('::');
+      const bonusNum=bonusParts[0];
+      const bonusTip=bonusParts[1]||'';
       const rr2=(!pending&&risk>0&&p.t2)?'1:'+((t2n-e)/risk).toFixed(1):'—';
       const live=_liveData[p.ticker.toUpperCase()];
       const cur=live?live.close:null;
@@ -468,8 +472,8 @@ function renderTV(openP, closed){
         +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
-        +'<td style="text-align:center">'+(p.req!==''&&p.req!=null?p.req:'—')+'</td>'
-        +'<td style="text-align:center">'+(p.bonus!==''&&p.bonus!=null?p.bonus:'—')+'</td>'
+        +'<td style="text-align:center;cursor:help" title="'+(reqCk||'冇存到逐項')+'">'+(p.req!==''&&p.req!=null?p.req:'—')+'</td>'
+        +'<td style="text-align:center;cursor:help" title="'+(bonusTip||'冇存到逐項')+'">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+'</td>'
         +'<td style="text-align:center">'+(p.streak||'—')+' / '+(p.trend||'—')+'</td>'
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
         +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a>':'<span style="color:var(--faint)">—</span>')+'</td>'
@@ -489,6 +493,10 @@ function renderTV(openP, closed){
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
+      const reqCk=['c1','c2','c3','c4','c5'].map((k,i)=>t[k]!=null&&t[k]!==''?('C'+(i+1)+(Number(t[k])?'✓':'✗')):'').filter(Boolean).join(' ');
+      const bonusParts=(t.bonus||'').toString().split('::');
+      const bonusNum=bonusParts[0];
+      const bonusTip=bonusParts[1]||'';
       h+='<tr>'
         +'<td><b>'+t.ticker+'</b></td>'
         +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(t.state||'—').split('|')[0].trim()+'</td>'
@@ -498,8 +506,8 @@ function renderTV(openP, closed){
         +'<td class="mono">$'+t.exitPx+'</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
-        +'<td style="text-align:center">'+(t.req!==''&&t.req!=null?t.req:'—')+'</td>'
-        +'<td style="text-align:center">'+(t.bonus!==''&&t.bonus!=null?t.bonus:'—')+'</td>'
+        +'<td style="text-align:center;cursor:help" title="'+(reqCk||'冇存到逐項')+'">'+(t.req!==''&&t.req!=null?t.req:'—')+'</td>'
+        +'<td style="text-align:center;cursor:help" title="'+(bonusTip||'冇存到逐項')+'">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+'</td>'
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
         +'</tr>';
