@@ -91,12 +91,6 @@
 
   <div class="container">
     <div class="section-title">📌 My Watchlist <span id="status" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)"></span></div>
-    <div style="display:flex;gap:8px;align-items:center;margin:12px 0">
-      <input id="addTickerInput" type="text" placeholder="加入 Ticker（例如 UNH）" style="padding:8px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;width:180px;text-transform:uppercase"
-        onkeydown="if(event.key==='Enter')addTickerManual()">
-      <button class="btn" onclick="addTickerManual()">➕ 加入 Watchlist</button>
-      <span style="font-size:11px;color:var(--faint)">（唔理你揀緊邊個 tab 都可以加）</span>
-    </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">
       <button class="wltab active" data-s="ALL" onclick="switchWL('ALL')">全部</button>
       <button class="wltab" data-s="S1" onclick="switchWL('S1')">S1 順勢</button>
@@ -149,18 +143,6 @@ const _MODES=['trader','work','mobile'];
         const d=await r.json();
         (d.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
       }catch(e){}
-    }
-    async function addTickerManual(){
-      const input=document.getElementById('addTickerInput');
-      const ticker=(input.value||'').trim().toUpperCase();
-      if(!ticker){alert('入返個 ticker 先');return;}
-      try{
-        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body:JSON.stringify({action:'add',ticker})});
-        input.value='';
-        alert('已加 '+ticker+' 入 Watchlist。1-2秒後刷新。');
-        setTimeout(()=>loadList(),1500);
-      }catch(e){alert('加入失敗，再試');}
     }
     async function loadList(){
       document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊…';
@@ -222,7 +204,8 @@ const _MODES=['trader','work','mobile'];
       const linkCell=it=>`<td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${it.ticker}');return false;">${it.ticker} 📈</a></td>`;
       const noteCell=it=>`<td><input type="text" class="note-input" value="${(it.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${it.ticker}',this.value)" placeholder="加筆記" style="width:120px"></td>`;
       const delCell=it=>`<td style="text-align:center"><button class="del-btn" onclick="removeStock('${it.ticker}')">🗑️</button></td>`;
-      const dateCell=it=>`<td class="mono" style="font-size:11.5px;color:var(--dim);white-space:nowrap">${it.dateAdded||'—'}</td>`;
+      const shortDate=s=>{ if(!s)return '—'; const d=new Date(s); return isNaN(d)?s:d.toDateString(); };
+      const dateCell=it=>`<td class="mono" style="font-size:11.5px;color:var(--dim);white-space:nowrap">${shortDate(it.dateAdded)}</td>`;
 
       if(wlTab==='S1'){
         // S1：跟 paper trade 欄（RSI/C1-C5/REQ/Bonus/Streak/趨勢/跌穿/企返）
