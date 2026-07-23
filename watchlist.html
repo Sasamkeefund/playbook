@@ -139,26 +139,25 @@ const _MODES=['trader','work','mobile'];
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
     const STRAT={S1:'順勢',S2:'趨結',S3:'突破',S4:'假突',S5:'支阻',S6:'圖表'};
     let list=[], dataMap={}, fibMap={};
-    async function loadData(){
-      try{
-        const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
-        const d=await r.json();
-        (d.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
-      }catch(e){}
-    }
     async function loadList(){
       document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊…';
-      await loadData();
-      try{
-        const r=await fetch(WL_API);
-        const d=await r.json();
-        list=d.watchlist||[];
+      const now=new Date();
+      const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
+      const [scanR, wlR, fibR] = await Promise.allSettled([
+        fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
+        fetch(WL_API).then(r=>r.json()),
+        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json())
+      ]);
+      if(scanR.status==='fulfilled'){
+        (scanR.value.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
+      }
+      if(wlR.status==='fulfilled'){
+        list=wlR.value.watchlist||[];
         document.getElementById('status').textContent='共 '+list.length+' 隻';
-      }catch(e){
+      }else{
         document.getElementById('status').textContent='❌ 讀取失敗';
       }
-      // 讀 FibAB 表（A/B/頸線）
-      try{const fr=await fetch(WL_API+'?action=fib_all&t='+Date.now());fibMap=await fr.json()||{};}catch(e){fibMap={};}
+      fibMap = (fibR.status==='fulfilled')? (fibR.value||{}) : {};
       render();
     }
     function stratBadges(ticker){
