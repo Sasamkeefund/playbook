@@ -508,20 +508,25 @@
 
     let tvOpenSet=new Set();
     async function loadData(){
-      try{
-        const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now());
-        globalData=await r.json();
-        document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated);
-        if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
-          document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1')?'green':'';
-        }
-        try{
-          const pr=await fetch(WL_API+'?action=paper_list&t='+Date.now());
-          const pd=await pr.json();
-          tvOpenSet=new Set((pd.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()));
-        }catch(e){tvOpenSet=new Set();}
-        render();
-      }catch(e){document.getElementById('updated').textContent='❌ 無法讀取 data.json';}
+      const now=new Date();
+      const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
+      const [dataR, paperR] = await Promise.allSettled([
+        fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
+        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json())
+      ]);
+      if(dataR.status==='rejected'){
+        document.getElementById('updated').textContent='❌ 無法讀取 data.json';
+        return;
+      }
+      globalData=dataR.value;
+      document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated);
+      if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
+        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1')?'green':'';
+      }
+      tvOpenSet = (paperR.status==='fulfilled')
+        ? new Set((paperR.value.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()))
+        : new Set();
+      render();
     }
     async function reloadData(){
       const b=document.getElementById('reloadBtn'),o=b.textContent;
