@@ -782,45 +782,62 @@ def get_russell1000_tickers():
 
 
 def get_sp500_tickers():
-    # 1) Wikipedia（有時俾 block / 結構變咗攞唔到）
+    # 1) Wikipedia（有時俾 block / 結構變咗攞唔到）—— 試2次，畀網絡波動多個機會
+    for attempt in range(2):
+        try:
+            url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+            resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=20)
+            if resp.status_code == 200:
+                import re
+                rows = re.findall(r'<td><a[^>]*>([A-Z][A-Z.\-]{0,6})</a>', resp.text)
+                tickers = [t.replace(".", "-") for t in rows]
+                seen = set()
+                out = [t for t in tickers if not (t in seen or seen.add(t))]
+                if len(out) > 400:
+                    return out
+            break  # 攞到 response（就算唔啱）都唔使再試，慳時間
+        except Exception:
+            if attempt == 0:
+                time.sleep(2)
+    # 2) GitHub 上公開嘅 S&P500 成份股 CSV（穩陣好多，GH Actions 通常唔會俾 block）—— 試2次
+    for attempt in range(2):
+        try:
+            import csv, io
+            url = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/master/data/constituents.csv"
+            resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=20)
+            if resp.status_code == 200 and len(resp.text) > 3000:
+                rd = csv.DictReader(io.StringIO(resp.text))
+                out = []
+                seen = set()
+                for row in rd:
+                    sym = (row.get("Symbol") or "").strip().upper().replace(".", "-")
+                    if sym and sym not in seen:
+                        seen.add(sym)
+                        out.append(sym)
+                if len(out) > 400:
+                    return out
+            break
+        except Exception:
+            if attempt == 0:
+                time.sleep(2)
+    # 3) Repo 入面寫死嘅後備清單（sp500_tickers.txt，會隔一排手動/腳本更新一次）——
+    #    保證就算上面兩個 live source 同一時間都失敗，都唔會跌落得返9隻嗰個極端 fallback
     try:
-        url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-        resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=15)
-        if resp.status_code == 200:
-            import re
-            rows = re.findall(r'<td><a[^>]*>([A-Z][A-Z.\-]{0,6})</a>', resp.text)
-            tickers = [t.replace(".", "-") for t in rows]
-            seen = set()
-            out = [t for t in tickers if not (t in seen or seen.add(t))]
-            if len(out) > 400:
-                return out
-    except Exception:
+        with open("sp500_tickers.txt") as f:
+            out = [ln.strip().upper() for ln in f if ln.strip()]
+        if len(out) > 400:
+            print(f"⚠️ S&P500 live source 攞唔到，用返 repo 入面嘅後備清單（{len(out)} 隻，可能唔係最新）")
+            return out
+    except FileNotFoundError:
         pass
-    # 2) GitHub 上公開嘅 S&P500 成份股 CSV（穩陣好多，GH Actions 唔會俾 block）
-    try:
-        import csv, io
-        url = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/master/data/constituents.csv"
-        resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=15)
-        if resp.status_code == 200 and len(resp.text) > 3000:
-            rd = csv.DictReader(io.StringIO(resp.text))
-            out = []
-            seen = set()
-            for row in rd:
-                sym = (row.get("Symbol") or "").strip().upper().replace(".", "-")
-                if sym and sym not in seen:
-                    seen.add(sym)
-                    out.append(sym)
-            if len(out) > 400:
-                return out
-    except Exception:
-        pass
-    # 3) 本地 tickers.txt
+    # 4) 本地 tickers.txt
     try:
         with open("tickers.txt") as f:
             return [ln.strip().upper() for ln in f if ln.strip()]
     except FileNotFoundError:
         pass
-    # 4) 最後手段：極細清單（3個 source 都失敗先會用到，理論上唔應該行到呢度）
+    # 5) 最後手段：極細清單（4個 source 都失敗先會用到，理論上唔應該行到呢度）
+    print("🔴 S&P500 全部 source 都攞唔到，跌落最後嗰個9隻極細清單！要人手check")
     return ["AAPL", "MSFT", "NVDA", "AMD", "PLTR", "CRWD", "AVGO", "META", "TSLA"]
 
 
