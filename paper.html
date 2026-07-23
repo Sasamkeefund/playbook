@@ -264,7 +264,7 @@ function render(openP, closed){
         +'<td class="mono" style="font-size:11px">'+rs+'</td>'
         +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
         +'<td style="font-size:11px;color:var(--dim)">跌穿20MA</td>'
-        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+','+(p.t1||0)+','+(p.t2||0)+')">📈</button></td>'
+        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
@@ -277,7 +277,7 @@ function render(openP, closed){
     h+='<table><thead><tr><th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th><th></th></tr></thead><tbody>';
     closed.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
-      h+='<tr><td><b>'+t.ticker+'</b></td><td class="mono">'+t.entryDate+'</td><td class="mono">'+t.exitDate+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+t.reason+'</td><td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td><td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td><td><button class="linkbtn" onclick="openChart(\''+t.ticker+'\','+t.entry+','+t.stop+','+(t.t1||0)+','+(t.t2||0)+')">📈</button></td></tr>';
+      h+='<tr><td><b>'+t.ticker+'</b></td><td class="mono">'+t.entryDate+'</td><td class="mono">'+t.exitDate+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+t.reason+'</td><td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td><td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td><td><button class="linkbtn" onclick="openChart(\''+t.ticker+'\','+t.entry+','+t.stop+')">📈</button></td></tr>';
     });
     h+='</tbody></table>';
   }else h+='<div class="sub">仲未有平倉記錄</div>';
@@ -347,7 +347,7 @@ function renderS1(openP, closed){
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
         +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
         +'<td class="mono" style="text-align:center">'+(p.trend||'—')+'</td>'
-        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+','+(p.t1||0)+','+(p.t2||0)+')">📈</button></td>'
+        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
         +'<td style="white-space:nowrap"><button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseS1(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeS1(\''+p.ticker+'\','+p.entry+')">刪除</button></td>'
         +'</tr>';
     });
@@ -477,7 +477,7 @@ function renderTV(openP, closed){
         +'<td style="text-align:center">'+(p.streak||'—')+' / '+(p.trend||'—')+'</td>'
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
         +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a>':'<span style="color:var(--faint)">—</span>')+'</td>'
-        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+','+(p.t1||0)+','+(p.t2||0)+')">📈</button></td>'
+        +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
         +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+p.entry+',\'open\')">刪除</button></td>'
         +'</tr>';
     });
@@ -647,13 +647,10 @@ function fmtDate(s){
 }
 
 let chartsData=null, pchart=null;
-async function openChart(ticker, entry, stop, t1, t2){
+async function openChart(ticker, entry, stop){
   document.getElementById('chartModal').classList.add('show');
   document.getElementById('chartTitle').textContent=ticker+' 日線圖';
-  let noteHtml='🟢 入場 $'+entry+'　🔴 止損 $'+stop;
-  if(t1)noteHtml+='　🔵 T1 $'+t1;
-  if(t2)noteHtml+='　🟣 T2 $'+t2;
-  document.getElementById('chartNote').innerHTML=noteHtml;
+  document.getElementById('chartNote').innerHTML='🟢 入場 $'+entry+'　🔴 止損 $'+stop;
   const el=document.getElementById('pchart');
   el.innerHTML='';
   if(!chartsData){
@@ -673,10 +670,6 @@ async function openChart(ticker, entry, stop, t1, t2){
   if(c.e20){const e=pchart.addLineSeries({color:'#4d8dff',lineWidth:1});e.setData(c.e20.map((v,i)=>v?{time:base+i*86400,value:v}:null).filter(Boolean));}
   candle.createPriceLine({price:entry,color:'#2ee6a6',lineWidth:1,lineStyle:2,title:'入場'});
   candle.createPriceLine({price:stop,color:'#ff5d6c',lineWidth:1,lineStyle:2,title:'止損'});
-  // 跟返 checklist：T1=Wave2頂／T2=回調段(T1-止損)×1.618，由入場點向上量
-  // 你喺TradingView用「Trend-Based Fib Extension」手畫（0=止損 1=T1 3=入場）畫出嚟嘅線，呢度自動畫返一樣嘅
-  if(t1)candle.createPriceLine({price:t1,color:'#4d8dff',lineWidth:1,lineStyle:2,title:'T1(Wave2頂)'});
-  if(t2)candle.createPriceLine({price:t2,color:'#c77dff',lineWidth:1,lineStyle:2,title:'T2(1.618)'});
   pchart.timeScale().fitContent();
 }
 function closeChart(){document.getElementById('chartModal').classList.remove('show');if(pchart){pchart.remove();pchart=null;}}
