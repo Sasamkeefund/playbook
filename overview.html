@@ -271,34 +271,36 @@
         const tk=p.ticker.toUpperCase();
         const s=stockMap[tk];
         const close=s?s.close:null;
-        const chgPct=s?s.chgPct:null;
         const entry=Number(p.entry), stop=Number(p.stop), t1=Number(p.t1)||null, t2=Number(p.t2)||null;
         const t1hitBool=(p.t1hit==='Y'||p.t1hit==='y');
         const effStop=(t1hitBool&&t1)?(entry+(t1-entry)*0.5):stop;
         const stratTag=(p.state||'').split('|')[0].trim()||'TV';
         if(close==null)return;
-        // 已跌穿止蝕／已到T2 → 今晚 workflow 好大機會自動平倉
+        // ① 已跌穿止蝕（掂咗T1嘅話即係保本止損）→ 今晚好大機會自動平倉
         if(close<=effStop){
           cards.push({color:'red',ic:'🔴',ticker:p.ticker,strat:stratTag,
-            msg:'已跌穿止蝕 $'+effStop.toFixed(2)+(t1hitBool?'（保本止損）':'')+'，今晚 workflow 好大機會自動止蝕平倉',
+            msg:'已跌穿'+(t1hitBool?'保本止損':'止蝕')+' $'+effStop.toFixed(2)+'，今晚 workflow 好大機會自動平倉',
             sub:'現價 $'+close.toFixed(2)+' ｜ 入場 $'+entry});
-        }else if(t2&&close>=t2){
+        }
+        // ② 已到 T2 → 要平倉
+        else if(t2&&close>=t2){
           cards.push({color:'green',ic:'🟢',ticker:p.ticker,strat:stratTag,
             msg:'已到 T2 $'+t2+'，今晚 workflow 好大機會自動止賺平倉',
             sub:'現價 $'+close.toFixed(2)+' ｜ 入場 $'+entry});
-        }else{
-          // 掂咗 T1，仲未到 T2 → 提你止損已上調
-          if(t1hitBool){
+        }
+        // ③ 掂咗T1，但去唔到T2，仲開始跌返轉（回吐緊升幅）→ 可能要考慮早啲平倉
+        else if(t1hitBool&&t1){
+          const gain=t1-entry;
+          const giveback=gain>0?((t1-close)/gain*100):0;
+          if(giveback>=25){
+            cards.push({color:'amber',ic:'📉',ticker:p.ticker,strat:stratTag,
+              msg:'掂咗T1之後回吐緊 '+giveback.toFixed(0)+'% 升幅，去唔到T2 $'+t2+'，可能要考慮早啲平倉，唔使死等跌穿保本止損 $'+effStop.toFixed(2),
+              sub:'現價 $'+close.toFixed(2)+' ｜ T1 $'+t1});
+          }else{
             cards.push({color:'amber',ic:'🎯',ticker:p.ticker,strat:stratTag,
               msg:'已掂 T1 $'+t1+'，止損已上調保本至 $'+effStop.toFixed(2)+'，繼續持有等 T2 $'+(t2||'—'),
               sub:'現價 $'+close.toFixed(2)});
           }
-        }
-        // 突然大跌（今日跌幅大）→ 唔理離止蝕幾遠都要留意，可能係風險訊號
-        if(chgPct!=null&&chgPct<=-5){
-          cards.push({color:'red',ic:'⚠️',ticker:p.ticker,strat:stratTag,
-            msg:'今日大跌 '+chgPct.toFixed(1)+'%，留意風險（就算未跌穿止蝕都值得check）',
-            sub:'現價 $'+close.toFixed(2)+' ｜ 入場 $'+entry});
         }
       });
       if(!cards.length){box.innerHTML='<div class="empty-note">'+(positions.length?'「我的記錄」持倉暫時冇特別要留意':'「我的記錄」暫時冇持倉（去 Paper Trade tick 加）')+'</div>';return;}
