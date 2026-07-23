@@ -776,7 +776,7 @@
         const today=new Date().toISOString().slice(0,10);
         const trendVal=strat?(strat.streakBefore||strat.recentMaxStreak||strat.macroStreak||''):'';
         const reqMax=(activeTab==='S5'||activeTab==='S4'||activeTab==='S1V1')?4:(activeTab==='S7'?6:5);
-        const reqTxt=strat?(strat.score+' of '+reqMax):'';
+        const reqTxt=strat?(strat.score+'／'+reqMax):'';
         // Bonus 帶埋逐項breakdown，用 :: 分隔（前面數字係分數，後面係b1..bN 邊個中）方便顯示tooltip
         const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
         const bonusTxt=strat?(strat.bonusScore+'::'+bonusBreak):'';
