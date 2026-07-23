@@ -489,7 +489,7 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
   if(cl.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>REQ</th><th>Bonus</th><th>筆記</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>REQ</th><th>Bonus</th><th>筆記</th><th>連結</th><th>操作</th>'
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
@@ -509,6 +509,7 @@ function renderTV(openP, closed){
         +'<td style="text-align:center;cursor:help" title="'+(reqCk||'冇存到逐項')+'">'+(t.req!==''&&t.req!=null?t.req:'—')+'</td>'
         +'<td style="text-align:center;cursor:help" title="'+(bonusTip||'冇存到逐項')+'">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+'</td>'
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
+        +'<td>'+(t.tvLink?('<a href="'+t.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> '):'')+'<button class="linkbtn" onclick="addLinkClosed(\''+t.ticker+'\','+t.entry+')">'+(t.tvLink?'✏️':'➕連結')+'</button></td>'
         +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
         +'</tr>';
     });
@@ -591,7 +592,7 @@ function suggestEditStop(){
 function closeEditTV(){document.getElementById('editTVModal').classList.remove('show');_editTVTicker=null;}
 async function saveEditTV(){
   if(!_editTVTicker)return;
-  const payload={action:'paper_edit',ticker:_editTVTicker,group:'TV'};
+  const payload={action:'paper_edit',ticker:_editTVTicker,group:'TV',status:'open'};
   const entry=document.getElementById('etEntry').value;
   const stop=document.getElementById('etStop').value;
   const stopMethod=document.getElementById('etStopMethod').value;
@@ -626,6 +627,17 @@ async function manualCloseTV(ticker, entry){
     alert('已平倉 '+ticker+' @ $'+exitPx+'。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('平倉失敗，再試');}
+}
+async function addLinkClosed(ticker, entry){
+  const rec=_allClosed.find(t=>t.ticker===ticker&&t.group==='TV'&&Number(t.entry)===Number(entry));
+  const link=prompt('TradingView 連結：', rec?(rec.tvLink||''):'');
+  if(link===null)return;
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_edit',ticker,group:'TV',status:'closed',matchEntry:entry,tvLink:link})});
+    alert('已更新。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('更新失敗，再試');}
 }
 async function removeTV(ticker, entry, status){
   if(!confirm('確定刪除 '+ticker+' 呢筆記錄？（成行消失）'))return;
