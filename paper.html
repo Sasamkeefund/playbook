@@ -136,15 +136,22 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
 
 let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={};
 async function load(){
-  let d;
-  try{ d=await (await fetch(WL_API+"?action=paper_list")).json(); }
-  catch(e){ document.getElementById('content').innerHTML='<div class="warn">載入失敗。請確認 Apps Script 已更新（加咗 Paper trade）。</div>'; return; }
+  const now=new Date();
+  const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
+  const [paperResult, dataResult] = await Promise.allSettled([
+    fetch(WL_API+"?action=paper_list").then(r=>r.json()),
+    fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json())
+  ]);
+  if(paperResult.status==='rejected'){
+    document.getElementById('content').innerHTML='<div class="warn">載入失敗。請確認 Apps Script 已更新（加咗 Paper trade）。</div>';
+    return;
+  }
+  const d=paperResult.value;
   _allOpen=d.open||[]; _allClosed=d.closed||[];
-  try{
-    const dj=await (await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now())).json();
-    _liveData={};
-    (dj.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
-  }catch(e){ _liveData={}; }
+  _liveData={};
+  if(dataResult.status==='fulfilled'){
+    (dataResult.value.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
+  }
   renderCurrent();
 }
 function switchPT(m){
