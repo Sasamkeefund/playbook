@@ -503,7 +503,7 @@ function renderTV(openP, closed){
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
         +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a>':'<span style="color:var(--faint)">—</span>')+'</td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
-        +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+p.entry+',\'open\')">刪除</button></td>'
+        +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+(p.entry||0)+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+(p.entry||0)+',\'open\')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
