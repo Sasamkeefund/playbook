@@ -218,11 +218,18 @@
       return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} HKT`;
     }
     async function load(){
-      let market=null,scan=null,paperData=null,fibMap={};
-      try{market=await(await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t='+Date.now())).json();}catch(e){}
-      try{scan=await(await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+Date.now())).json();}catch(e){}
-      try{paperData=await(await fetch(WL_API+'?action=paper_list&t='+Date.now())).json();}catch(e){}
-      try{fibMap=await(await fetch(WL_API+'?action=fib_all&t='+Date.now())).json()||{};}catch(e){fibMap={};}
+      const now=new Date();
+      const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
+      const [marketR, scanR, paperR, fibR] = await Promise.allSettled([
+        fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t='+Date.now()).then(r=>r.json()),
+        fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
+        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json()),
+        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json())
+      ]);
+      const market = marketR.status==='fulfilled'? marketR.value : null;
+      const scan = scanR.status==='fulfilled'? scanR.value : null;
+      const paperData = paperR.status==='fulfilled'? paperR.value : null;
+      const fibMap = fibR.status==='fulfilled'? (fibR.value||{}) : {};
       renderMarket(market);renderStrategies(scan);
       renderPaperAlerts(paperData,scan);
       renderS6Alerts(fibMap,scan);
