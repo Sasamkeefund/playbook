@@ -445,14 +445,19 @@
         // 現價偏離 entry 幾多%——先至係真正決定「仲追唔追得」嘅關鍵，唔淨係睇反彈日數
         const drift=(curClose!=null&&entryPx)?((curClose-entryPx)/entryPx*100):null;
         const driftTxt=drift!=null?(' ｜ 現價距entry '+(drift>=0?'+':'')+drift.toFixed(1)+'%'):'';
+        const clean=strat.cleanLevel, btwPiv=strat.betweenPivots;
+        const cleanTxt=clean?(' ｜ '+(clean==='clean'?'🟢乾淨':clean==='ok'?'🟡一般':'🔴雜亂')+'(中間'+btwPiv+'個pivot)'):'';
         if(drift!=null&&drift>3){
-          return{text:'⚠️ 形態齊，但現價已經飛離entry '+drift.toFixed(1)+'%，追落去止蝕距離同R:R已經唔同晒，唔建議追'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt,color:'amber'};
+          return{text:'⚠️ 形態齊，但現價已經飛離entry '+drift.toFixed(1)+'%，追落去止蝕距離同R:R已經唔同晒，唔建議追'+ptypeTxt+freshTxt+priceTxt+driftTxt+cleanTxt+macroTxt,color:'amber'};
         }
         if(macroStreak<7){
-          return{text:'⚠️ 形態齊，但大趨勢未夠7日確認（現'+macroStreak+'日）— 保守處理'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt,color:'amber'};
+          return{text:'⚠️ 形態齊，但大趨勢未夠7日確認（現'+macroStreak+'日）— 保守處理'+ptypeTxt+freshTxt+priceTxt+driftTxt+cleanTxt+macroTxt,color:'amber'};
         }
-        if(bonus>=2)return{text:'🔥 高質 Setup — R1-R4 全過 + Bonus '+bonus+'/3'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
-        return{text:'✅ Setup — R1-R4 全過'+ptypeTxt+freshTxt+priceTxt+driftTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
+        if(clean==='messy'){
+          return{text:'⚠️ 形態齊，但前頂→Wave2中間好雜亂('+btwPiv+'個pivot)，前頂可能冇實質阻力意義，建議人手覆核'+ptypeTxt+freshTxt+priceTxt+driftTxt+cleanTxt+macroTxt,color:'amber'};
+        }
+        if(bonus>=2)return{text:'🔥 高質 Setup — R1-R4 全過 + Bonus '+bonus+'/3'+ptypeTxt+freshTxt+priceTxt+driftTxt+cleanTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
+        return{text:'✅ Setup — R1-R4 全過'+ptypeTxt+freshTxt+priceTxt+driftTxt+cleanTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
       }
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
         const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.streakBefore||strat.recentMaxStreak||0;
