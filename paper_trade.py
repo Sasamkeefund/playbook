@@ -135,7 +135,7 @@ def main():
         stop = float(p["stop"])
 
         # ── S1 / TV 組：人手揀股(或TradingView真實落單)，用當日 High/Low check T1/T2/止損 ──
-        if grp in ("S1", "TV"):
+        if grp == "S1":
             high = st.get("high", close)
             low = st.get("low", close)
             # 數據新鮮度：high/low 同 close 都等於入場（冇變）= 數據未更新
@@ -171,6 +171,20 @@ def main():
                 gv_post({"action": "paper_t1hit", "ticker": tk, "group": grp, "t1hit": "Y"})
                 new_stop = entry + (t1 - entry) * 0.5
                 print(f"📍 [{grp}] {tk}: 掂咗 T1 ${t1}（止損搬去 ${new_stop:.2f}，繼續持倉等 T2）")
+            continue
+
+        if grp == "TV":
+            # 「我的記錄」係真實 TradingView 單，唔幫你自動平倉（怕同實際成交價/時間對唔上）。
+            # 淨係做「通知」：掂咗 T1 就標記（畀 Market page/Paper Trade 頁顯示提示），
+            # 止蝕/T2 完全唔喺呢度處理，交返俾前端用即時股價自己計「建議平倉」badge，
+            # 真正平倉一定要你自己撳「平倉」揀，填返實際成交價。
+            high = st.get("high", close)
+            t1 = _num(p.get("t1"))
+            t1hit = str(p.get("t1hit", "")).upper() == "Y"
+            if t1 and high >= t1 and not t1hit:
+                gv_post({"action": "paper_t1hit", "ticker": tk, "group": grp, "t1hit": "Y"})
+                new_stop = entry + (t1 - entry) * 0.5
+                print(f"📍 [TV] {tk}: 掂咗 T1 ${t1}（提示止損可以上調去 ${new_stop:.2f}，唔會自動平倉）")
             continue
 
         # ── S7 組（A/B/C/D）：用收市價 + trail ──
