@@ -316,7 +316,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     # 關鍵：「反彈」一定要新鮮（今日或前2日內），否則就係舊聞，唔可以話「而家可以入場」
     v1 = {"ready": False, "score": 0, "bonusScore": 0, "conds": [False, False, False, False],
           "bonus": [False, False, False], "keyvals": {}, "wave1Top": None, "wave2Top": None, "breachLow": None,
-          "breakoutDistPct": None, "daysToBreach": None, "daysRecover": None, "daysSinceRecover": None, "patternType": None,
+          "breakoutDistPct": None, "daysToBreach": None, "daysRecover": None, "daysSinceRecover": None, "patternType": None, "cleanLevel": None, "betweenPivots": None,
           "aboveNow": None, "entry": None, "stop": None, "t1": None, "t2": None}
     try:
         win = 70
@@ -328,6 +328,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
             # 避免好似單日插針咁嘅雜訊被當做前頂 —— 用真實數據 backtest 過先定呢個門檻）
             zz = zigzag_pivots(seg_h, seg_l, min_pct=4.0)
             piv = [i for i, price, typ in zz if typ == 'H']
+            zz_idx_all = [i for i, price, typ in zz]  # 全部 pivot（H+L）嘅位置，用嚟計「乾淨度」
             # 揾合資格嘅 (Wave1頂, Wave2頂) 配對：Wave2>Wave1，突破距離2-15%（ZigZag已經確保中間有回調）
             # 再要求：跌穿前頂之後嘅反彈，一定要「新鮮」（反彈完成嗰日 = 今日或前2日內），
             #        揀當中反彈最新鮮嗰一對（唔係揀 wave2 最遲嗰對 —— 舊 setup 就算 wave2 好遲都唔算數）
@@ -362,6 +363,11 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 wave1_idx, wave2_idx = best["i1"], best["i2"]
                 wave1_top, wave2_top = seg_h[wave1_idx], seg_h[wave2_idx]
                 breakout_dist_pct = (wave2_top - wave1_top) / wave1_top * 100
+                # 乾淨度：前頂到Wave2之間，中間插咗幾多個額外pivot（H+L）。
+                # 教科書式「一浪清楚衝上→回調→再一浪清楚衝上」應該淨係得1個（果段回調嘅低位），
+                # 插得越多，即係中間嗰段越chaotic、嗰個「前頂」對市場嚟講可能冇乜實質阻力意義
+                between_pivots = sum(1 for x in zz_idx_all if wave1_idx < x < wave2_idx)
+                clean_level = "clean" if between_pivots <= 1 else ("ok" if between_pivots <= 3 else "messy")
                 wave1_low = min(seg_l[max(0, wave1_idx-15):wave1_idx+1])
                 wave1_days = wave1_idx - seg_l[max(0, wave1_idx-15):wave1_idx+1].index(wave1_low) if wave1_idx > 0 else 1
                 wave1_days = max(wave1_days, 1)
@@ -418,6 +424,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                     "wave1Top": round(wave1_top, 2), "wave2Top": round(wave2_top, 2),
                     "breachLow": round(breach_low, 2), "breakoutDistPct": round(breakout_dist_pct, 1),
                     "daysToBreach": breach_pos, "daysRecover": days_recover_v1, "patternType": pattern_type,
+                    "cleanLevel": clean_level, "betweenPivots": between_pivots,
                     "daysSinceRecover": days_since_recover, "aboveNow": today_above,
                     "entry": round(wave1_top * 1.003, 2), "stop": round(breach_low, 2),
                     "t1": round(wave2_top, 2),
@@ -925,7 +932,7 @@ def build_record(ticker, hist):
         # S1V1 原版（前頂支撐）：pass-through 波段價位 + entry/stop/T1/T2
         if s == "S1V1":
             for k in ("wave1Top", "wave2Top", "breachLow", "breakoutDistPct",
-                      "daysToBreach", "daysRecover", "daysSinceRecover", "patternType", "aboveNow", "entry", "stop", "t1", "t2"):
+                      "daysToBreach", "daysRecover", "daysSinceRecover", "patternType", "cleanLevel", "betweenPivots", "aboveNow", "entry", "stop", "t1", "t2"):
                 strategies[s][k] = today[s].get(k)
             # 粗篩用：借 S1(EMA20版) 嘅 streak + EMA200斜率，做「大趨勢確認」參考（V1 checklist Step0 要求）
             strategies[s]["macroStreak"] = streaks.get("_v1MacroStreak", 0)
