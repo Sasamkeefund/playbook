@@ -572,7 +572,7 @@ function renderTV(openP, closed){
         +'<td style="text-align:center;cursor:help" title="'+(bonusTip||'冇存到逐項')+'">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+'</td>'
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td>'+(t.tvLink?('<a href="'+t.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> '):'')+'<button class="linkbtn" onclick="addLinkClosed(\''+t.ticker+'\','+t.entry+')">'+(t.tvLink?'✏️':'➕連結')+'</button></td>'
-        +'<td><button class="linkbtn" style="color:#6aabf0" onclick="reopenTV(\''+t.ticker+'\','+t.entry+')">↩️打開返</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
+        +'<td><button class="linkbtn" onclick="editCloseTV(\''+t.ticker+'\','+t.entry+')">✏️編輯</button> <button class="linkbtn" style="color:#6aabf0" onclick="reopenTV(\''+t.ticker+'\','+t.entry+')">↩️打開返</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
@@ -677,15 +677,27 @@ async function saveEditTV(){
     setTimeout(()=>load(),1500);
   }catch(e){alert('更新失敗，再試');}
 }
-let _closeTVTicker=null, _closeTVEntry=null;
+let _closeTVTicker=null, _closeTVEntry=null, _closeTVMode='new';
 function manualCloseTV(ticker, entry){
-  _closeTVTicker=ticker; _closeTVEntry=entry;
+  _closeTVTicker=ticker; _closeTVEntry=entry; _closeTVMode='new';
   document.getElementById('closeTVTicker').textContent=ticker;
   document.getElementById('ctPx').value='';
   document.getElementById('ctDate').value=new Date().toISOString().slice(0,10);
   document.getElementById('ctReason').value='止賺(到T2)';
   document.getElementById('ctLink').value='';
   document.getElementById('ctNotes').value='';
+  document.getElementById('closeTVModal').classList.add('show');
+}
+function editCloseTV(ticker, entry){
+  const rec=_allClosed.find(t=>t.ticker===ticker&&t.group==='TV'&&Number(t.entry)===Number(entry));
+  if(!rec){alert('搵唔到記錄');return;}
+  _closeTVTicker=ticker; _closeTVEntry=entry; _closeTVMode='edit';
+  document.getElementById('closeTVTicker').textContent=ticker+'（編輯已平倉）';
+  document.getElementById('ctPx').value=rec.exitPx||'';
+  document.getElementById('ctDate').value=rec.exitDate||new Date().toISOString().slice(0,10);
+  document.getElementById('ctReason').value=rec.reason||'止賺(到T2)';
+  document.getElementById('ctLink').value=rec.tvLink||'';
+  document.getElementById('ctNotes').value=rec.notes||'';
   document.getElementById('closeTVModal').classList.add('show');
 }
 function closeCloseTV(){document.getElementById('closeTVModal').classList.remove('show');_closeTVTicker=null;}
@@ -700,6 +712,15 @@ async function saveCloseTV(){
   const link=document.getElementById('ctLink').value;
   const notes=document.getElementById('ctNotes').value;
   try{
+    if(_closeTVMode==='edit'){
+      await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action:'paper_edit',ticker:_closeTVTicker,group:'TV',status:'closed',matchEntry:_closeTVEntry,
+          exitPx,exitDate,reason,tvLink:link,notes})});
+      closeCloseTV();
+      alert('已更新 '+_closeTVTicker+'。1-2秒後刷新。');
+      setTimeout(()=>load(),1500);
+      return;
+    }
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({action:'paper_manual_close',ticker:_closeTVTicker,group:'TV',exitPx,exitDate,reason})});
     // 平倉之後仲要補返連結/筆記(paper_manual_close 冇處理呢兩個欄，用返 paper_edit 補)
