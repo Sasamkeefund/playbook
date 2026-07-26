@@ -302,9 +302,9 @@ const _MODES=['trader','work','mobile'];
       const c=document.getElementById('chartContainer');
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
       document.getElementById('chartModal').classList.add('show');
-      // 由已載入嘅 watchlist 攞 A/B（已經有，唔使再 fetch）
-      const it=list.find(x=>x.ticker.toUpperCase()===ticker.toUpperCase());
-      pendingAB={a:it&&it.a?it.a:null,b:it&&it.b?it.b:null};
+      // A/B/H1 應該由 FibAB 表（fibMap）攞，唔係通用 watchlist 嘅 a/b 欄（S6 唔用嗰兩欄，成日係空）
+      const fb=fibMap[ticker.toUpperCase()]||{};
+      pendingAB={a:fb.a||null,b:fb.b||null,h1:fb.h1||null};
       try{
         const all=await ensureCharts();
         const d=all[ticker];
@@ -365,6 +365,14 @@ const _MODES=['trader','work','mobile'];
       const n=d.c.length;
       const fibLevels=[[0,'#5b6075'],[0.236,'#f5b945'],[0.382,'#888'],[0.5,'#888'],[0.618,'#888'],[0.786,'#4d8dff'],[1,'#5b6075']];
       let fibSeries=[];
+      // 頸線 H1：獨立於 A/B Fib 顯示（有存低就一定畫，唔使等你剔咗「顯示Fib」先出現）
+      if(pendingAB.h1){
+        const h1v=parseFloat(pendingAB.h1);
+        if(!isNaN(h1v)){
+          const h1s=chart.addLineSeries({color:'#ff9838',lineWidth:2,lineStyle:0,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:'頸線H1'});
+          h1s.setData([{time:d.t[0],value:h1v},{time:d.t[n-1],value:h1v}]);
+        }
+      }
       function drawFib(on){
         fibSeries.forEach(s=>chart.removeSeries(s));fibSeries=[];
         const fibInputs=document.getElementById('fibInputs');
