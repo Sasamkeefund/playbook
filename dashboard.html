@@ -677,7 +677,7 @@
         const cell=(i)=>{ if(i===4&&!c5Exist)return '<td class="c na">–</td>';
           return `<td class="c ${st.conds[i]?'ok':'no'}">${st.conds[i]?'✓':'✗'}</td>`;};
         return `<tr>
-          <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（21日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
+          <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（7日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
           <td style="text-align:center"><input type="checkbox" ${tvOpenSet.has(s.ticker.toUpperCase())?'checked':''} onchange="toggleTVTrack('${s.ticker}',this)" style="width:16px;height:16px;cursor:pointer"></td>
           <td>${st.isNew?'<span class="new-badge">NEW</span>':''}</td>
           <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a></td>
@@ -732,7 +732,7 @@
     let chartsCache=null, lwChart=null;
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
     let wlSet=new Set();
-    let skipSet=new Set(); // "TICKER|STRATEGY" 已 skip（21日內）
+    let skipSet=new Set(); // "TICKER|STRATEGY" 已 skip（7日內）
     let showSkipped=false;
     let fibMap={};  // ticker → {a,b,h1}（獨立 FibAB 表，任何機都讀到）
     async function loadFibAll(){
@@ -743,12 +743,12 @@
         const r=await fetch(WL_API);
         const d=await r.json();
         wlSet=new Set((d.watchlist||[]).map(x=>x.ticker.toUpperCase()));
-        // skip 清單：21日內先有效（過期自動重現）
+        // skip 清單：7日內先有效（過期自動重現）
         skipSet=new Set();
         const now=Date.now();
         (d.skips||[]).forEach(s=>{
           const days=(now-new Date(s.dateSkipped).getTime())/86400000;
-          if(days<=21)skipSet.add(s.ticker.toUpperCase()+'|'+(s.strategy||'').toUpperCase());
+          if(days<=7)skipSet.add(s.ticker.toUpperCase()+'|'+(s.strategy||'').toUpperCase());
         });
       }catch(e){wlSet=new Set();skipSet=new Set();}
       if(globalData)renderTable();
