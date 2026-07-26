@@ -109,6 +109,30 @@
     </div>
   </div>
 
+  <div class="modal" id="closeTVModal" onclick="if(event.target===this)closeCloseTV()">
+    <div class="modalbox" style="width:min(480px,94vw)">
+      <div class="modalhead"><div style="font-weight:700">🔚 平倉 <span id="closeTVTicker"></span></div><button class="x" onclick="closeCloseTV()">×</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="sub">平倉價</label><input id="ctPx" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+        <div><label class="sub">平倉日</label><input id="ctDate" type="date" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+      </div>
+      <div style="margin-top:10px">
+        <label class="sub">呢次係點平嘅？</label>
+        <select id="ctReason" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)">
+          <option value="止賺(到T2)">✅ 成功 — 止賺(到T2)</option>
+          <option value="止賺(到T1)">✅ 成功 — 止賺(到T1)</option>
+          <option value="止蝕(跌穿止損)">❌ 失敗 — 止蝕(跌穿止損)</option>
+          <option value="提早平倉(保本/小賺)">⚠️ 提早平倉 — 保本/小賺</option>
+          <option value="提早平倉(蝕住走)">⚠️ 提早平倉 — 蝕住走</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div style="margin-top:10px"><label class="sub">TradingView 連結（平倉後嘅圖／記錄）</label><input id="ctLink" type="url" placeholder="https://www.tradingview.com/x/..." style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+      <div style="margin-top:10px"><label class="sub">平倉筆記</label><textarea id="ctNotes" rows="2" placeholder="點解揀呢個位平？覆盤心得？" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit"></textarea></div>
+      <button class="btn primary" style="margin-top:14px;background:var(--accent);color:#fff;width:100%" onclick="saveCloseTV()">確認平倉</button>
+    </div>
+  </div>
+
 <script>
 const WL_API="https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec";
 function toggleWork(){
@@ -653,16 +677,40 @@ async function saveEditTV(){
     setTimeout(()=>load(),1500);
   }catch(e){alert('更新失敗，再試');}
 }
-async function manualCloseTV(ticker, entry){
-  const px=prompt('平倉 '+ticker+'，輸入平倉價：');
-  if(px===null||px==='')return;
+let _closeTVTicker=null, _closeTVEntry=null;
+function manualCloseTV(ticker, entry){
+  _closeTVTicker=ticker; _closeTVEntry=entry;
+  document.getElementById('closeTVTicker').textContent=ticker;
+  document.getElementById('ctPx').value='';
+  document.getElementById('ctDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ctReason').value='止賺(到T2)';
+  document.getElementById('ctLink').value='';
+  document.getElementById('ctNotes').value='';
+  document.getElementById('closeTVModal').classList.add('show');
+}
+function closeCloseTV(){document.getElementById('closeTVModal').classList.remove('show');_closeTVTicker=null;}
+async function saveCloseTV(){
+  if(!_closeTVTicker)return;
+  const px=document.getElementById('ctPx').value;
+  if(px===''){alert('要填返平倉價');return;}
   const exitPx=parseFloat(px);
-  if(isNaN(exitPx)){alert('請輸入數字');return;}
-  const today=new Date().toISOString().slice(0,10);
+  if(isNaN(exitPx)){alert('平倉價要係數字');return;}
+  const exitDate=document.getElementById('ctDate').value||new Date().toISOString().slice(0,10);
+  const reason=document.getElementById('ctReason').value;
+  const link=document.getElementById('ctLink').value;
+  const notes=document.getElementById('ctNotes').value;
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'paper_manual_close',ticker,group:'TV',exitPx,exitDate:today})});
-    alert('已平倉 '+ticker+' @ $'+exitPx+'。1-2秒後刷新。');
+      body:JSON.stringify({action:'paper_manual_close',ticker:_closeTVTicker,group:'TV',exitPx,exitDate,reason})});
+    // 平倉之後仲要補返連結/筆記(paper_manual_close 冇處理呢兩個欄，用返 paper_edit 補)
+    if(link||notes){
+      const editPayload={action:'paper_edit',ticker:_closeTVTicker,group:'TV',status:'closed',matchEntry:_closeTVEntry};
+      if(link)editPayload.tvLink=link;
+      if(notes)editPayload.notes=notes;
+      await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(editPayload)});
+    }
+    closeCloseTV();
+    alert('已平倉 '+_closeTVTicker+' @ $'+exitPx+'。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('平倉失敗，再試');}
 }
