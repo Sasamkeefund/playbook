@@ -546,7 +546,7 @@ function renderTV(openP, closed){
         +'<td style="text-align:center;cursor:help" title="'+(bonusTip||'冇存到逐項')+'">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+'</td>'
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td>'+(t.tvLink?('<a href="'+t.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> '):'')+'<button class="linkbtn" onclick="addLinkClosed(\''+t.ticker+'\','+t.entry+')">'+(t.tvLink?'✏️':'➕連結')+'</button></td>'
-        +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
+        +'<td><button class="linkbtn" style="color:#6aabf0" onclick="reopenTV(\''+t.ticker+'\','+t.entry+')">↩️打開返</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
@@ -663,6 +663,15 @@ async function manualCloseTV(ticker, entry){
     alert('已平倉 '+ticker+' @ $'+exitPx+'。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('平倉失敗，再試');}
+}
+async function reopenTV(ticker, entry){
+  if(!confirm('確定將 '+ticker+' 打開返做「持倉中」？（清空平倉資料，其他嘢會保留）'))return;
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_reopen',ticker,group:'TV',matchEntry:entry})});
+    alert('已打開返 '+ticker+'。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('操作失敗，再試');}
 }
 async function addLinkClosed(ticker, entry){
   const rec=_allClosed.find(t=>t.ticker===ticker&&t.group==='TV'&&Number(t.entry)===Number(entry));
