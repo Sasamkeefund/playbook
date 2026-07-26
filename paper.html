@@ -487,20 +487,22 @@ function renderTV(openP, closed){
       const cur=live?live.close:null;
       const curPct=(cur!=null&&!pending&&e)?((cur-e)/e*100):null;
       const curColor=curPct==null?'':(curPct>=0?'green':'red');
-      const suggestClose=(!pending&&cur!=null)?(cur<=effStop?'stop':(t2n&&cur>=t2n?'t2':null)):null;
+      // ⚠️警報一定要跟你真實填低嘅止蝕（p.stop），唔可以用「掂T1後建議上調」嗰個計出嚟嘅位——
+      // 因為你真係喺TradingView落嘅單，個止蝕搬冇搬，淨係你自己知，系統唔應該假設你已經搬咗
+      const suggestClose=(!pending&&cur!=null)?(cur<=stp?'stop':(t2n&&cur>=t2n?'t2':null)):null;
       const curCell=cur!=null
         ?'<td class="mono '+curColor+'">$'+cur.toFixed(2)+(curPct!=null?'<br><span style="font-size:10px">'+(curPct>=0?'+':'')+curPct.toFixed(1)+'%</span>':'')+'</td>'
         :'<td class="mono" style="color:var(--faint)">—</td>';
       h+='<tr'+(pending?' style="background:rgba(245,185,69,.06)"':'')+'>'
         +'<td><b>'+p.ticker+'</b>'+(pending?'<br><span style="font-size:10px;color:var(--amber)">⏳待補買賣價</span>':'')
-          +(suggestClose==='stop'?'<br><span style="font-size:10px;color:#ff5d6c">⚠️已跌穿止蝕，建議去TV confirm並平倉</span>':'')
+          +(suggestClose==='stop'?'<br><span style="font-size:10px;color:#ff5d6c">⚠️已跌穿你填低嘅止蝕，建議去TV confirm並平倉</span>':'')
           +(suggestClose==='t2'?'<br><span style="font-size:10px;color:#2ee6a6">🎯已到T2，建議去TV confirm並平倉</span>':'')
           +'</td>'
         +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+'</td>'
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
         +'<td class="mono">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+p.entry)+'</td>'
         +curCell
-        +'<td class="mono red">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+effStop.toFixed(2)+(t1hitBool?'<br><span style="font-size:10px;color:var(--faint)">🔒掂T1後上調</span>':''))+'</td>'
+        +'<td class="mono red">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+stp.toFixed(2)+(t1hitBool?'<br><span style="font-size:10px;color:#6aabf0">💡掂咗T1，可考慮手動搬去 $'+effStop.toFixed(2)+'</span>':''))+'</td>'
         +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+(((p.state||'').split('|')[2]||'').trim()?'<br><span style="color:var(--accent)">'+((p.state||'').split('|')[2]||'').trim()+'</span>':'')+'</td>'
         +'<td class="mono green">'+(p.t1?'$'+p.t1:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr1+'</td>'
