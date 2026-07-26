@@ -283,10 +283,11 @@
         const effStop=(t1hitBool&&t1)?(entry+(t1-entry)*0.5):stop;
         const stratTag=(p.state||'').split('|')[0].trim()||'TV';
         if(close==null)return;
-        // ① 已跌穿止蝕（掂咗T1嘅話即係保本止損）→ 今晚好大機會自動平倉
-        if(close<=effStop){
+        // ① 已跌穿「你真實填低嘅止蝕」→ 建議去TV確認並平倉（唔用掂T1嘅建議上調位，
+        //    因為個止蝕搬冇搬，淨係你自己知，系統唔應該假設你已經喺TradingView搬咗）
+        if(close<=stop){
           cards.push({color:'red',ic:'🔴',ticker:p.ticker,strat:stratTag,
-            msg:'已跌穿'+(t1hitBool?'保本止損':'止蝕')+' $'+effStop.toFixed(2)+'，建議去 TradingView confirm 並自己手動平倉',
+            msg:'已跌穿你填低嘅止蝕 $'+stop.toFixed(2)+'，建議去 TradingView confirm 並自己手動平倉',
             sub:'現價 $'+close.toFixed(2)+' ｜ 入場 $'+entry});
         }
         // ② 已到 T2 → 要平倉
@@ -305,7 +306,7 @@
               sub:'現價 $'+close.toFixed(2)+' ｜ T1 $'+t1});
           }else{
             cards.push({color:'amber',ic:'🎯',ticker:p.ticker,strat:stratTag,
-              msg:'已掂 T1 $'+t1+'，止損已上調保本至 $'+effStop.toFixed(2)+'，繼續持有等 T2 $'+(t2||'—'),
+              msg:'已掂 T1 $'+t1+'，可考慮手動將止損搬去保本位 $'+effStop.toFixed(2)+'，繼續持有等 T2 $'+(t2||'—'),
               sub:'現價 $'+close.toFixed(2)});
           }
         }
