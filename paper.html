@@ -544,7 +544,7 @@ function renderTV(openP, closed){
         +'<td style="text-align:center;cursor:help" title="'+(bonusTip||'冇存到逐項')+'">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+'</td>'
         +'<td style="text-align:center">'+(p.streak||'—')+' / '+(p.trend||'—')+'</td>'
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
-        +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a>':'<span style="color:var(--faint)">—</span>')+'</td>'
+        +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> ':'<span style="color:var(--faint)">—</span> ')+'<a href="https://www.google.com/search?q='+p.ticker+'+stock+news&tbm=nws" target="_blank" class="linkbtn" title="check最新新聞">📰</a></td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
         +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+(p.entry||0)+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+(p.entry||0)+',\'open\')">刪除</button></td>'
         +'</tr>';
