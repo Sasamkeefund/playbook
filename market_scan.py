@@ -19,6 +19,31 @@ import requests
 OUTPUT_FILE = "market.json"
 TICKERS = ["SPY", "QQQ", "^VIX"]
 
+# 2026 FOMC 議息日（已查證，官方公布）——用嗰兩日入面最後一日（宣布政策決定嗰日）
+FOMC_2026 = ["2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
+             "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09"]
+# CPI 公布日（已查證幾個實際日子；其餘月份用「約第2個星期二」估算，可能有1-2日誤差）
+CPI_2026 = ["2026-01-13", "2026-02-11", "2026-03-11", "2026-04-10", "2026-05-12",
+            "2026-06-10", "2026-07-14", "2026-08-12", "2026-09-11", "2026-10-13",
+            "2026-11-12", "2026-12-10"]
+
+
+def get_macro_calendar():
+    """宏觀經濟大事日曆（FOMC/CPI/非農），影響成個大市，唔關邊隻股事。"""
+    from datetime import timedelta
+    events = []
+    for d in FOMC_2026:
+        events.append({"date": d, "name": "FOMC 議息", "icon": "🏛️"})
+    for d in CPI_2026:
+        events.append({"date": d, "name": "CPI 通脹數據", "icon": "📊"})
+    for month in range(1, 13):
+        day = datetime(2026, month, 1)
+        while day.weekday() != 4:
+            day += timedelta(days=1)
+        events.append({"date": day.strftime("%Y-%m-%d"), "name": "非農就業報告", "icon": "👷"})
+    events.sort(key=lambda x: x["date"])
+    return events
+
 YF_HEADERS = {
     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                    "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -127,6 +152,7 @@ def main():
         "qqq": qqq,
         "vix": vix,
         "verdict": verdict,
+        "macroCalendar": get_macro_calendar(),
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
