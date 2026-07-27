@@ -202,7 +202,17 @@ const _MODES=['trader','work','mobile'];
       }
       if(!rows.length){th.innerHTML='';tb.innerHTML='<tr><td class="empty">呢個策略暫時冇 ready 嘅 watchlist 股</td></tr>';return;}
 
-      const linkCell=it=>`<td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${it.ticker}');return false;">${it.ticker} 📈</a></td>`;
+      const earningsBadge=it=>{
+        const s=dataMap[it.ticker.toUpperCase()];
+        if(!s)return '';
+        const d=s.daysToEarnings;
+        if(d==null)return '';
+        if(d>=0&&d<=2)return ' <span title="呢排啱啱出咗業績（'+s.earningsDate+'）" style="color:#ff9838;font-size:11px;cursor:help">📊剛出業績</span>';
+        if(d<0&&d>=-5)return ' <span title="'+Math.abs(d)+'日前出咗業績（'+s.earningsDate+'）" style="color:#ff9838;font-size:11px;cursor:help">📊業績後'+Math.abs(d)+'日</span>';
+        if(d>0&&d<=5)return ' <span title="仲有'+d+'日出業績（'+s.earningsDate+'）" style="color:#f5b945;font-size:11px;cursor:help">📊'+d+'日後業績</span>';
+        return '';
+      };
+      const linkCell=it=>`<td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${it.ticker}');return false;">${it.ticker} 📈</a>${earningsBadge(it)}</td>`;
       const noteCell=it=>`<td><input type="text" class="note-input" value="${(it.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${it.ticker}',this.value)" placeholder="加筆記" style="width:120px"></td>`;
       const delCell=it=>`<td style="text-align:center"><button class="del-btn" onclick="removeStock('${it.ticker}')">🗑️</button></td>`;
       const shortDate=s=>{ if(!s)return '—'; const d=new Date(s); return isNaN(d)?s:d.toDateString(); };
