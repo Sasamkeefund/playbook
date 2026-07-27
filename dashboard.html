@@ -430,7 +430,12 @@
       const d=s.daysToEarnings;
       if(d==null)return out;
       if(d>=0&&d<=2)return out+' <span title="呢排啱啱出咗業績（'+s.earningsDate+'），股價仲喺度消化緊，波動可能特別大" style="color:#ff9838;font-size:11px;cursor:help">📊剛出業績</span>';
-      if(d<0&&d>=-5)return out+' <span title="'+Math.abs(d)+'日前出咗業績（'+s.earningsDate+'），留意仲未完全消化" style="color:#ff9838;font-size:11px;cursor:help">📊業績後'+Math.abs(d)+'日</span>';
+      if(d<0&&d>=-5){
+        const rp=s.postEarningsReactionPct;
+        const rpTxt=(rp!=null)?('，出咗之後至今 '+(rp>=0?'+':'')+rp+'%（已發生嘅事實，唔係預測）'):'';
+        const rpCol=rp==null?'#ff9838':(rp>=0?'#2ee6a6':'#ff5d6c');
+        return out+' <span title="'+Math.abs(d)+'日前出咗業績（'+s.earningsDate+'）'+rpTxt+'" style="color:'+rpCol+';font-size:11px;cursor:help">📊業績後'+Math.abs(d)+'日'+(rp!=null?'('+(rp>=0?'+':'')+rp+'%)':'')+'</span>';
+      }
       if(d>0&&d<=5)return out+' <span title="仲有'+d+'日出業績（'+s.earningsDate+'），持倉過業績有跳空風險" style="color:#f5b945;font-size:11px;cursor:help">📊'+d+'日後業績</span>';
       return out;
     }
