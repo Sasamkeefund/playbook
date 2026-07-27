@@ -848,6 +848,97 @@ def get_sp500_tickers():
     return ["AAPL", "MSFT", "NVDA", "AMD", "PLTR", "CRWD", "AVGO", "META", "TSLA"]
 
 
+def get_sector_map():
+    """
+    Ticker -> GICS Sector（例如 'Energy', 'Financials', 'Information Technology'）。
+    直接攞返 get_sp500_tickers() 用緊嗰份 GitHub CSV，因為佢本身已經有 'GICS Sector' 呢欄，
+    零額外 network call、零額外風險。淨係 S&P500 成份股先有（非S&P500嘅股會冇呢個資料，屬正常）。
+    失敗就靜靜雞回傳空dict，唔會影響其他任何嘢。
+    """
+    try:
+        import csv, io
+        url = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/master/data/constituents.csv"
+        resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=20)
+        if resp.status_code == 200 and len(resp.text) > 3000:
+            rd = csv.DictReader(io.StringIO(resp.text))
+            out = {}
+            for row in rd:
+                sym = (row.get("Symbol") or "").strip().upper().replace(".", "-")
+                sector = (row.get("GICS Sector") or "").strip()
+                if sym and sector:
+                    out[sym] = sector
+            if len(out) > 400:
+                return out
+    except Exception:
+        pass
+    return {}
+
+
+def get_earnings_calendar(days_back=5, days_forward=7):
+    """
+    Ticker -> 業績日期字串（YYYY-MM-DD）。用 NASDAQ 公開嘅「按日子」業績日曆 API，
+    一次過攞返「嗰日邊啲股出業績」，唔使逐隻股問（1200幾隻淨係問返 ~12 次，唔係1200幾次）。
+    NASDAQ 呢個 API 有時會唔穩（可能要 header 先俾access，或者間唔中404），所以逐日獨立 try/except，
+    一日攞唔到就skip嗰日，唔會累到成個 scan 停擺；亦唔會影響任何價格/策略數據。
+    """
+    from datetime import timedelta
+    out = {}
+    today = datetime.now(timezone.utc).date()
+    headers = {
+        "User-Agent": YF_HEADERS["User-Agent"],
+        "Accept": "application/json",
+    }
+    for delta in range(-days_back, days_forward + 1):
+        day = today + timedelta(days=delta)
+        if day.weekday() >= 5:  # 週末冇交易，唔使問
+            continue
+        date_str = day.strftime("%Y-%m-%d")
+        try:
+            url = f"https://api.nasdaq.com/api/calendar/earnings?date={date_str}"
+            resp = requests.get(url, headers=headers, timeout=12)
+            if resp.status_code != 200:
+                continue
+            data = resp.json()
+            rows = (data.get("data") or {}).get("rows") or []
+            for row in rows:
+                sym = (row.get("symbol") or "").strip().upper()
+                if sym:
+                    out[sym] = date_str
+        except Exception:
+            continue
+    return out
+
+
+# 2026 FOMC 議息日（已查證，官方公布）——用嗰兩日入面最後一日（宣布政策決定嗰日）
+FOMC_2026 = ["2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17",
+             "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09"]
+# CPI 公布日（已查證幾個實際日子；其餘月份用「約第2個星期二」估算，可能有1-2日誤差）
+CPI_2026 = ["2026-01-13", "2026-02-11", "2026-03-11", "2026-04-10", "2026-05-12",
+            "2026-06-10", "2026-07-14", "2026-08-12", "2026-09-11", "2026-10-13",
+            "2026-11-12", "2026-12-10"]
+
+
+def get_macro_calendar():
+    """
+    宏觀經濟大事日曆（FOMC/CPI/非農），影響成個大市，唔關邊隻股事。
+    FOMC/CPI 用查證咗嘅實際日子；非農（NFP）用「每月第一個星期五」呢個公開、穩定嘅規則自己計，
+    唔使額外查（呢條規則本身好少例外，準確度好高）。
+    """
+    from datetime import timedelta
+    events = []
+    for d in FOMC_2026:
+        events.append({"date": d, "name": "FOMC 議息", "icon": "🏛️"})
+    for d in CPI_2026:
+        events.append({"date": d, "name": "CPI 通脹數據", "icon": "📊"})
+    for month in range(1, 13):
+        day = datetime(2026, month, 1)
+        while day.weekday() != 4:
+            day += timedelta(days=1)
+        events.append({"date": day.strftime("%Y-%m-%d"), "name": "非農就業報告", "icon": "👷"})
+    events.sort(key=lambda x: x["date"])
+    return events
+
+
 # ─────────────────────────────────────────────────────────────
 # 主流程
 # ─────────────────────────────────────────────────────────────
@@ -1004,6 +1095,10 @@ def load_previous_ready():
 
 def main():
     sp500 = set(get_sp500_tickers())
+    sector_map = get_sector_map()
+    print(f"Sector 分類：{len(sector_map)} 隻（淨係 S&P500 成份股有）")
+    earnings_map = get_earnings_calendar()
+    print(f"業績日曆：攞到 {len(earnings_map)} 隻嘅業績日期（可能因為 NASDAQ API 唔穩而係0，唔會影響其他數據）")
     # S7 想要中型爆發股 → 用 Russell 1000；S1-S6 喺 app 度 filter 返 S&P 500
     tickers = get_russell1000_tickers()
     # 確保 S&P 500 全部包到（萬一 IWB 攞唔齊）
@@ -1022,6 +1117,17 @@ def main():
             rec = build_record(t, hist)
             if rec:
                 rec["inSP500"] = (t in sp500)   # 標記，app 用嚟 filter S1-S6
+                rec["sector"] = sector_map.get(t)  # None = 唔喺S&P500入面／攞唔到
+                edate = earnings_map.get(t)
+                rec["earningsDate"] = edate
+                if edate:
+                    try:
+                        days_diff = (datetime.strptime(edate, "%Y-%m-%d").date() - datetime.now(timezone.utc).date()).days
+                        rec["daysToEarnings"] = days_diff
+                    except Exception:
+                        rec["daysToEarnings"] = None
+                else:
+                    rec["daysToEarnings"] = None
                 records.append(rec)
                 ok += 1
         if i % 25 == 0:
