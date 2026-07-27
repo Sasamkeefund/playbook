@@ -517,10 +517,16 @@ function renderTV(openP, closed){
       const curCell=cur!=null
         ?'<td class="mono '+curColor+'">$'+cur.toFixed(2)+(curPct!=null?'<br><span style="font-size:10px">'+(curPct>=0?'+':'')+curPct.toFixed(1)+'%</span>':'')+'</td>'
         :'<td class="mono" style="color:var(--faint)">—</td>';
+      const earnBadge=(()=>{ if(!live)return ''; const d=live.daysToEarnings; if(d==null)return '';
+        if(d>=0&&d<=2)return '<br><span style="font-size:10px;color:#ff9838" title="'+live.earningsDate+'">📊剛出業績</span>';
+        if(d<0&&d>=-5)return '<br><span style="font-size:10px;color:#ff9838" title="'+live.earningsDate+'">📊業績後'+Math.abs(d)+'日</span>';
+        if(d>0&&d<=5)return '<br><span style="font-size:10px;color:#f5b945" title="'+live.earningsDate+'">📊'+d+'日後業績</span>';
+        return ''; })();
       h+='<tr'+(pending?' style="background:rgba(245,185,69,.06)"':'')+'>'
         +'<td><b>'+p.ticker+'</b>'+(pending?'<br><span style="font-size:10px;color:var(--amber)">⏳待補買賣價</span>':'')
           +(suggestClose==='stop'?'<br><span style="font-size:10px;color:#ff5d6c">⚠️已跌穿你填低嘅止蝕，建議去TV confirm並平倉</span>':'')
           +(suggestClose==='t2'?'<br><span style="font-size:10px;color:#2ee6a6">🎯已到T2，建議去TV confirm並平倉</span>':'')
+          +earnBadge
           +'</td>'
         +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+'</td>'
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
