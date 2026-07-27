@@ -115,6 +115,8 @@
     .alert-card .msg{font-size:13px;color:var(--text);margin-top:2px}
     .alert-card .sub2{font-size:11.5px;color:var(--dim);margin-top:3px}
     .empty-note{text-align:center;padding:1.4rem;color:var(--faint);font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:1.4rem}
+    .macro-banner{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);border-radius:12px;padding:10px 14px;margin-bottom:1.4rem;font-size:12.5px}
+    .macro-pill{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px;white-space:nowrap}
 
     body.mobile table{font-size:14px}
     body.mobile th,body.mobile td{padding:13px 10px}
@@ -143,6 +145,7 @@
   <div class="container">
 
     <div id="verdictBox"></div>
+    <div id="macroBanner"></div>
     <div class="indices" id="indices"></div>
 
     <div class="sect">今日策略總覽</div>
@@ -230,12 +233,26 @@
       const scan = scanR.status==='fulfilled'? scanR.value : null;
       const paperData = paperR.status==='fulfilled'? paperR.value : null;
       const fibMap = fibR.status==='fulfilled'? (fibR.value||{}) : {};
-      renderMarket(market);renderStrategies(scan);
+      renderMarket(market);renderMacroBanner(market);renderStrategies(scan);
       renderPaperAlerts(paperData,scan);
       renderS6Alerts(fibMap,scan);
       document.getElementById('updated').textContent='開市前大市檢查 · Limit Order 影響';
       document.getElementById('marketTime').textContent='大市數據：'+(market?toHKT(market.updated):'攞唔到');
       document.getElementById('scanTime').textContent='掃描數據：'+(scan?toHKT(scan.updated):'攞唔到');
+    }
+    function renderMacroBanner(market){
+      const box=document.getElementById('macroBanner');
+      const events=(market&&market.macroCalendar)||[];
+      const today=new Date();
+      const todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+      const upcoming=events.filter(e=>e.date>=todayStr).slice(0,3);
+      if(!upcoming.length){box.innerHTML='';return;}
+      const pills=upcoming.map(e=>{
+        const days=Math.round((new Date(e.date)-new Date(todayStr))/86400000);
+        const when=days===0?'今日':days===1?'聽日':days+'日後';
+        return '<span class="macro-pill">'+e.icon+' '+e.name+' · '+when+'（'+e.date+'）</span>';
+      }).join('');
+      box.innerHTML='<div class="macro-banner"><b style="color:#f5b945">📅 近期宏觀大事：</b>'+pills+'</div>';
     }
     function renderMarket(m){
       const vb=document.getElementById('verdictBox'),idx=document.getElementById('indices');
