@@ -1155,6 +1155,22 @@ def main():
                         rec["daysToEarnings"] = None
                 else:
                     rec["daysToEarnings"] = None
+                # 業績已經出咗（唔係未來）先計：由業績出咗嗰日之前收市，到今日收市，實際變咗幾多%
+                # 呢個係已發生嘅事實，唔係預測「會升會跌」——單純話你知市場而家消化緊嘅方向同幅度
+                rec["postEarningsReactionPct"] = None
+                if edate and rec.get("daysToEarnings") is not None and rec["daysToEarnings"] < 0:
+                    try:
+                        times = hist.get("time", [])
+                        e_ts = datetime.strptime(edate, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()
+                        # 揾返業績日（或之後）第一個交易日嘅 index，再退一日做「業績前收市」基準
+                        idx_on_after = next((k for k, ts in enumerate(times) if ts >= e_ts), None)
+                        if idx_on_after is not None and idx_on_after >= 1:
+                            base_close = hist["close"][idx_on_after - 1]
+                            cur_close = hist["close"][-1]
+                            if base_close:
+                                rec["postEarningsReactionPct"] = round((cur_close - base_close) / base_close * 100, 1)
+                    except Exception:
+                        pass
                 rec["sectorEvent"] = get_sector_event(rec["sector"], datetime.now(timezone.utc).date())
                 records.append(rec)
                 ok += 1
