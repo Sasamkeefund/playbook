@@ -419,6 +419,14 @@
     const STRATEGY_NAMES={S1:'順勢交易',S1V1:'順勢(原版)',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態',S7:'52週新高'};
     let globalData=null, activeTab='S1';
 
+    function earningsBadge(s){
+      const d=s.daysToEarnings;
+      if(d==null)return '';
+      if(d>=0&&d<=2)return ' <span title="呢排啱啱出咗業績（'+s.earningsDate+'），股價仲喺度消化緊，波動可能特別大" style="color:#ff9838;font-size:11px;cursor:help">📊剛出業績</span>';
+      if(d<0&&d>=-5)return ' <span title="'+Math.abs(d)+'日前出咗業績（'+s.earningsDate+'），留意仲未完全消化" style="color:#ff9838;font-size:11px;cursor:help">📊業績後'+Math.abs(d)+'日</span>';
+      if(d>0&&d<=5)return ' <span title="仲有'+d+'日出業績（'+s.earningsDate+'），持倉過業績有跳空風險" style="color:#f5b945;font-size:11px;cursor:help">📊'+d+'日後業績</span>';
+      return '';
+    }
     function toHKT(s){
       if(!s)return s;
       const m=s.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
@@ -680,7 +688,7 @@
           <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（7日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
           <td style="text-align:center"><input type="checkbox" ${tvOpenSet.has(s.ticker.toUpperCase())?'checked':''} onchange="toggleTVTrack('${s.ticker}',this)" style="width:16px;height:16px;cursor:pointer"></td>
           <td>${st.isNew?'<span class="new-badge">NEW</span>':''}</td>
-          <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a></td>
+          <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a>${earningsBadge(s)}</td>
           <td class="mono" style="text-align:right">$${s.close.toFixed(2)}</td>
           <td class="mono ${ch}" style="text-align:right">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</td>
           <td class="mono emacell" style="text-align:right">${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}<br><span style="font-size:10px;color:${Math.abs((s.close-s.ema20)/s.ema20*100)<=1.5?'#f5b945':'var(--faint)'}">EMA20 ${((s.close-s.ema20)/s.ema20*100)>0?'+':''}${((s.close-s.ema20)/s.ema20*100).toFixed(1)}%</span></td>
