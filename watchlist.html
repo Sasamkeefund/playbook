@@ -138,15 +138,16 @@ const _MODES=['trader','work','mobile'];
 
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
     const STRAT={S1:'順勢',S2:'趨結',S3:'突破',S4:'假突',S5:'支阻',S6:'圖表'};
-    let list=[], dataMap={}, fibMap={};
+    let list=[], dataMap={}, fibMap={}, tvOpenSet=new Set();
     async function loadList(){
       document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊…';
       const now=new Date();
       const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
-      const [scanR, wlR, fibR] = await Promise.allSettled([
+      const [scanR, wlR, fibR, paperR] = await Promise.allSettled([
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
         fetch(WL_API).then(r=>r.json()),
-        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json())
+        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json()),
+        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json())
       ]);
       if(scanR.status==='fulfilled'){
         (scanR.value.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
@@ -158,7 +159,41 @@ const _MODES=['trader','work','mobile'];
         document.getElementById('status').textContent='❌ 讀取失敗';
       }
       fibMap = (fibR.status==='fulfilled')? (fibR.value||{}) : {};
+      tvOpenSet = (paperR.status==='fulfilled')
+        ? new Set((paperR.value.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()))
+        : new Set();
       render();
+    }
+    async function toggleTVTrack(ticker,checkbox){
+      ticker=ticker.toUpperCase();
+      if(checkbox.checked){
+        const s=dataMap[ticker];
+        const strat=(s&&wlTab!=='ALL')?s.strategies[wlTab]:null;
+        const cd=(strat&&strat.conds)||[];
+        const bn=(strat&&strat.bonus)||[];
+        const today=new Date().toISOString().slice(0,10);
+        const reqMax=(wlTab==='S5'||wlTab==='S4'||wlTab==='S1V1')?4:(wlTab==='S7'?6:5);
+        const reqTxt=strat?String(strat.score):'';
+        const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
+        const bonusTxt=strat?(strat.bonusScore+'::'+bonusBreak):'';
+        const trendVal=strat?(strat.streakBefore||strat.recentMaxStreak||strat.macroStreak||''):'';
+        try{
+          await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate:today,entry:'',stop:'',
+              state:(wlTab==='ALL'?'':wlTab)+' | ',
+              rsi:s?s.rsi:'', c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+              req:reqTxt, streak:strat?strat.streak:'', trend:trendVal,
+              bonus:bonusTxt})});
+          tvOpenSet.add(ticker);
+        }catch(e){alert('加入失敗，再試');checkbox.checked=false;}
+      }else{
+        if(!confirm('確定由「我的記錄」移除 '+ticker+'？（未平倉都會直接刪走）')){checkbox.checked=true;return;}
+        try{
+          await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body:JSON.stringify({action:'paper_remove',ticker,group:'TV',status:'open'})});
+          tvOpenSet.delete(ticker);
+        }catch(e){alert('移除失敗，再試');checkbox.checked=true;}
+      }
     }
     function stratBadges(ticker){
       const s=dataMap[ticker.toUpperCase()];
@@ -224,10 +259,11 @@ const _MODES=['trader','work','mobile'];
       const delCell=it=>`<td style="text-align:center"><button class="del-btn" onclick="removeStock('${it.ticker}')">🗑️</button></td>`;
       const shortDate=s=>{ if(!s)return '—'; const d=new Date(s); return isNaN(d)?s:d.toDateString(); };
       const dateCell=it=>`<td class="mono" style="font-size:11.5px;color:var(--dim);white-space:nowrap">${shortDate(it.dateAdded)}</td>`;
+      const tvCell=it=>`<td style="text-align:center"><input type="checkbox" ${tvOpenSet.has(it.ticker.toUpperCase())?'checked':''} onchange="toggleTVTrack('${it.ticker}',this)" style="width:16px;height:16px;cursor:pointer"></td>`;
 
       if(wlTab==='S1'){
         // S1：跟 paper trade 欄（RSI/C1-C5/REQ/Bonus/Streak/趨勢/跌穿/企返）
-        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:right">RSI</th><th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th><th style="text-align:center">REQ</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th><th style="text-align:center">趨勢</th><th style="text-align:center">跌穿</th><th style="text-align:center">企返</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:right">RSI</th><th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th><th style="text-align:center">REQ</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th><th style="text-align:center">趨勢</th><th style="text-align:center">跌穿</th><th style="text-align:center">企返</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>{
           const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
           const k=s.strategies.S1||{}; const cd=k.conds||[];
@@ -242,11 +278,11 @@ const _MODES=['trader','work','mobile'];
             +`<td style="text-align:center" class="mono">${k.recentMaxStreak||'—'}</td>`
             +`<td style="text-align:center" class="mono">${pb}</td>`
             +`<td style="text-align:center">${k.aboveNow?'<span style="color:#2ee6a6">✓</span>':'—'}</td>`
-            +noteCell(it)+delCell(it)+'</tr>';
+            +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
         }).join('');
       }else if(wlTab==='S6'){
         // S6：A/B/頸線H1 + 今日RV + 手法A/C
-        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th style="text-align:center">突破RV</th><th style="text-align:center">狀態</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:center">A(低)</th><th style="text-align:center">B(高)</th><th style="text-align:center">頸線H1</th><th style="text-align:center">突破RV</th><th style="text-align:center">狀態</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>{
           const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
           const fb=fibMap[it.ticker.toUpperCase()]||{};
@@ -274,17 +310,17 @@ const _MODES=['trader','work','mobile'];
             +`<td style="text-align:center"><input type="number" class="note-input" value="${h1}" step="0.01" onchange="saveFib('${it.ticker}',null,null,this.value)" style="width:66px;border-color:#ff9838" ${broke?'disabled':''} placeholder="頸線"></td>`
             +`<td style="text-align:center" class="mono" style="color:${rvColor}">${rv!=null?rv:'—'}${broke?' 🔒':''}</td>`
             +`<td style="text-align:center">${stat}</td>`
-            +noteCell(it)+delCell(it)+'</tr>';
+            +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
         }).join('');
       }else{
         // ALL 同 其他策略：通用欄（Close/EMA20/RSI/Ready策略）
-        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">移除</th></tr>';
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>'<tr>'+linkCell(it)+dateCell(it)
           +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
           +`<td style="text-align:right">${ema20Cell(it.ticker)}</td>`
           +`<td style="text-align:right">${rsiCell(it.ticker)}</td>`
           +`<td>${stratBadges(it.ticker)}</td>`
-          +noteCell(it)+delCell(it)+'</tr>').join('');
+          +noteCell(it)+tvCell(it)+delCell(it)+'</tr>').join('');
       }
     }
     async function saveFib(ticker,a,b,h1){
