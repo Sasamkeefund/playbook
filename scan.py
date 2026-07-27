@@ -939,6 +939,33 @@ def get_macro_calendar():
     return events
 
 
+# Sector 專屬定期數據（已查證嘅公開、規律性極強嘅發佈）。
+# 逐個sector慢慢加，寧願少而準——未加入嘅sector，該股就唔會有呢類提示（同冇呢隻股一樣，唔會扮識）。
+SECTOR_CALENDARS = {
+    # EIA 石油庫存報告：逢星期三美東10:30am公布（幾十年慣例，遇假期先延遲去星期四）
+    "Energy": {"name": "EIA石油庫存數據", "icon": "🛢️", "weekday": 2},
+}
+
+
+def get_sector_event(sector, today):
+    """
+    計返「今日」距離呢個sector最近相關數據事件幾多日（正=未來，負=已過，0=今日）。
+    淨係支援 SECTOR_CALENDARS 入面已經查證咗嘅sector；其他sector回傳 None。
+    """
+    cal = SECTOR_CALENDARS.get(sector)
+    if not cal:
+        return None
+    target_wd = cal["weekday"]
+    cur_wd = today.weekday()
+    if cur_wd == target_wd:
+        days = 0
+    else:
+        days_ahead = (target_wd - cur_wd) % 7
+        days_behind = (cur_wd - target_wd) % 7
+        days = days_ahead if days_ahead <= days_behind else -days_behind
+    return {"days": days, "name": cal["name"], "icon": cal["icon"]}
+
+
 # ─────────────────────────────────────────────────────────────
 # 主流程
 # ─────────────────────────────────────────────────────────────
@@ -1128,6 +1155,7 @@ def main():
                         rec["daysToEarnings"] = None
                 else:
                     rec["daysToEarnings"] = None
+                rec["sectorEvent"] = get_sector_event(rec["sector"], datetime.now(timezone.utc).date())
                 records.append(rec)
                 ok += 1
         if i % 25 == 0:
