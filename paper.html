@@ -617,9 +617,14 @@ function suggestTVStop(){
   document.getElementById('tvStop').value=stop;
   if(!entryEl.value)entryEl.value=live.close;
 }
+const S6_METHODS='<option value="手法A(放量)">手法A(放量)</option><option value="手法C(縮量)">手法C(縮量)</option>';
+const S3_METHODS='<option value="手法A(突破日放量)">手法A(突破日放量)</option><option value="手法B(假突破後再突破)">手法B(假突破後再突破)</option><option value="手法C(縮量後confirm)">手法C(縮量後confirm)</option>';
 function toggleTVEntryMethod(){
   const s=document.getElementById('tvStrategy').value;
-  document.getElementById('tvEntryMethodWrap').style.display=(s==='S6')?'':'none';
+  const wrap=document.getElementById('tvEntryMethodWrap');
+  if(s==='S6'){wrap.style.display='';document.getElementById('tvEntryMethod').innerHTML=S6_METHODS;}
+  else if(s==='S3'){wrap.style.display='';document.getElementById('tvEntryMethod').innerHTML=S3_METHODS;}
+  else{wrap.style.display='none';}
 }
 async function addTV(){
   const ticker=(document.getElementById('tvTicker').value||'').trim().toUpperCase();
@@ -628,7 +633,7 @@ async function addTV(){
   const entry=document.getElementById('tvEntry').value;
   const stop=document.getElementById('tvStop').value;
   const stopMethod=document.getElementById('tvStopMethod').value;
-  const entryMethod=(strategy==='S6')?document.getElementById('tvEntryMethod').value:'';
+  const entryMethod=(strategy==='S6'||strategy==='S3')?document.getElementById('tvEntryMethod').value:'';
   const t1=document.getElementById('tvT1').value;
   const t2=document.getElementById('tvT2').value;
   const notes=document.getElementById('tvNotes').value;
@@ -653,8 +658,19 @@ function editTV(ticker){
   document.getElementById('etEntry').value=rec.entry||'';
   document.getElementById('etStop').value=rec.stop||'';
   document.getElementById('etStopMethod').value=(parts[1]||'前底').trim()==='1.5×ATR'?'1.5×ATR':'前底';
-  document.getElementById('etEntryMethodWrap').style.display=(_editTVStrategy==='S6')?'':'none';
-  if(_editTVStrategy==='S6')document.getElementById('etEntryMethod').value=(parts[2]||'').trim()==='手法C(縮量)'?'手法C(縮量)':'手法A(放量)';
+  const etWrap=document.getElementById('etEntryMethodWrap');
+  if(_editTVStrategy==='S6'){
+    etWrap.style.display='';
+    document.getElementById('etEntryMethod').innerHTML=S6_METHODS;
+    document.getElementById('etEntryMethod').value=(parts[2]||'').trim()==='手法C(縮量)'?'手法C(縮量)':'手法A(放量)';
+  }else if(_editTVStrategy==='S3'){
+    etWrap.style.display='';
+    document.getElementById('etEntryMethod').innerHTML=S3_METHODS;
+    const savedM=(parts[2]||'').trim();
+    document.getElementById('etEntryMethod').value=['手法A(突破日放量)','手法B(假突破後再突破)','手法C(縮量後confirm)'].includes(savedM)?savedM:'手法A(突破日放量)';
+  }else{
+    etWrap.style.display='none';
+  }
   document.getElementById('etT1').value=rec.t1||'';
   document.getElementById('etT2').value=rec.t2||'';
   document.getElementById('etLink').value=rec.tvLink||'';
@@ -679,7 +695,7 @@ async function saveEditTV(){
   const entry=document.getElementById('etEntry').value;
   const stop=document.getElementById('etStop').value;
   const stopMethod=document.getElementById('etStopMethod').value;
-  const entryMethod=(_editTVStrategy==='S6')?document.getElementById('etEntryMethod').value:'';
+  const entryMethod=(_editTVStrategy==='S6'||_editTVStrategy==='S3')?document.getElementById('etEntryMethod').value:'';
   const t1=document.getElementById('etT1').value;
   const t2=document.getElementById('etT2').value;
   const link=document.getElementById('etLink').value;
