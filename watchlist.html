@@ -344,6 +344,36 @@ const _MODES=['trader','work','mobile'];
             +`<td style="text-align:center;font-size:10.5px" class="mono">${s3.stop!=null?'止$'+s3.stop+'<br>T1$'+s3.t1+'<br>T2$'+s3.t2:'—'}</td>`
             +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
         }).join('');
+      }else if(wlTab==='S5'){
+        // S5：支持阻力confluence結構全部由 scan.py 自動計，唔使你手畫Fib
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:center">A(升浪底)</th><th style="text-align:center">B(升浪頂)</th><th style="text-align:center">整理區</th><th style="text-align:center">狀態</th><th style="text-align:center">入場/止蝕/T1/T2</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
+        tb.innerHTML=rows.map(it=>{
+          const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
+          const s5=s.strategies.S5||{};
+          const cA=s5.confA,cB=s5.confB,cTop=s5.congesTop,cBot=s5.congesBottom;
+          const found=s5.confluenceFound,touched=s5.touched,failed=s5.confFailed;
+          let stat='—';
+          if(!s5.ready){
+            stat='<span style="color:var(--faint)">未符合粗篩</span>';
+          }else if(!found){
+            stat='<span style="color:var(--faint)">未搵到confluence結構</span>';
+          }else if(failed){
+            stat='<span style="color:#ff5d6c">❌結構已失敗(跌穿A底)</span>';
+          }else if(touched){
+            stat='<span style="color:#2ee6a6;font-weight:700">🔥已到入場位</span>';
+          }else{
+            const drift=(s5.entry!=null&&s.close)?((s.close-s5.entry)/s5.entry*100).toFixed(1):null;
+            stat='<span style="color:var(--dim)">👀等入場位</span>'+(drift!=null?'<br><span style="font-size:10.5px;color:var(--faint)">距入場位 '+(drift>=0?'+':'')+drift+'%</span>':'');
+          }
+          return '<tr>'+linkCell(it)+dateCell(it)
+            +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
+            +`<td style="text-align:center" class="mono">${cA!=null?'$'+cA:'—'}</td>`
+            +`<td style="text-align:center" class="mono">${cB!=null?'$'+cB:'—'}</td>`
+            +`<td style="text-align:center;font-size:10.5px" class="mono">${cTop!=null?'$'+cBot+'-$'+cTop:'—'}</td>`
+            +`<td style="text-align:center">${stat}</td>`
+            +`<td style="text-align:center;font-size:10.5px" class="mono">${s5.entry!=null?'入$'+s5.entry+'<br>止$'+s5.stop+'<br>T1$'+s5.t1+'<br>T2$'+s5.t2:'—'}</td>`
+            +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
+        }).join('');
       }else{
         // ALL 同 其他策略：通用欄（Close/EMA20/RSI/Ready策略）
         th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
