@@ -312,6 +312,38 @@ const _MODES=['trader','work','mobile'];
             +`<td style="text-align:center">${stat}</td>`
             +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
         }).join('');
+      }else if(wlTab==='S3'){
+        // S3：Buildup結構全部由 scan.py 自動計，唔使你手打（同S6唔同，冧使人手畫Fib）
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:center">A(推進浪底)</th><th style="text-align:center">B(突破線)</th><th style="text-align:center">Buildup底</th><th style="text-align:center">形成日數</th><th style="text-align:center">狀態</th><th style="text-align:center">止蝕/T1/T2</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
+        tb.innerHTML=rows.map(it=>{
+          const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
+          const s3=s.strategies.S3||{};
+          const bA=s3.buildupA,bB=s3.buildupB,bLow=s3.buildupLow,days=s3.daysSinceB;
+          const broke=s3.brokeToday,methodOk=s3.methodAOk,rvol=s3.rvolToday;
+          let stat='—';
+          if(!s3.ready){
+            stat='<span style="color:var(--faint)">未搵到合理Buildup</span>';
+          }else if(methodOk){
+            stat='<span style="color:#2ee6a6;font-weight:700">🔥今日放量突破</span><br><span style="font-size:10.5px;color:var(--faint)">RVOL '+rvol+'x</span>';
+          }else if(!broke){
+            const away=(bB!=null&&s.close)?((bB-s.close)/s.close*100).toFixed(1):null;
+            stat='<span style="color:var(--dim)">👀形成中</span>'+(away!=null?'<br><span style="font-size:10.5px;color:var(--faint)">差'+away+'%到突破線</span>':'');
+          }else{
+            const drift=(bB!=null&&s.close)?((s.close-bB)/bB*100):null;
+            stat=(drift!=null&&drift>5)
+              ?'<span style="color:#ff9838">⚠️已飛('+drift.toFixed(1)+'%)</span>'
+              :'<span style="color:#ff9838">⚠️已突破未confirm量</span>';
+          }
+          return '<tr>'+linkCell(it)+dateCell(it)
+            +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
+            +`<td style="text-align:center" class="mono">${bA!=null?'$'+bA:'—'}</td>`
+            +`<td style="text-align:center" class="mono">${bB!=null?'$'+bB:'—'}</td>`
+            +`<td style="text-align:center" class="mono">${bLow!=null?'$'+bLow:'—'}</td>`
+            +`<td style="text-align:center">${days!=null?days+'日':'—'}</td>`
+            +`<td style="text-align:center">${stat}</td>`
+            +`<td style="text-align:center;font-size:10.5px" class="mono">${s3.stop!=null?'止$'+s3.stop+'<br>T1$'+s3.t1+'<br>T2$'+s3.t2:'—'}</td>`
+            +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
+        }).join('');
       }else{
         // ALL 同 其他策略：通用欄（Close/EMA20/RSI/Ready策略）
         th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close / 1D%</th><th style="text-align:right">EMA20 / 距離</th><th style="text-align:right">RSI</th><th>Ready 策略</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
