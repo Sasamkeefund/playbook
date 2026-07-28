@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S5 支持阻力被尊重 · 互動檢查表</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; background: #0f1117; color: #e8e8e8; padding: 20px; line-height: 1.5; }
+  h1 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .sheet { display: flex; flex-direction: column; gap: 16px; max-width: 640px; margin: 0 auto; }
+  .section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+  .card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 14px 16px; }
+  .cond-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #1e2130; }
+  .cond-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .cond-row:first-child { padding-top: 0; }
+  .cb-wrap input[type="checkbox"] { display: none; }
+  .cb-wrap label { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #3a3d4a; background: #12141d; cursor: pointer; transition: all .15s; font-size: 13px; color: transparent; flex-shrink: 0; }
+  .cb-wrap input:checked + label { background: #00c896; border-color: #00c896; color: #fff; }
+  .cond-code { font-family: monospace; font-size: 12px; font-weight: 700; min-width: 22px; color: #6aabf0; }
+  .cond-code.bonus { color: #e8a840; }
+  .cond-code.must { color: #c77dff; }
+  .cond-info { flex: 1; }
+  .cond-name { font-size: 13px; font-weight: 600; color: #e8e8e8; }
+  .cond-rule { font-size: 11px; color: #666; margin-top: 1px; }
+  .score-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .score-label { font-size: 13px; color: #888; min-width: 110px; }
+  .score-bar-bg { flex: 1; height: 8px; background: #1e2130; border-radius: 4px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 4px; transition: width .3s, background .3s; }
+  .score-num { font-size: 14px; font-weight: 700; min-width: 36px; text-align: right; }
+  .verdict { border-radius: 10px; padding: 14px 16px; transition: all .3s; }
+  .verdict.idle    { background: #1a1d27; border: 1px solid #2a2d3a; }
+  .verdict.ready   { background: #0d2a1e; border: 1px solid #00c896; }
+  .verdict.partial { background: #2a1e00; border: 1px solid #e8a840; }
+  .verdict.notyet  { background: #2a1010; border: 1px solid #f07070; }
+  .verdict-icon  { font-size: 22px; margin-bottom: 6px; }
+  .verdict-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .verdict.ready .verdict-title   { color: #00c896; }
+  .verdict.partial .verdict-title { color: #e8a840; }
+  .verdict.notyet .verdict-title  { color: #f07070; }
+  .verdict.idle .verdict-title    { color: #555; }
+  .verdict-steps { display: flex; flex-direction: column; gap: 6px; }
+  .vs { display: flex; gap: 8px; font-size: 12px; color: #aaa; align-items: flex-start; }
+  .vs .ar { color: #6aabf0; flex-shrink: 0; font-weight: 700; }
+  .rr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .rr-field label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+  .rr-input { width: 100%; padding: 8px 10px; background: #12141d; border: 1px solid #2a2d3a; border-radius: 6px; color: #e8e8e8; font-size: 13px; font-family: monospace; outline: none; }
+  .rr-input:focus { border-color: #6aabf0; }
+  .rr-results { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .rr-cell { background: #12141d; border-radius: 8px; padding: 10px; border: 1px solid #2a2d3a; text-align: center; }
+  .rr-cl { font-size: 11px; color: #666; margin-bottom: 4px; }
+  .rr-cv { font-size: 14px; font-weight: 700; font-family: monospace; }
+  .rr-v { border-radius: 8px; padding: 12px 14px; text-align: center; font-size: 15px; font-weight: 700; }
+  .reset-btn { padding: 8px 20px; border-radius: 8px; border: 1px solid #2a2d3a; background: #12141d; color: #666; font-size: 13px; cursor: pointer; transition: all .15s; align-self: flex-start; }
+  .reset-btn:hover { border-color: #f07070; color: #f07070; }
+  .info-box { font-size: 12px; color: #6aabf0; margin-bottom: 10px; padding: 8px 10px; background: #1a2540; border-radius: 8px; border: 1px solid #2a3a6a; }
+  .diagram { background: #12141d; border: 1px solid #2a2d3a; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .conges-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .conges-table th, .conges-table td { padding: 6px 8px; text-align: center; border-bottom: 1px solid #1e2130; }
+  .conges-table th { color: #666; font-weight: 600; font-size: 10.5px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div>
+    <h1>S5 · 支持阻力會被尊重 · 互動檢查表</h1>
+    <div class="subtitle">投機十步曲 · Supporting and Resistance Holds · Multi-timeframe Confluence</div>
+  </div>
+
+  <!-- 結構圖示 -->
+  <div>
+    <div class="section-title">核心結構</div>
+    <div class="diagram">
+      <svg viewBox="0 0 560 220" style="width:100%;height:auto">
+        <line x1="40" y1="200" x2="120" y2="90" stroke="#000" stroke-width="3"/>
+        <rect x="30" y="150" width="140" height="30" fill="#2a3a6a" opacity="0.5"/>
+        <text x="180" y="168" fill="#6aabf0" font-size="11">HTF Congestion Area（整理區）</text>
+        <line x1="120" y1="150" x2="230" y2="40" stroke="#c77dff" stroke-width="3"/>
+        <text x="235" y="45" fill="#c77dff" font-size="11">LTF上升波段（紫色，直線向上）</text>
+        <line x1="230" y1="40" x2="170" y2="150" stroke="#ff5d6c" stroke-width="2" stroke-dasharray="4"/>
+        <text x="175" y="100" fill="#ff5d6c" font-size="11">回調段（紅色）</text>
+        <line x1="0" y1="40" x2="560" y2="40" stroke="#444" stroke-width="1"/>
+        <text x="500" y="35" fill="#666" font-size="10">0（目標價#2）</text>
+        <line x1="0" y1="150" x2="560" y2="150" stroke="#444" stroke-width="1" stroke-dasharray="2"/>
+        <text x="490" y="145" fill="#666" font-size="10">0.786（入市位）</text>
+        <line x1="0" y1="200" x2="560" y2="200" stroke="#444" stroke-width="1"/>
+        <text x="510" y="195" fill="#666" font-size="10">1（止損位）</text>
+      </svg>
+      <div class="info-box" style="margin-top:8px;margin-bottom:0">
+        入場價 = LTF回調0.786 同 HTF整理區 <b>重疊</b>嘅位置 ｜ 止損 = 上升波段(A)底部<br>
+        T1 = 回調段(紅色)反彈0.618 ｜ T2 = 上升波段(B)頂部
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 1 REQUIRED（粗篩，Scanner用） -->
+  <div>
+    <div class="section-title">Step 1 · Scanner 粗篩（Required 4/4）</div>
+    <div class="card">
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c1" onchange="upd()"><label for="c1">✓</label></div>
+        <div class="cond-code">C1</div>
+        <div class="cond-info"><div class="cond-name">Price &gt; EMA50</div><div class="cond-rule">仍在中期均線之上</div></div>
+      </div>
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c2" onchange="upd()"><label for="c2">✓</label></div>
+        <div class="cond-code">C2</div>
+        <div class="cond-info"><div class="cond-name">Price &gt; EMA200</div><div class="cond-rule">仍在長期均線之上（大趨勢未破）</div></div>
+      </div>
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c3" onchange="upd()"><label for="c3">✓</label></div>
+        <div class="cond-code">C3</div>
+        <div class="cond-info"><div class="cond-name">RSI 30-55</div><div class="cond-rule">偏低但唔極端超賣</div></div>
+      </div>
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="c4" onchange="upd()"><label for="c4">✓</label></div>
+        <div class="cond-code">C4</div>
+        <div class="cond-info"><div class="cond-name">1個月跌幅 -20% 至 -5%</div><div class="cond-rule">過去一個月有明顯回調</div></div>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #2a2d3a">
+        <div class="score-wrap"><div class="score-label">Required</div><div class="score-bar-bg"><div class="score-bar-fill" id="reqBar" style="width:0%;background:#f07070"></div></div><div class="score-num" id="reqNum" style="color:#f07070">0/4</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 必需元素（Playbook 原文） -->
+  <div>
+    <div class="section-title">Step 2 · 必需元素 Checklist（Playbook原文，人手覆核）</div>
+    <div class="card">
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="m1" onchange="upd()"><label for="m1">✓</label></div>
+        <div class="cond-code must">①</div>
+        <div class="cond-info"><div class="cond-name">整理區後嘅上升波段直線向上</div><div class="cond-rule">冇明顯改變速度嘅回調浪</div></div>
+      </div>
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="m2" onchange="upd()"><label for="m2">✓</label></div>
+        <div class="cond-code must">②</div>
+        <div class="cond-info"><div class="cond-name">HTF 上升趨勢有一窄幅整理區</div><div class="cond-rule">Congestion Area，波幅要夠窄</div></div>
+      </div>
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="m3" onchange="upd()"><label for="m3">✓</label></div>
+        <div class="cond-code must">③</div>
+        <div class="cond-info"><div class="cond-name">HTF整理區 與 LTF回調0.786 重疊</div><div class="cond-rule">Confluence Zone，核心確認位</div></div>
+      </div>
+      <div class="cond-row">
+        <div class="cb-wrap"><input type="checkbox" id="bonus1" onchange="upd()"><label for="bonus1">✓</label></div>
+        <div class="cond-code bonus">🔑</div>
+        <div class="cond-info"><div class="cond-name">Bonus：整理區後上升波段開端係大陽燭</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 整理區的選擇 -->
+  <div>
+    <div class="section-title">整理區的選擇（同一升浪可能有多個）</div>
+    <div class="card">
+      <div class="info-box" style="margin-bottom:0">
+        同一段直線升浪，可以有第一/第二/第三個整理區。愈底(愈早)嘅整理區，成功率愈高，但可入場次數愈少。
+      </div>
+      <table class="conges-table">
+        <tr><th>整理區</th><th>上升浪成功率</th><th>建議Risk%</th></tr>
+        <tr><td>第一個(最底)</td><td style="color:#2ee6a6">85%</td><td>2%</td></tr>
+        <tr><td>第二個</td><td style="color:#e8a840">74%</td><td>1%</td></tr>
+        <tr><td>第三個</td><td style="color:#f07070">69%</td><td>0.5%</td></tr>
+      </table>
+      <div style="font-size:11px;color:#555;margin-top:8px">成功率嚟自Bulkowski回測，指「明顯反彈」，唔等於升穿波段頂，亦唔等於到T1。3個整理區R:R一樣，用注碼調節期望值。</div>
+    </div>
+  </div>
+
+  <!-- VERDICT -->
+  <div>
+    <div class="section-title">結論</div>
+    <div class="verdict idle" id="verdict">
+      <div class="verdict-icon">—</div>
+      <div class="verdict-title">填晒Step1+2先可以判斷</div>
+      <div class="verdict-steps" id="vSteps"></div>
+    </div>
+  </div>
+
+  <!-- RR CALCULATOR -->
+  <div>
+    <div class="section-title">入場計劃框架 + R:R 計算器</div>
+    <div class="card">
+      <div class="rr-grid">
+        <div class="rr-field"><label>A（LTF升浪底 / 止損）</label><input class="rr-input" type="number" id="rr_a" step="0.01" placeholder="e.g. 148.27" oninput="calcRR()"></div>
+        <div class="rr-field"><label>B（LTF升浪頂 / T2）</label><input class="rr-input" type="number" id="rr_b" step="0.01" placeholder="e.g. 158.15" oninput="calcRR()"></div>
+        <div class="rr-field"><label>整理區頂</label><input class="rr-input" type="number" id="rr_ctop" step="0.01" placeholder="留空=唔check重疊" oninput="calcRR()"></div>
+        <div class="rr-field"><label>整理區底</label><input class="rr-input" type="number" id="rr_cbot" step="0.01" placeholder="留空=唔check重疊" oninput="calcRR()"></div>
+        <div class="rr-field"><label>回調段最低（留空=用0.786估算）</label><input class="rr-input" type="number" id="rr_low" step="0.01" placeholder="未跌到就留空" oninput="calcRR()"></div>
+      </div>
+      <div id="rr_res" style="display:none">
+        <div id="rr_overlap" style="margin-bottom:10px"></div>
+        <div class="rr-results">
+          <div class="rr-cell"><div class="rr-cl">入場(0.786)</div><div class="rr-cv" id="rr_ev" style="color:#5ecf8a"></div></div>
+          <div class="rr-cell"><div class="rr-cl">止損(A)</div><div class="rr-cv" id="rr_sl" style="color:#f07070"></div></div>
+          <div class="rr-cell"><div class="rr-cl">T1(回調反彈0.618)</div><div class="rr-cv" id="rr_t1" style="color:#6aabf0"></div></div>
+          <div class="rr-cell"><div class="rr-cl">T2(B)</div><div class="rr-cv" id="rr_t2" style="color:#c77dff"></div></div>
+        </div>
+        <div class="rr-v" id="rr_vd" style="margin-bottom:8px"></div>
+        <div class="rr-v" id="rr_vd2"></div>
+      </div>
+      <div id="rr_ph" style="font-size:12px;color:#555;text-align:center;padding:8px 0">— 填入 A、B（整理區/回調最低可選）—</div>
+    </div>
+  </div>
+
+  <button class="reset-btn" onclick="resetAll()">↺ 重置</button>
+  <div style="font-size:11px;color:#333;text-align:center;padding-bottom:8px">S5 支持阻力會被尊重 · 投機十步曲</div>
+</div>
+
+<script>
+function upd() {
+  const req = ['c1','c2','c3','c4'].filter(id => document.getElementById(id).checked).length;
+  const rc = req===4?'#00c896':req>=2?'#e8a840':'#f07070';
+  document.getElementById('reqBar').style.cssText = 'height:100%;border-radius:4px;transition:width .3s;width:'+(req/4*100)+'%;background:'+rc;
+  document.getElementById('reqNum').textContent = req+'/4'; document.getElementById('reqNum').style.color = rc;
+
+  const must = ['m1','m2','m3'].filter(id => document.getElementById(id).checked).length;
+  const bonusOk = document.getElementById('bonus1').checked;
+  renderVerdict(req, must, bonusOk);
+}
+
+function renderVerdict(req, must, bonusOk) {
+  const box=document.getElementById('verdict'), steps=document.getElementById('vSteps');
+  function set(cls, icon, title, html) {
+    box.className='verdict '+cls;
+    box.querySelector('.verdict-icon').textContent=icon;
+    box.querySelector('.verdict-title').textContent=title;
+    steps.innerHTML=html;
+  }
+  function vs(ar, txt) { return '<div class="vs"><span class="ar">'+ar+'</span><span>'+txt+'</span></div>'; }
+
+  if(req<4){
+    var miss=[]; ['c1','c2','c3','c4'].forEach(function(id,i){ if(!document.getElementById(id).checked) miss.push('C'+(i+1)); });
+    set('notyet','🛑','Scanner粗篩未達標 — 唔入', vs('✗','仲差：'+miss.join('、'))); return;
+  }
+  if(must<3){
+    var missM=[]; ['m1','m2','m3'].forEach(function(id,i){ if(!document.getElementById(id).checked) missM.push('必需元素'+(i+1)); });
+    set('notyet','❌','Confluence結構未確認 — 唔入', vs('✗','仲差：'+missM.join('、')+'（3項全部要過，唔係Bonus）')); return;
+  }
+  set('ready','✅','READY — Confluence確認，可以進入入場流程',
+    (bonusOk?vs('⭐','開端大陽燭，質素更好'):'')+
+    vs('1','等現價跌到0.786同整理區重疊嗰位') +
+    vs('2','放Limit Order，或者3個以上支持阻力重疊時可以撞盤') +
+    vs('3','用下面計算器確認R:R（記住：3個整理區R:R一樣，用注碼分級）')
+  );
+}
+
+function calcRR() {
+  const a=parseFloat(document.getElementById('rr_a').value);
+  const b=parseFloat(document.getElementById('rr_b').value);
+  const ctop=parseFloat(document.getElementById('rr_ctop').value);
+  const cbot=parseFloat(document.getElementById('rr_cbot').value);
+  const lowInput=document.getElementById('rr_low').value;
+  const res=document.getElementById('rr_res'), ph=document.getElementById('rr_ph');
+  if(isNaN(a)||isNaN(b)||b<=a){res.style.display='none';ph.style.display='block';return;}
+
+  const impulseH=b-a;
+  const entry=b-impulseH*0.786;
+  const stop=a;
+  const low=(lowInput!=='')?parseFloat(lowInput):entry;
+  const t1=low+(b-low)*0.618;
+  const t2=b;
+
+  res.style.display='block'; ph.style.display='none';
+  document.getElementById('rr_ev').textContent='$'+entry.toFixed(2);
+  document.getElementById('rr_sl').textContent='$'+stop.toFixed(2);
+  document.getElementById('rr_t1').textContent='$'+t1.toFixed(2);
+  document.getElementById('rr_t2').textContent='$'+t2.toFixed(2);
+
+  const overlapEl=document.getElementById('rr_overlap');
+  if(!isNaN(ctop)&&!isNaN(cbot)){
+    const overlap=entry>=cbot*0.99&&entry<=ctop*1.01;
+    overlapEl.innerHTML=overlap
+      ?'<div style="background:#0d2a1e;border:1px solid #2a5a35;border-radius:8px;padding:8px;text-align:center;color:#5ecf8a;font-size:12px">✅ 0.786入場位 $'+entry.toFixed(2)+' 同整理區($'+cbot+'-$'+ctop+') 重疊，confluence成立</div>'
+      :'<div style="background:#2a1010;border:1px solid #6a2a2a;border-radius:8px;padding:8px;text-align:center;color:#f07070;font-size:12px">❌ 0.786入場位 $'+entry.toFixed(2)+' 同整理區($'+cbot+'-$'+ctop+') 冇重疊，唔算confluence，唔啱用呢個Playbook</div>';
+  }else{
+    overlapEl.innerHTML='';
+  }
+
+  const risk=entry-stop, rw1=t1-entry, rw2=t2-entry;
+  const rr1=risk>0?rw1/risk:0, rr2=risk>0?rw2/risk:0;
+  function fmt(el, rr, label) {
+    if(rr>=2) el.style.cssText='border-radius:8px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:#0d2a1e;border:1px solid #2a5a35;color:#5ecf8a', el.textContent='✅ R:R→'+label+' = '+rr.toFixed(2)+':1 — 達標';
+    else if(rr>=1) el.style.cssText='border-radius:8px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:#2a1e00;border:1px solid #6a4800;color:#e8a840', el.textContent='⚠️ R:R→'+label+' = '+rr.toFixed(2)+':1 — 唔夠2:1';
+    else el.style.cssText='border-radius:8px;padding:10px;text-align:center;font-size:13px;font-weight:700;background:#2a1010;border:1px solid #6a2a2a;color:#f07070', el.textContent='❌ R:R→'+label+' = '+rr.toFixed(2)+':1 — 太差';
+  }
+  fmt(document.getElementById('rr_vd'), rr1, 'T1');
+  fmt(document.getElementById('rr_vd2'), rr2, 'T2');
+}
+
+function resetAll() {
+  ['c1','c2','c3','c4','m1','m2','m3','bonus1'].forEach(function(id){ document.getElementById(id).checked=false; });
+  ['rr_a','rr_b','rr_ctop','rr_cbot','rr_low'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('rr_res').style.display='none'; document.getElementById('rr_ph').style.display='block';
+  document.getElementById('reqBar').style.cssText='height:100%;border-radius:4px;width:0%;background:#f07070';
+  document.getElementById('reqNum').textContent='0/4'; document.getElementById('reqNum').style.color='#f07070';
+  const box=document.getElementById('verdict');
+  box.className='verdict idle';
+  box.querySelector('.verdict-icon').textContent='—';
+  box.querySelector('.verdict-title').textContent='填晒Step1+2先可以判斷';
+  document.getElementById('vSteps').innerHTML='';
+}
+</script>
+</body>
+</html>
