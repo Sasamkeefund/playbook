@@ -138,16 +138,17 @@ const _MODES=['trader','work','mobile'];
 
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
     const STRAT={S1:'順勢',S2:'趨結',S3:'突破',S4:'假突',S5:'支阻',S6:'圖表'};
-    let list=[], dataMap={}, fibMap={}, tvOpenSet=new Set();
+    let list=[], dataMap={}, fibMap={}, tvOpenSet=new Set(), overrideMap={};
     async function loadList(){
       document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊…';
       const now=new Date();
       const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
-      const [scanR, wlR, fibR, paperR] = await Promise.allSettled([
+      const [scanR, wlR, fibR, paperR, ovR] = await Promise.allSettled([
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
         fetch(WL_API).then(r=>r.json()),
         fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json()),
-        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json())
+        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json()),
+        fetch(WL_API+'?action=override_all&t='+Date.now()).then(r=>r.json())
       ]);
       if(scanR.status==='fulfilled'){
         (scanR.value.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
@@ -159,6 +160,7 @@ const _MODES=['trader','work','mobile'];
         document.getElementById('status').textContent='❌ 讀取失敗';
       }
       fibMap = (fibR.status==='fulfilled')? (fibR.value||{}) : {};
+      overrideMap = (ovR.status==='fulfilled')? (ovR.value||{}) : {};
       tvOpenSet = (paperR.status==='fulfilled')
         ? new Set((paperR.value.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()))
         : new Set();
@@ -313,15 +315,29 @@ const _MODES=['trader','work','mobile'];
             +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
         }).join('');
       }else if(wlTab==='S3'){
-        // S3：Buildup結構全部由 scan.py 自動計，唔使你手打（同S6唔同，冧使人手畫Fib）
+        // S3：Buildup結構由 scan.py 自動計，但你肉眼confirm完覺得唔啱，可以撳✏️自己覆核 A/B/Buildup底
         th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:center">A(推進浪底)</th><th style="text-align:center">B(突破線)</th><th style="text-align:center">Buildup底</th><th style="text-align:center">形成日數</th><th style="text-align:center">狀態</th><th style="text-align:center">止蝕/T1/T2</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>{
           const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
           const s3=s.strategies.S3||{};
-          const bA=s3.buildupA,bB=s3.buildupB,bLow=s3.buildupLow,days=s3.daysSinceB;
-          const broke=s3.brokeToday,methodOk=s3.methodAOk,rvol=s3.rvolToday;
+          const ov=overrideMap[it.ticker.toUpperCase()+'|S3'];
+          const isOverridden=!!(ov&&(ov.a!==''&&ov.a!=null));
+          // 有override就用你自己個數，冇就用返演算法算嘅
+          const bA=isOverridden?Number(ov.a):s3.buildupA;
+          const bB=isOverridden?Number(ov.b):s3.buildupB;
+          const bLow=isOverridden?Number(ov.extra1):s3.buildupLow;
+          const days=s3.daysSinceB;
+          const broke=(bB!=null&&s.close!=null)?s.close>bB:s3.brokeToday;
+          const methodOk=isOverridden?null:s3.methodAOk;  // override咗嘅話，放量突破呢個判斷唔再直接適用，要你自己睇
+          const rvol=s3.rvolToday;
+          // 重新計止蝕/T1/T2（用返同一條公式，如果A/B/底冧override就同演算法一致）
+          const stop=(bLow!=null)?bLow*0.98:null;
+          const buildupH=(bB!=null&&bLow!=null)?bB-bLow:null;
+          const impulseH=(bB!=null&&bA!=null)?bB-bA:null;
+          const t1=(bB!=null&&buildupH!=null)?bB+buildupH*1.5:null;
+          const t2=(bB!=null&&impulseH!=null)?bB+impulseH*0.618:null;
           let stat='—';
-          if(!s3.ready){
+          if(!s3.ready&&!isOverridden){
             stat='<span style="color:var(--faint)">未搵到合理Buildup</span>';
           }else if(methodOk){
             stat='<span style="color:#2ee6a6;font-weight:700">🔥今日放量突破</span><br><span style="font-size:10.5px;color:var(--faint)">RVOL '+rvol+'x</span>';
@@ -332,16 +348,17 @@ const _MODES=['trader','work','mobile'];
             const drift=(bB!=null&&s.close)?((s.close-bB)/bB*100):null;
             stat=(drift!=null&&drift>5)
               ?'<span style="color:#ff9838">⚠️已飛('+drift.toFixed(1)+'%)</span>'
-              :'<span style="color:#ff9838">⚠️已突破未confirm量</span>';
+              :'<span style="color:#ff9838">⚠️已突破，留意</span>';
           }
+          const ovBadge=isOverridden?'<br><span style="font-size:9.5px;color:#c77dff">✏️人手覆核</span>':'';
           return '<tr>'+linkCell(it)+dateCell(it)
             +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
-            +`<td style="text-align:center" class="mono">${bA!=null?'$'+bA:'—'}</td>`
-            +`<td style="text-align:center" class="mono">${bB!=null?'$'+bB:'—'}</td>`
-            +`<td style="text-align:center" class="mono">${bLow!=null?'$'+bLow:'—'}</td>`
+            +`<td style="text-align:center" class="mono">${bA!=null?'$'+bA.toFixed(2):'—'}${ovBadge}</td>`
+            +`<td style="text-align:center" class="mono">${bB!=null?'$'+bB.toFixed(2):'—'}</td>`
+            +`<td style="text-align:center" class="mono">${bLow!=null?'$'+bLow.toFixed(2):'—'}</td>`
             +`<td style="text-align:center">${days!=null?days+'日':'—'}</td>`
             +`<td style="text-align:center">${stat}</td>`
-            +`<td style="text-align:center;font-size:10.5px" class="mono">${s3.stop!=null?'止$'+s3.stop+'<br>T1$'+s3.t1+'<br>T2$'+s3.t2:'—'}</td>`
+            +`<td style="text-align:center;font-size:10.5px" class="mono">${stop!=null?'止$'+stop.toFixed(2)+'<br>T1$'+t1.toFixed(2)+'<br>T2$'+t2.toFixed(2):'—'}<br><button class="linkbtn" style="font-size:10px" onclick="editOverride('${it.ticker}','S3',${bA||''},${bB||''},${bLow||''})">✏️編輯</button></td>`
             +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
         }).join('');
       }else if(wlTab==='S5'){
@@ -384,6 +401,21 @@ const _MODES=['trader','work','mobile'];
           +`<td>${stratBadges(it.ticker)}</td>`
           +noteCell(it)+tvCell(it)+delCell(it)+'</tr>').join('');
       }
+    }
+    async function editOverride(ticker, strategy, curA, curB, curExtra1){
+      const aStr=prompt('A（推進浪底 / 止損參考）留空=清空覆核、返去用演算法自動計：', curA||'');
+      if(aStr===null)return;
+      const bStr=(aStr==='')?'':prompt('B（突破線）：', curB||'');
+      if(bStr===null)return;
+      const e1Str=(aStr==='')?'':prompt('Buildup底：', curExtra1||'');
+      if(e1Str===null)return;
+      const payload={action:'override_set', ticker, strategy};
+      payload.a=aStr; payload.b=bStr; payload.extra1=e1Str; payload.extra2='';
+      try{
+        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+        alert(aStr===''?'已清空覆核，返去用演算法自動計。1-2秒後刷新。':'已儲低你嘅覆核。1-2秒後刷新。');
+        setTimeout(()=>loadList(),1500);
+      }catch(e){alert('儲存失敗，再試');}
     }
     async function saveFib(ticker,a,b,h1){
       const cur=fibMap[ticker.toUpperCase()]||{a:'',b:'',h1:''};
