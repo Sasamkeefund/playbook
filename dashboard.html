@@ -532,9 +532,21 @@
         return{text:'⚠️ 已突破但今日冇放量confirm(RVOL '+(rvol!=null?rvol+'x':'—')+')，可能假突破或者已冷卻，留意'+priceTxt+driftTxt+daysTxt,color:'amber'};
       }
       if(tab==='S5'){
-        if(req<reqMax)return{text:'— 未 ready',color:'red'};
-        if(bonus>=3)return{text:'✅ 可深入 — 人手確認 0.786 + 推進浪',color:'green'};
-        return{text:'⚠️ 人手確認整理區 + 0.786 Fib',color:'amber'};}
+        if(req<reqMax)return{text:'— 未 ready（未符合支持阻力回調嘅粗篩條件）',color:'red'};
+        const found=strat.confluenceFound, cA=strat.confA, cB=strat.confB, cTop=strat.congesTop, cBot=strat.congesBottom;
+        const entryPx=strat.entry, stopPx=strat.stop, t1=strat.t1, t2=strat.t2, touched=strat.touched, days=strat.daysSinceB;
+        if(!found){
+          return{text:'⚠️ 符合粗篩，但未搵到「直線升浪+窄幅整理區」嘅confluence結構，人手覆核',color:'amber'};
+        }
+        const structTxt=' ｜ A$'+cA+' → B$'+cB+' ｜ 整理區$'+cBot+'-$'+cTop+' ｜ 入場(0.786)$'+entryPx+' 止蝕$'+stopPx+' T1$'+t1+' T2$'+t2;
+        const daysTxt=days!=null?(' ｜ 升浪頂距今'+days+'日'):'';
+        if(touched){
+          return{text:'🔥 現價已到入場位(0.786同整理區重疊)，可以考慮'+structTxt+daysTxt+' ｜ 人手confirm整理區',color:'green'};
+        }
+        const drift=(curClose!=null&&entryPx)?((curClose-entryPx)/entryPx*100):null;
+        const driftTxt=drift!=null?(' ｜ 現價距入場位 '+(drift>=0?'+':'')+drift.toFixed(1)+'%'):'';
+        return{text:'👀 搵到confluence結構，但現價未跌到入場位，Set Alert 等'+structTxt+driftTxt+daysTxt,color:'amber'};
+      }
       if(tab==='S7'){const pfh=strat.pctFromHigh;const spy=strat.spy1m;const m1=(strat.keyvals&&strat.keyvals['1M%']);
         if(req<reqMax)return{text:'👀 未齊 VCP 條件（Stage2 + 跑贏大盤 + 整固收窄）',color:'amber'};
         const rsTxt=(m1!=null&&spy!=null)?'跑贏大盤（你 '+m1+'% vs 大盤 '+spy+'%）':'';
@@ -561,7 +573,7 @@
       globalData=dataR.value;
       document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated);
       if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
-        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3')?'green':'';
+        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S5')?'green':'';
       }
       tvOpenSet = (paperR.status==='fulfilled')
         ? new Set((paperR.value.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()))
