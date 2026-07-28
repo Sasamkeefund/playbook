@@ -442,6 +442,21 @@ function renderTV(openP, closed){
   h+='<div><div class="sub">每單期望</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR/cl.length>=0?'+':'')+(tR/cl.length).toFixed(2)+'R':'—')+'</div></div>';
   h+='<div><div class="sub">累計R</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR>=0?'+':'')+tR.toFixed(1)+'R':'—')+'</div></div>';
   h+='</div>';
+  // 樣本量里程碑：少過20單已平倉，任何「贏定輸」嘅結論都仲未夠可信，純粹儲緊數
+  const MILESTONE=20;
+  const pct=Math.min(100, Math.round(cl.length/MILESTONE*100));
+  const milestoneColor=cl.length>=MILESTONE?'#2ee6a6':cl.length>=10?'#f5b945':'#ff5d6c';
+  const milestoneMsg=cl.length>=MILESTONE?'✅ 已達最少樣本量，可以初步睇下呢個系統長遠期望值':
+    cl.length>=10?'⚠️ 開始有少少感覺，但仍未夠落判斷':
+    '🔬 樣本仲太細，任何「贏/輸」感覺都未可信，純粹儲緊數';
+  h+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">'
+    +'<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-bottom:6px">'
+    +'<span>📏 樣本量里程碑（最少'+MILESTONE+'單已平倉先可以初步評估）</span>'
+    +'<span style="color:'+milestoneColor+';font-weight:700">'+cl.length+' / '+MILESTONE+'</span></div>'
+    +'<div style="background:var(--surface-2);border-radius:6px;height:8px;overflow:hidden">'
+    +'<div style="background:'+milestoneColor+';height:100%;width:'+pct+'%;transition:width .3s"></div></div>'
+    +'<div style="font-size:11.5px;color:'+milestoneColor+';margin-top:6px">'+milestoneMsg+'</div>'
+    +'</div>';
   // 按策略分組（S1/S1V1/S2...S7/其他）
   const stratOf=t=>(t.state||'').split('|')[0].trim()||'（未填策略）';
   const allStrats=[...new Set([...openP.map(stratOf), ...cl.map(stratOf)])].sort();
