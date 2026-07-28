@@ -480,7 +480,7 @@
         return{text:'✅ Setup — R1-R4 全過'+ptypeTxt+freshTxt+priceTxt+driftTxt+cleanTxt+macroTxt+' ｜ 人手confirm前頂位置',color:'green'};
       }
       if(tab==='S1'){const b2=b[1],b3=b[2],b4=b[3];
-        const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.streakBefore||strat.recentMaxStreak||0;
+        const touch=strat.pullbackTouch, ago=strat.pullbackDaysAgo, above=strat.aboveNow, rms=strat.streakBefore??strat.recentMaxStreak??0;
         // 趨勢質素標籤 — 跟 checklist：25日+ 🔥／7-14日 ✓／3-6日 ⚠️保守／<3日 ✗唔入
         const qLabel=rms>=25?'主升浪('+rms+'日)':rms>=7?'趨勢健康('+rms+'日)':rms>=3?'趨勢轉弱('+rms+'日,保守)':'趨勢唔支持('+rms+'日)';
         const qMark=rms>=7?'✓':rms>=3?'⚠️':'🛑';
@@ -612,7 +612,7 @@
       const cfStreak=document.getElementById('cfStreak')?document.getElementById('cfStreak').value:'';
       if(cfStreak)s=s.filter(x=>x.strategies[activeTab].streak>=parseInt(cfStreak));
       const cfTrend=document.getElementById('cfTrend')?document.getElementById('cfTrend').value:'';
-      if(cfTrend)s=s.filter(x=>((x.strategies[activeTab].streakBefore||x.strategies[activeTab].recentMaxStreak)||0)>=parseInt(cfTrend));
+      if(cfTrend)s=s.filter(x=>((x.strategies[activeTab].streakBefore??x.strategies[activeTab].recentMaxStreak)??0)>=parseInt(cfTrend));
       const cfPb=document.getElementById('cfPb')?document.getElementById('cfPb').value:'';
       if(cfPb)s=s.filter(x=>{const p=x.strategies[activeTab].pullbackDaysAgo;return p!==null&&p!==undefined&&p>=0&&p<=parseInt(cfPb);});
       if(activeTab==='S1'&&ff){
@@ -710,7 +710,7 @@
           <td style="text-align:center"><span class="badge ${st.bonusScore>=3?'perfect':''}">${st.bonusScore}/${mxB}</span></td>
           <td class="mono" style="text-align:center;font-weight:700">${st.streak}</td>
           ${activeTab==='S1'?(function(){
-            const rms=st.streakBefore||st.recentMaxStreak||0, touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow;
+            const rms=st.streakBefore??st.recentMaxStreak??0, touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow;
             const rmsCol=rms>=7?'#2ee6a6':rms>=3?'#f5b945':'#ff5d6c';
             const agoTxt=touch?(ago===0?'今日':ago+'日前'):'—';
             const agoCol=(touch&&ago<=1)?'#2ee6a6':'var(--dim)';
@@ -799,7 +799,7 @@
         const cd=(strat&&strat.conds)||[];
         const bn=(strat&&strat.bonus)||[];
         const today=new Date().toISOString().slice(0,10);
-        const trendVal=strat?(strat.streakBefore||strat.recentMaxStreak||strat.macroStreak||''):'';
+        const trendVal=strat?(strat.streakBefore??strat.recentMaxStreak??strat.macroStreak??''):'';
         const reqMax=(activeTab==='S5'||activeTab==='S4'||activeTab==='S1V1')?4:(activeTab==='S7'?6:5);
         const reqTxt=strat?String(strat.score):'';
         // Bonus 帶埋逐項breakdown，用 :: 分隔（前面數字係分數，後面係b1..bN 邊個中）方便顯示tooltip
@@ -855,7 +855,7 @@
       return chartsCache;
     }
     function fakeoutBadge(st){
-      const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.streakBefore||st.recentMaxStreak||0;
+      const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.streakBefore??st.recentMaxStreak??0;
       const trendTxt=`（趨勢 ${rms}日${rms>=7?' ✓健康':rms>=3?' ⚠️保守':' 🛑唔支持'}）`;
       if(!touch)return `<span style="color:var(--faint)">近6日收市未跌穿 EMA20 ${trendTxt}</span>`;
       if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，等收市企返上 ${trendTxt}</span>`;
@@ -1177,7 +1177,7 @@
       const cd=s1.conds||[];
       const snap={
         rsi:stk.rsi||'', c1:cd[0]?1:0, c2:cd[1]?1:0, c3:cd[2]?1:0, c4:cd[3]?1:0, c5:cd[4]?1:0,
-        req:s1.score||'', streak:s1.streak||'', trend:s1.streakBefore||s1.recentMaxStreak||'',
+        req:s1.score||'', streak:s1.streak||'', trend:(s1.streakBefore??s1.recentMaxStreak??''),
         pullback:(s1.pullbackDaysAgo!==undefined&&s1.pullbackDaysAgo>=0)?s1.pullbackDaysAgo:'',
         aboveEma20:s1.aboveNow?1:0
       };
