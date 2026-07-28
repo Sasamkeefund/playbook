@@ -350,15 +350,15 @@ const _MODES=['trader','work','mobile'];
               ?'<span style="color:#ff9838">⚠️已飛('+drift.toFixed(1)+'%)</span>'
               :'<span style="color:#ff9838">⚠️已突破，留意</span>';
           }
-          const ovBadge=isOverridden?'<br><span style="font-size:9.5px;color:#c77dff">✏️人手覆核</span>':'';
+          const ovBadge=isOverridden?' <span style="font-size:9.5px;color:#c77dff">✏️</span>':'';
           return '<tr>'+linkCell(it)+dateCell(it)
             +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
-            +`<td style="text-align:center" class="mono">${bA!=null?'$'+bA.toFixed(2):'—'}${ovBadge}</td>`
-            +`<td style="text-align:center" class="mono">${bB!=null?'$'+bB.toFixed(2):'—'}</td>`
-            +`<td style="text-align:center" class="mono">${bLow!=null?'$'+bLow.toFixed(2):'—'}</td>`
+            +`<td style="text-align:center"><input type="number" class="note-input" value="${bA!=null?bA.toFixed(2):''}" step="0.01" onchange="saveOverride('${it.ticker}','S3','a',this.value,${s3.buildupA!=null?s3.buildupA:'null'},${s3.buildupB!=null?s3.buildupB:'null'},${s3.buildupLow!=null?s3.buildupLow:'null'})" style="width:72px" placeholder="A底">${ovBadge}</td>`
+            +`<td style="text-align:center"><input type="number" class="note-input" value="${bB!=null?bB.toFixed(2):''}" step="0.01" onchange="saveOverride('${it.ticker}','S3','b',this.value,${s3.buildupA!=null?s3.buildupA:'null'},${s3.buildupB!=null?s3.buildupB:'null'},${s3.buildupLow!=null?s3.buildupLow:'null'})" style="width:72px" placeholder="B頂"></td>`
+            +`<td style="text-align:center"><input type="number" class="note-input" value="${bLow!=null?bLow.toFixed(2):''}" step="0.01" onchange="saveOverride('${it.ticker}','S3','extra1',this.value,${s3.buildupA!=null?s3.buildupA:'null'},${s3.buildupB!=null?s3.buildupB:'null'},${s3.buildupLow!=null?s3.buildupLow:'null'})" style="width:72px;border-color:#ff9838" placeholder="Buildup底"></td>`
             +`<td style="text-align:center">${days!=null?days+'日':'—'}</td>`
             +`<td style="text-align:center">${stat}</td>`
-            +`<td style="text-align:center;font-size:10.5px" class="mono">${stop!=null?'止$'+stop.toFixed(2)+'<br>T1$'+t1.toFixed(2)+'<br>T2$'+t2.toFixed(2):'—'}<br><button class="linkbtn" style="font-size:10px" onclick="editOverride('${it.ticker}','S3',${bA||''},${bB||''},${bLow||''})">✏️編輯</button></td>`
+            +`<td style="text-align:center;font-size:10.5px" class="mono">${stop!=null?'止$'+stop.toFixed(2)+'<br>T1$'+t1.toFixed(2)+'<br>T2$'+t2.toFixed(2):'—'}</td>`
             +noteCell(it)+tvCell(it)+delCell(it)+'</tr>';
         }).join('');
       }else if(wlTab==='S5'){
@@ -402,20 +402,16 @@ const _MODES=['trader','work','mobile'];
           +noteCell(it)+tvCell(it)+delCell(it)+'</tr>').join('');
       }
     }
-    async function editOverride(ticker, strategy, curA, curB, curExtra1){
-      const aStr=prompt('A（推進浪底 / 止損參考）留空=清空覆核、返去用演算法自動計：', curA||'');
-      if(aStr===null)return;
-      const bStr=(aStr==='')?'':prompt('B（突破線）：', curB||'');
-      if(bStr===null)return;
-      const e1Str=(aStr==='')?'':prompt('Buildup底：', curExtra1||'');
-      if(e1Str===null)return;
-      const payload={action:'override_set', ticker, strategy};
-      payload.a=aStr; payload.b=bStr; payload.extra1=e1Str; payload.extra2='';
+    async function saveOverride(ticker, strategy, field, val, defA, defB, defExtra1){
+      const key=ticker.toUpperCase()+'|'+strategy;
+      const cur=overrideMap[key]||{a:defA!=null?defA:'', b:defB!=null?defB:'', extra1:defExtra1!=null?defExtra1:'', extra2:''};
+      cur[field]=(val===''?'':(parseFloat(val)||''));
+      overrideMap[key]=cur;
       try{
-        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-        alert(aStr===''?'已清空覆核，返去用演算法自動計。1-2秒後刷新。':'已儲低你嘅覆核。1-2秒後刷新。');
-        setTimeout(()=>loadList(),1500);
-      }catch(e){alert('儲存失敗，再試');}
+        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body:JSON.stringify({action:'override_set',ticker,strategy,a:cur.a,b:cur.b,extra1:cur.extra1,extra2:cur.extra2})});
+      }catch(e){}
+      if(wlTab===strategy)render();
     }
     async function saveFib(ticker,a,b,h1){
       const cur=fibMap[ticker.toUpperCase()]||{a:'',b:'',h1:''};
