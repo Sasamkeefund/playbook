@@ -196,6 +196,92 @@ def zigzag_pivots(highs, lows, min_pct=3.0):
     return pivots
 
 
+def detect_s3_buildup(idx, highs, lows, closes, volumes):
+    """
+    S3 Buildup 突破偵測：搵返 A(推進浪起點)→B(Buildup頂/突破線)→Buildup底部，
+    確認 b6（Buildup底 > B - impulse×0.236），再睇今日係咪已經放量突破。
+    公式跟返 s3_checklist.html 已驗證嘅版本：
+      止損 = Buildup底部 × 0.98（手法A；手法B/C改用假突破/橫行最低Close × 0.98）
+      T1 = B + BuildupHeight × 1.5
+      T2 = B + ImpulseHeight × 0.618
+    搵唔到合理結構就回傳 None。
+    """
+    win = 70
+    start = max(0, idx - win)
+    seg_h = highs[start:idx + 1]
+    seg_l = lows[start:idx + 1]
+    seg_c = closes[start:idx + 1]
+    seg_v = volumes[start:idx + 1]
+    n = len(seg_c)
+    if n < 15:
+        return None
+
+    zz = zigzag_pivots(seg_h, seg_l, min_pct=4.0)
+    h_piv = [(i, p) for i, p, t in zz if t == 'H']
+    l_piv = [(i, p) for i, p, t in zz if t == 'L']
+    if not h_piv:
+        return None
+
+    best = None
+    for b_idx, b_price in reversed(h_piv):
+        if b_idx > n - 4:
+            continue  # B 太貼近今日，未有足夠日子形成 Buildup（起碼要3日）
+        cands_a = [(i, p) for i, p in l_piv if i < b_idx]
+        if not cands_a:
+            continue
+        a_idx, a_price = cands_a[-1]
+        impulse_h = b_price - a_price
+        if impulse_h <= 0 or a_price <= 0:
+            continue
+        if impulse_h / a_price * 100 < 8:
+            continue  # 推進浪太細，唔算數（避免噪音）
+        post_l = seg_l[b_idx + 1:n]
+        if not post_l:
+            continue
+        buildup_low = min(post_l)
+        fib236 = b_price - impulse_h * 0.236
+        if buildup_low <= fib236:
+            continue  # b6 唔過：回調過深
+        best = {"a_idx": a_idx, "a": a_price, "b_idx": b_idx, "b": b_price,
+                "buildup_low": buildup_low, "impulse_h": impulse_h}
+        break  # h_piv 已經係時間順序，reversed後第一個岩嘅就係最近嘅合理B
+
+    if not best:
+        return None
+
+    b_price, buildup_low, a_price, impulse_h = best["b"], best["buildup_low"], best["a"], best["impulse_h"]
+    buildup_h = b_price - buildup_low
+    if buildup_h <= 0:
+        return None
+
+    today_c = seg_c[-1]
+    today_v = seg_v[-1]
+    prior_v = seg_v[max(0, n - 21):n - 1]
+    avg_v20 = sum(prior_v) / len(prior_v) if prior_v else None
+    rvol_today = (today_v / avg_v20) if avg_v20 else None
+
+    broke_today = today_c > b_price
+    method_a_ok = broke_today and rvol_today is not None and rvol_today >= 1.5
+
+    stop = buildup_low * 0.98
+    t1 = b_price + buildup_h * 1.5
+    t2 = b_price + impulse_h * 0.618
+
+    # 假突破：曾經跌穿 Buildup 底部（結構已經失敗，唔算數）
+    failed = today_c < buildup_low if n else False
+
+    days_since_b = (n - 1) - best["b_idx"]
+
+    return {
+        "a": round(a_price, 2), "b": round(b_price, 2), "buildupLow": round(buildup_low, 2),
+        "buildupHeight": round(buildup_h, 2), "impulseHeight": round(impulse_h, 2),
+        "brokeToday": broke_today, "rvolToday": round(rvol_today, 2) if rvol_today is not None else None,
+        "methodAOk": method_a_ok, "failed": failed, "daysSinceB": days_since_b,
+        "stop": round(stop, 2), "t1": round(t1, 2), "t2": round(t2, 2),
+        "entry": round(today_c, 2) if method_a_ok else None,
+    }
+
+
 def eval_strategies(idx, closes, highs, lows, volumes,
                     ema20a, ema50a, ema200a, rsia, atr5a, atr14a):
     """返回 {S1:{conds, bonus, score, bonusScore, ready, keyvals}, ...}。"""
@@ -446,23 +532,39 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S2"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": 0, "ready": sum(c) >= 4,
                  "keyvals": {"RSI": round(r, 1), "1D%": round(perf1d, 1) if perf1d is not None else None}}
 
-    # ── S3 突破交易（Required 4/5, Bonus 5/5）──
-    c = [
-        (pct_from_high is not None and pct_from_high <= 4),
-        close > e50,
-        ((relvol is not None and relvol < 0.75) or (vol5 is not None and vol20 is not None and vol5 < vol20)),
-        (a5 is not None and a14 is not None and a5 < a14),
-        (perf3m is not None and perf3m > 10),
-    ]
-    b = [
-        close > e20,
-        close > e200,
-        (50 <= r <= 70),
-        (perf1w is not None and -3 <= perf1w <= 3),
-        (pct_from_high is not None and pct_from_high <= 2),
-    ]
-    res["S3"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
-                 "keyvals": {"距52W高%": round(-pct_from_high, 1) if pct_from_high is not None else None, "3M%": round(perf3m, 1) if perf3m is not None else None}}
+    # ── S3 突破交易（Buildup，Required 4/5, Bonus 5/5）──
+    s3_buildup = detect_s3_buildup(idx, highs, lows, closes, volumes)
+    if s3_buildup:
+        c = [
+            True,                                              # R1: 搵到合理Buildup結構（A/B/底部齊、b6過）
+            not s3_buildup["failed"],                          # R2: 未跌穿Buildup底部（結構未失敗）
+            close > e50,                                       # R3: 大趨勢健康
+            s3_buildup["daysSinceB"] <= 40,                    # R4: Buildup未拖太耐（B太舊，結構意義降低）
+            (perf3m is not None and perf3m > 10),              # R5: 3個月升幅夠（確保impulse係真趨勢，唔係噪音）
+        ]
+        b = [
+            s3_buildup["methodAOk"],                                                       # b1 今日放量突破（手法A）
+            close > e200,                                                                   # b2 長線趨勢都健康
+            (50 <= r <= 70),                                                                # b3 RSI 健康區間
+            (s3_buildup["rvolToday"] is not None and s3_buildup["rvolToday"] < 0.9 and not s3_buildup["brokeToday"]),  # b4 Buildup期縮量（未突破時）
+            (s3_buildup["daysSinceB"] <= 20),                                                # b5 Buildup仲算新鮮
+        ]
+        keyvals = {
+            "A(推進浪底)": s3_buildup["a"], "B(突破線)": s3_buildup["b"],
+            "Buildup底": s3_buildup["buildupLow"], "距B幾多日": s3_buildup["daysSinceB"],
+        }
+        res["S3"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+                     "keyvals": keyvals,
+                     "buildupA": s3_buildup["a"], "buildupB": s3_buildup["b"], "buildupLow": s3_buildup["buildupLow"],
+                     "brokeToday": s3_buildup["brokeToday"], "rvolToday": s3_buildup["rvolToday"],
+                     "methodAOk": s3_buildup["methodAOk"], "daysSinceB": s3_buildup["daysSinceB"],
+                     "entry": s3_buildup["entry"], "stop": s3_buildup["stop"],
+                     "t1": s3_buildup["t1"], "t2": s3_buildup["t2"]}
+    else:
+        res["S3"] = {"conds": [False]*5, "bonus": [False]*5, "score": 0, "bonusScore": 0, "ready": False,
+                     "keyvals": {}, "buildupA": None, "buildupB": None, "buildupLow": None,
+                     "brokeToday": None, "rvolToday": None, "methodAOk": None, "daysSinceB": None,
+                     "entry": None, "stop": None, "t1": None, "t2": None}
 
     # ── S4 假突破（Required 3/4, Bonus 4/4）──
     c = [
@@ -1055,6 +1157,11 @@ def build_record(ticker, hist):
             # 粗篩用：借 S1(EMA20版) 嘅 streak + EMA200斜率，做「大趨勢確認」參考（V1 checklist Step0 要求）
             strategies[s]["macroStreak"] = streaks.get("_v1MacroStreak", 0)
             strategies[s]["macroEma200Up"] = bool(today["S1"]["conds"][2]) if len(today["S1"]["conds"]) > 2 else None
+        # S3 突破交易（Buildup）：pass-through 結構價位 + entry/stop/T1/T2
+        if s == "S3":
+            for k in ("buildupA", "buildupB", "buildupLow", "brokeToday", "rvolToday",
+                      "methodAOk", "daysSinceB", "entry", "stop", "t1", "t2"):
+                strategies[s][k] = today[s].get(k)
         # S7 距52週高
         if s == "S7":
             strategies[s]["pctFromHigh"] = today[s].get("pctFromHigh")
