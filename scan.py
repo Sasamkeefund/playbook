@@ -282,6 +282,100 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
     }
 
 
+def detect_s5_confluence(idx, highs, lows, closes):
+    """
+    S5 支持阻力會被尊重（Playbook）：
+    搵一段「直線向上」嘅 LTF 升浪(A底→B頂，中間唔可以有太多內部反覆)，
+    A點之前有一段窄幅嘅 Congestion Area（未經計算嘅支持阻力，主觀性低）；
+    現價回調到 0.786 fib，同呢個 Congestion Area 重疊 = confluence，先算入場條件成立。
+
+    入場價 = LTF回調0.786 同 Congestion Area 重疊嘅位置
+    止損   = LTF升浪(A)底部
+    T1     = 回調段(B到現價最低)嘅反彈 0.618
+    T2     = LTF升浪頂部(B)
+
+    搵唔到合理confluence就回傳 None（唔會扮識，寧願話"未搵到"）。
+    """
+    win = 60
+    start = max(0, idx - win)
+    seg_h = highs[start:idx + 1]
+    seg_l = lows[start:idx + 1]
+    seg_c = closes[start:idx + 1]
+    n = len(seg_c)
+    if n < 20:
+        return None
+
+    zz = zigzag_pivots(seg_h, seg_l, min_pct=4.0)
+    h_piv = [(i, p) for i, p, t in zz if t == 'H']
+    l_piv = [(i, p) for i, p, t in zz if t == 'L']
+    if not h_piv or not l_piv:
+        return None
+
+    # B：最近一個 H pivot（LTF升浪頂），起碼要已經開始回調（唔可以係今日先啱啱破頂）
+    b_idx, b_price = h_piv[-1]
+    if b_idx >= n - 2:
+        if len(h_piv) >= 2:
+            b_idx, b_price = h_piv[-2]
+        else:
+            return None
+
+    # A：B之前嘅 L pivot（LTF升浪起點）
+    cands_a = [(i, p) for i, p in l_piv if i < b_idx]
+    if not cands_a:
+        return None
+    a_idx, a_price = cands_a[-1]
+    impulse_h = b_price - a_price
+    if impulse_h <= 0 or a_price <= 0:
+        return None
+    if impulse_h / a_price * 100 < 6:
+        return None  # 升浪太細，唔算數（避免噪音）
+
+    # 「直線向上」檢查：A到B之間，唔可以有太多內部反覆pivot（超過1個轉勢就唔算直線）
+    mid_piv = [x for x in zz if a_idx < x[0] < b_idx]
+    if len(mid_piv) > 2:
+        return None
+
+    # Congestion Area：A點之前 5-12 日嘅窄幅波動區
+    cwin = seg_h[max(0, a_idx - 12):a_idx + 1], seg_l[max(0, a_idx - 12):a_idx + 1]
+    conges_h, conges_l = cwin
+    if len(conges_h) < 4:
+        return None
+    conges_top, conges_bottom = max(conges_h), min(conges_l)
+    if conges_bottom <= 0:
+        return None
+    conges_range_pct = (conges_top - conges_bottom) / conges_bottom * 100
+    if conges_range_pct > 9:
+        return None  # 太闊，唔算「窄幅」整理區
+
+    # 現價回調 0.786
+    fib786 = b_price - impulse_h * 0.786
+    today_c = seg_c[-1]
+
+    # Confluence 檢查：fib786 要落喺 Congestion Area 範圍（留少少彈性）
+    overlap = (conges_bottom * 0.99) <= fib786 <= (conges_top * 1.01)
+    if not overlap:
+        return None
+
+    # 已經跌穿 A 底 = 結構失敗
+    failed = today_c < a_price
+
+    entry = round(fib786, 2)
+    stop = round(a_price, 2)
+    post_b_low = min(seg_l[b_idx + 1:n]) if n > b_idx + 1 else today_c
+    t1 = round(post_b_low + (b_price - post_b_low) * 0.618, 2)
+    t2 = round(b_price, 2)
+
+    days_since_b = (n - 1) - b_idx
+    touched = today_c <= entry * 1.01  # 現價已經貼近/跌到入場位
+
+    return {
+        "a": round(a_price, 2), "b": round(b_price, 2),
+        "congesTop": round(conges_top, 2), "congesBottom": round(conges_bottom, 2),
+        "fib786": entry, "entry": entry, "stop": stop, "t1": t1, "t2": t2,
+        "failed": failed, "touched": touched, "daysSinceB": days_since_b,
+    }
+
+
 def eval_strategies(idx, closes, highs, lows, volumes,
                     ema20a, ema50a, ema200a, rsia, atr5a, atr14a):
     """返回 {S1:{conds, bonus, score, bonusScore, ready, keyvals}, ...}。"""
@@ -591,8 +685,18 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (perf1w is not None and -5 <= perf1w <= 0),
         (perf3m is not None and perf3m > 0),
     ]
+    s5_conf = detect_s5_confluence(idx, highs, lows, closes)
     res["S5"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 4,
-                 "keyvals": {"RSI": round(r, 1), "1M%": round(perf1m, 1) if perf1m is not None else None}}
+                 "keyvals": {"RSI": round(r, 1), "1M%": round(perf1m, 1) if perf1m is not None else None},
+                 "confluenceFound": s5_conf is not None,
+                 "confA": s5_conf["a"] if s5_conf else None, "confB": s5_conf["b"] if s5_conf else None,
+                 "congesTop": s5_conf["congesTop"] if s5_conf else None,
+                 "congesBottom": s5_conf["congesBottom"] if s5_conf else None,
+                 "entry": s5_conf["entry"] if s5_conf else None, "stop": s5_conf["stop"] if s5_conf else None,
+                 "t1": s5_conf["t1"] if s5_conf else None, "t2": s5_conf["t2"] if s5_conf else None,
+                 "touched": s5_conf["touched"] if s5_conf else None,
+                 "confFailed": s5_conf["failed"] if s5_conf else None,
+                 "daysSinceB": s5_conf["daysSinceB"] if s5_conf else None}
 
     # ── S6 圖表形態（Required 4/5, Bonus 5/5）──
     c = [
@@ -1161,6 +1265,11 @@ def build_record(ticker, hist):
         if s == "S3":
             for k in ("buildupA", "buildupB", "buildupLow", "brokeToday", "rvolToday",
                       "methodAOk", "daysSinceB", "entry", "stop", "t1", "t2"):
+                strategies[s][k] = today[s].get(k)
+        # S5 支持阻力（Playbook confluence）：pass-through 結構價位 + entry/stop/T1/T2
+        if s == "S5":
+            for k in ("confluenceFound", "confA", "confB", "congesTop", "congesBottom",
+                      "entry", "stop", "t1", "t2", "touched", "confFailed", "daysSinceB"):
                 strategies[s][k] = today[s].get(k)
         # S7 距52週高
         if s == "S7":
