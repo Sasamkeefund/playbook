@@ -512,10 +512,25 @@
         if(bonus>=3)return{text:'⚠️ 一般 Setup — Bonus 3/5 但 b1 b5 都未過，細倉 R:R≥3:1'+streakTxt+h1txt,color:'amber'};
         return{text:'❌ 未夠班（Bonus唔夠，冇b1/b5）'+streakTxt,color:'red'};}
       if(tab==='S3'){
-        if(req<reqMax)return{text:'— 未 ready',color:'red'};
-        if(bonus>=4)return{text:'🔥 高質 Buildup — Set Alert，突破用手法 A/B/C',color:'green'};
-        if(bonus>=2)return{text:'✅ Buildup 候選 — Set Alert 等突破（R:R 參考）',color:'green'};
-        return{text:'⚠️ Buildup 質素偏低 — 留意縮量收窄',color:'amber'};}
+        if(req<reqMax)return{text:'— 未 ready（搵唔到合理Buildup結構，或者已經跌穿Buildup底部）',color:'red'};
+        const bA=strat.buildupA, bB=strat.buildupB, bLow=strat.buildupLow;
+        const days=strat.daysSinceB, rvol=strat.rvolToday, methodOk=strat.methodAOk, broke=strat.brokeToday;
+        const stopPx=strat.stop, t1=strat.t1, t2=strat.t2;
+        const priceTxt=(bB!=null)?(' ｜ A$'+bA+' → B(突破線)$'+bB+' → Buildup底$'+bLow+' ｜ 止蝕$'+stopPx+' T1$'+t1+' T2$'+t2):'';
+        const drift=(curClose!=null&&bB)?((curClose-bB)/bB*100):null;
+        const driftTxt=drift!=null?(' ｜ 現價距突破線 '+(drift>=0?'+':'')+drift.toFixed(1)+'%'):'';
+        const daysTxt=days!=null?(' ｜ Buildup形成咗'+days+'日'):'';
+        if(methodOk){
+          return{text:'🔥 今日放量突破(手法A)，RVOL '+(rvol||'—')+'x — 可以入場'+priceTxt+driftTxt+daysTxt+' ｜ 人手confirm Buildup位置',color:'green'};
+        }
+        if(!broke){
+          return{text:'👀 Buildup仲喺形成中，未突破，Set Alert 等突破'+priceTxt+driftTxt+daysTxt,color:'amber'};
+        }
+        if(drift!=null&&drift>5){
+          return{text:'⚠️ 已經飛咗（距突破線+'+drift.toFixed(1)+'%），止蝕距離已經唔同晒，唔建議追'+priceTxt+driftTxt+daysTxt,color:'amber'};
+        }
+        return{text:'⚠️ 已突破但今日冇放量confirm(RVOL '+(rvol!=null?rvol+'x':'—')+')，可能假突破或者已冷卻，留意'+priceTxt+driftTxt+daysTxt,color:'amber'};
+      }
       if(tab==='S5'){
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
         if(bonus>=3)return{text:'✅ 可深入 — 人手確認 0.786 + 推進浪',color:'green'};
@@ -546,7 +561,7 @@
       globalData=dataR.value;
       document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated);
       if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
-        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1')?'green':'';
+        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3')?'green':'';
       }
       tvOpenSet = (paperR.status==='fulfilled')
         ? new Set((paperR.value.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()))
