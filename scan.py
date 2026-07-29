@@ -462,8 +462,24 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (perf1w is not None and -8 <= perf1w <= 0),
         (pct_from_high is not None and pct_from_high < 15),
     ]
+    # 每項 Required/Bonus 背後嘅實際數值（唔淨係true/false），俾你之後可以做真正數據分析
+    c_vals = [
+        round((close - e20) / e20 * 100, 2) if e20 else None,
+        round((close - e50) / e50 * 100, 2) if e50 else None,
+        round(ema200_slope, 4) if ema200_slope is not None else None,
+        round(r, 1) if r is not None else None,
+        (f"{round(perf3m,1)}/{round(perf1m,1)}" if perf3m is not None and perf1m is not None else None),
+    ]
+    b_vals = [
+        round((e20 - e50) / e50 * 100, 2) if e50 else None,
+        round((e50 - e200) / e200 * 100, 2) if e200 else None,
+        round(relvol, 2) if relvol is not None else None,
+        round(perf1w, 1) if perf1w is not None else None,
+        round(pct_from_high, 1) if pct_from_high is not None else None,
+    ]
     res["S1"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 5,
                  "daysBelow20": days_below, "daysRecover": days_recover,
+                 "condVals": c_vals, "bonusVals": b_vals,
                  "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
     # ── S1 回調形態偵測（用收市 close 跌穿 EMA20，唔睇下影線）──
@@ -756,7 +772,22 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         (hiLo10 is not None and hiLo10 < 7.0),
         (perf3m is not None and perf3m > 15),
     ]
+    c_vals = [
+        round((close - e20) / e20 * 100, 2) if e20 else None,
+        round((close - e50) / e50 * 100, 2) if e50 else None,
+        round(perf1m, 1) if perf1m is not None else None,
+        round(perf1w, 1) if perf1w is not None else None,
+        round(relvol, 2) if relvol is not None else None,
+    ]
+    b_vals = [
+        round(hiLo5, 2) if hiLo5 is not None else None,
+        round((close - e200) / e200 * 100, 2) if e200 else None,
+        round(pct_from_high, 1) if pct_from_high is not None else None,
+        round(hiLo10, 2) if hiLo10 is not None else None,
+        round(perf3m, 1) if perf3m is not None else None,
+    ]
     res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+                 "condVals": c_vals, "bonusVals": b_vals,
                  "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
     res["S6"]["h1"] = round(h1, 2) if h1 else None
     res["S6"]["flagLow"] = round(flag_low, 2) if flag_low else None
