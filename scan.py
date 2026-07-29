@@ -723,6 +723,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     broke_h1 = False
     flag_low = None
     flag_retrace = None   # 旗形回調佔上升推進浪幾多（Patreon: 要 ≤ 0.236）
+    days_since_pole = None
     try:
         # 旗杆頂 = 近 20 日內最高 high 嘅位置（approximate impulse top）
         win = 20
@@ -733,6 +734,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         if len(seg_c) >= 8:
             pole_top = max(seg_h[:-1])               # 旗杆頂（唔計今日）
             pole_idx = seg_h.index(pole_top)         # 喺 segment 內位置
+            days_since_pole = (len(seg_c) - 1) - pole_idx
             # 旗杆底 = 旗杆頂之前嘅最低 low（上升推進浪起點）
             pole_low = min(seg_l[:pole_idx+1]) if pole_idx >= 1 else seg_l[0]
             # 整固區 = 旗杆頂之後嘅 bars（旗形喺旗杆後形成）
@@ -742,11 +744,17 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 h1 = max(consol_h[:-1]) if len(consol_h) > 1 else pole_top
                 flag_low = min(consol_l) if consol_l else None
                 pct_to_h1 = (close - h1) / h1 * 100
-                broke_h1 = close > h1 and relvol is not None and relvol > 1.3
                 # 回調比例 = (旗杆頂 - 旗形低) / (旗杆頂 - 旗杆底)
                 pole_height = pole_top - pole_low
                 if pole_height > 0 and flag_low is not None:
                     flag_retrace = (pole_top - flag_low) / pole_height
+                # 突破要真正嘅旗形先算：
+                #   (1) 頸線起碼要形成咗5日以上（少過5日冧夠時間整固，只係「琴日高位今日升穿」）
+                #   (2) 回調唔可以太深（>80%即係已經跌穿返旗杆起點，唔算旗形，係另一種結構）
+                valid_flag_age = days_since_pole is not None and days_since_pole >= 5
+                valid_flag_depth = flag_retrace is not None and flag_retrace <= 0.8
+                broke_h1 = (close > h1 and relvol is not None and relvol > 1.3
+                            and valid_flag_age and valid_flag_depth)
     except Exception:
         pass
 
@@ -794,6 +802,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S6"]["pctToH1"] = round(pct_to_h1, 1) if pct_to_h1 is not None else None
     res["S6"]["brokeH1"] = broke_h1
     res["S6"]["flagRetrace"] = round(flag_retrace, 3) if flag_retrace is not None else None
+    res["S6"]["daysSincePole"] = days_since_pole
 
     # ── S7 J Law / Minervini VCP 整固突破 ──
     # 強勢股（Stage 2 + 跑贏大盤）正喺度 VCP 整固（橫行收窄），等突破。
