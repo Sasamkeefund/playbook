@@ -543,7 +543,7 @@ function renderTV(openP, closed){
           +(suggestClose==='t2'?'<br><span style="font-size:10px;color:#2ee6a6">🎯已到T2，建議去TV confirm並平倉</span>':'')
           +earnBadge
           +'</td>'
-        +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+'</td>'
+        +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+((p.state||'').split('|')[0].trim()==='S6'&&p.breakoutRvol!=null&&p.breakoutRvol!==''?'<br><span style="font-size:9.5px;color:var(--faint);font-weight:400">突破RVOL '+p.breakoutRvol+'x</span>':'')+'</td>'
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
         +'<td class="mono">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+p.entry)+'</td>'
         +curCell
@@ -650,6 +650,8 @@ async function addTV(){
     trend:(strat.streakBefore??strat.recentMaxStreak??''),
     bonus:(strat.bonusScore+'::'+bonusBreak)
   }:{};
+  // S6專用：突破嗰日嘅RVOL，獨立記低（同REQ/Bonus反映緊嘅「整固狀態」時間點可能唔同）
+  if(strategy==='S6'&&s&&s.rvol!=null)extra.breakoutRvol=s.rvol;
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify(Object.assign({action:'paper_open',ticker,group:'TV',entryDate,entry,stop,
@@ -669,13 +671,15 @@ async function refillSnapshot(ticker, entry){
   if(!strat){alert('Scanner而家搵唔到 '+ticker+' 呢隻嘅「'+(strategy||'？')+'」策略數據，冧補到（可能唔喺S&P500，或者策略tag認唔到）。');return;}
   const cd=strat.conds||[], bn=strat.bonus||[];
   const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
+  const payload={action:'paper_edit',ticker,group:'TV',status:'open',matchEntry:entry,
+    rsi:s.rsi, c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+    req:String(strat.score), streak:strat.streak,
+    trend:(strat.streakBefore??strat.recentMaxStreak??''),
+    bonus:(strat.bonusScore+'::'+bonusBreak)};
+  if(strategy==='S6'&&s.rvol!=null)payload.breakoutRvol=s.rvol;
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'paper_edit',ticker,group:'TV',status:'open',matchEntry:entry,
-        rsi:s.rsi, c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
-        req:String(strat.score), streak:strat.streak,
-        trend:(strat.streakBefore??strat.recentMaxStreak??''),
-        bonus:(strat.bonusScore+'::'+bonusBreak)})});
+      body:JSON.stringify(payload)});
     alert('已補返 '+ticker+' 嘅Scanner數據。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('補數據失敗，再試');}
