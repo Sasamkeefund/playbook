@@ -698,24 +698,6 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                  "confFailed": s5_conf["failed"] if s5_conf else None,
                  "daysSinceB": s5_conf["daysSinceB"] if s5_conf else None}
 
-    # ── S6 圖表形態（Required 4/5, Bonus 5/5）──
-    c = [
-        close > e20,
-        close > e50,
-        (perf1m is not None and perf1m > 8),
-        (perf1w is not None and -5 <= perf1w <= 0),
-        (relvol is not None and relvol < 0.8),
-    ]
-    b = [
-        (hiLo5 is not None and hiLo5 < 4.0),
-        close > e200,
-        (pct_from_high is not None and pct_from_high <= 15),
-        (hiLo10 is not None and hiLo10 < 7.0),
-        (perf3m is not None and perf3m > 15),
-    ]
-    res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
-                 "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
-
     # ── S6 旗形 H1 + 突破偵測（approximate，參考用，TradingView 畫返準）──
     # 邏輯：旗杆 = 近期高位（旗杆頂）；整固區 = 旗杆頂之後嘅橫行；
     #       H1 ≈ 整固區內嘅最高收市（旗形上邊界 = 突破位）
@@ -751,6 +733,31 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                     flag_retrace = (pole_top - flag_low) / pole_height
     except Exception:
         pass
+
+    # ── S6 圖表形態（Required 4/5, Bonus 5/5）──
+    # c4(整固)/c5(縮量) 檢查嘅係「突破前」嘅安靜狀態；一旦真係放量突破咗(broke_h1)，
+    # 呢兩項自然會變假(唔再係整固、成交量都升返)——如果淨係死跟「4/5」，個股一突破反而會喺Watchlist度消失，
+    # 變成獎勵緊「靜靜哋唔郁」，懲罰緊「做到你想佢做嘅事」。
+    # 修正：c1/c2/c3(大趨勢/旗杆)永遠要過；c4/c5 就用「(c4 and c5) OR 已經放量突破」代替，
+    # 即係「仲喺度靜靜整固」同「已經突破咗」兩種狀態，都算 ready，唔會突破一刻就跌出Watchlist。
+    c4_raw = (perf1w is not None and -5 <= perf1w <= 0)
+    c5_raw = (relvol is not None and relvol < 0.8)
+    c = [
+        close > e20,
+        close > e50,
+        (perf1m is not None and perf1m > 8),
+        c4_raw or broke_h1,
+        c5_raw or broke_h1,
+    ]
+    b = [
+        (hiLo5 is not None and hiLo5 < 4.0),
+        close > e200,
+        (pct_from_high is not None and pct_from_high <= 15),
+        (hiLo10 is not None and hiLo10 < 7.0),
+        (perf3m is not None and perf3m > 15),
+    ]
+    res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+                 "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
     res["S6"]["h1"] = round(h1, 2) if h1 else None
     res["S6"]["flagLow"] = round(flag_low, 2) if flag_low else None
     res["S6"]["pctToH1"] = round(pct_to_h1, 1) if pct_to_h1 is not None else None
