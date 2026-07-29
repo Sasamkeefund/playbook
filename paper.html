@@ -643,9 +643,13 @@ async function addTV(){
   const strat=(s&&s.strategies&&s.strategies[strategy])?s.strategies[strategy]:null;
   const cd=(strat&&strat.conds)||[];
   const bn=(strat&&strat.bonus)||[];
+  const cv=(strat&&strat.condVals)||[];
+  const bv=(strat&&strat.bonusVals)||[];
   const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
   const extra=strat?{
-    rsi:s.rsi, c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+    rsi:s.rsi,
+    c1:cv[0]??(cd[0]?1:0), c2:cv[1]??(cd[1]?1:0), c3:cv[2]??(cd[2]?1:0), c4:cv[3]??(cd[3]?1:0), c5:cv[4]??(cd[4]?1:0),
+    b1:bv[0]??(bn[0]?1:0), b2:bv[1]??(bn[1]?1:0), b3:bv[2]??(bn[2]?1:0), b4:bv[3]??(bn[3]?1:0), b5:bv[4]??(bn[4]?1:0),
     req:String(strat.score), streak:strat.streak,
     trend:(strat.streakBefore??strat.recentMaxStreak??''),
     bonus:(strat.bonusScore+'::'+bonusBreak)
@@ -670,9 +674,12 @@ async function refillSnapshot(ticker, entry){
   const strat=(s&&strategy&&s.strategies&&s.strategies[strategy])?s.strategies[strategy]:null;
   if(!strat){alert('Scanner而家搵唔到 '+ticker+' 呢隻嘅「'+(strategy||'？')+'」策略數據，冧補到（可能唔喺S&P500，或者策略tag認唔到）。');return;}
   const cd=strat.conds||[], bn=strat.bonus||[];
+  const cv=strat.condVals||[], bv=strat.bonusVals||[];
   const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
   const payload={action:'paper_edit',ticker,group:'TV',status:'open',matchEntry:entry,
-    rsi:s.rsi, c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+    rsi:s.rsi,
+    c1:cv[0]??(cd[0]?1:0), c2:cv[1]??(cd[1]?1:0), c3:cv[2]??(cd[2]?1:0), c4:cv[3]??(cd[3]?1:0), c5:cv[4]??(cd[4]?1:0),
+    b1:bv[0]??(bn[0]?1:0), b2:bv[1]??(bn[1]?1:0), b3:bv[2]??(bn[2]?1:0), b4:bv[3]??(bn[3]?1:0), b5:bv[4]??(bn[4]?1:0),
     req:String(strat.score), streak:strat.streak,
     trend:(strat.streakBefore??strat.recentMaxStreak??''),
     bonus:(strat.bonusScore+'::'+bonusBreak)};
