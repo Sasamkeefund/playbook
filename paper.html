@@ -507,7 +507,7 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>掂T1</th><th>T2</th><th>R:R→T2</th><th>RSI</th><th>REQ</th><th>Bonus</th><th>Streak/趨勢</th><th>筆記</th><th>連結</th><th>圖</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>掂T1</th><th>T2</th><th>R:R→T2</th><th>突破RVOL</th><th>筆記</th><th>連結</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const pending = (p.entry===''||p.entry==null||p.stop===''||p.stop==null);
@@ -517,10 +517,12 @@ function renderTV(openP, closed){
       const effStop=(t1hitBool&&t1n&&!pending)?(e+(t1n-e)*0.5):stp;
       const risk=e-stp;
       const rr1=(!pending&&risk>0&&p.t1)?'1:'+((t1n-e)/risk).toFixed(1):'—';
-      const reqCk=['c1','c2','c3','c4','c5'].map((k,i)=>p[k]!=null&&p[k]!==''?('C'+(i+1)+(Number(p[k])?'✓':'✗')):'').filter(Boolean).join(' ');
-      const bonusParts=(p.bonus||'').toString().split('::');
-      const bonusNum=bonusParts[0];
-      const bonusTip=bonusParts[1]||'';
+      const isS6=(p.state||'').split('|')[0].trim()==='S6';
+      const rvolVal=(p.breakoutRvol!=null&&p.breakoutRvol!=='')?Number(p.breakoutRvol):null;
+      const methodTxt=rvolVal==null?'':(rvolVal>=1.5?'<span style="color:#2ee6a6">手法A放量</span>':'<span style="color:#f5b945">手法C縮量</span>');
+      const rvolCell=isS6
+        ?'<td style="text-align:center"><input type="number" step="0.01" value="'+(rvolVal!=null?rvolVal:'')+'" placeholder="打RVOL" style="width:60px" onchange="saveBreakoutRvol(\''+p.ticker+'\','+(p.entry||0)+',this.value)"><br><span style="font-size:9.5px">'+methodTxt+'</span></td>'
+        :'<td style="text-align:center;color:var(--faint)">—</td>';
       const rr2=(!pending&&risk>0&&p.t2)?'1:'+((t2n-e)/risk).toFixed(1):'—';
       const live=_liveData[p.ticker.toUpperCase()];
       const cur=live?live.close:null;
@@ -543,7 +545,7 @@ function renderTV(openP, closed){
           +(suggestClose==='t2'?'<br><span style="font-size:10px;color:#2ee6a6">🎯已到T2，建議去TV confirm並平倉</span>':'')
           +earnBadge
           +'</td>'
-        +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+((p.state||'').split('|')[0].trim()==='S6'&&p.breakoutRvol!=null&&p.breakoutRvol!==''?'<br><span style="font-size:9.5px;color:var(--faint);font-weight:400">突破RVOL '+p.breakoutRvol+'x</span>':'')+'</td>'
+        +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(p.state||'—').split('|')[0].trim()+'</td>'
         +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'
         +'<td class="mono">'+(pending?'<span style="color:var(--faint)">待填</span>':'$'+p.entry)+'</td>'
         +curCell
@@ -554,10 +556,7 @@ function renderTV(openP, closed){
         +'<td style="text-align:center">'+(t1hitBool?'<span class="green">✓掂咗</span>':'—')+'</td>'
         +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
-        +'<td class="mono">'+(p.rsi||'—')+'</td>'
-        +'<td style="text-align:center">'+(p.req!==''&&p.req!=null?p.req:'—')+(reqCk?'<br><span style="font-size:9.5px;color:var(--faint);white-space:nowrap">'+reqCk+'</span>':'')+'</td>'
-        +'<td style="text-align:center">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+(bonusTip?'<br><span style="font-size:9.5px;color:var(--faint);white-space:nowrap">'+bonusTip+'</span>':'')+'</td>'
-        +'<td style="text-align:center">'+(p.streak||'—')+' / '+(p.trend||'—')+'</td>'
+        +rvolCell
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
         +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> ':'<span style="color:var(--faint)">—</span> ')+'<a href="https://www.google.com/search?q='+p.ticker+'+stock+news&tbm=nws" target="_blank" class="linkbtn" title="check最新新聞">📰</a></td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
@@ -572,14 +571,13 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
   if(cl.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>REQ</th><th>Bonus</th><th>筆記</th><th>連結</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>突破RVOL</th><th>筆記</th><th>連結</th><th>操作</th>'
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
-      const reqCk=['c1','c2','c3','c4','c5'].map((k,i)=>t[k]!=null&&t[k]!==''?('C'+(i+1)+(Number(t[k])?'✓':'✗')):'').filter(Boolean).join(' ');
-      const bonusParts=(t.bonus||'').toString().split('::');
-      const bonusNum=bonusParts[0];
-      const bonusTip=bonusParts[1]||'';
+      const isS6c=(t.state||'').split('|')[0].trim()==='S6';
+      const rvolValC=(t.breakoutRvol!=null&&t.breakoutRvol!=='')?Number(t.breakoutRvol):null;
+      const methodTxtC=rvolValC==null?'—':(rvolValC+'x '+(rvolValC>=1.5?'<span style="color:#2ee6a6">(手法A)</span>':'<span style="color:#f5b945">(手法C)</span>'));
       h+='<tr>'
         +'<td><b>'+t.ticker+'</b></td>'
         +'<td style="font-size:11px;color:var(--accent);font-weight:700">'+(t.state||'—').split('|')[0].trim()+'</td>'
@@ -589,8 +587,7 @@ function renderTV(openP, closed){
         +'<td class="mono">$'+t.exitPx+'</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
-        +'<td style="text-align:center">'+(t.req!==''&&t.req!=null?t.req:'—')+(reqCk?'<br><span style="font-size:9.5px;color:var(--faint);white-space:nowrap">'+reqCk+'</span>':'')+'</td>'
-        +'<td style="text-align:center">'+(bonusNum!==''&&bonusNum!=null?bonusNum:'—')+(bonusTip?'<br><span style="font-size:9.5px;color:var(--faint);white-space:nowrap">'+bonusTip+'</span>':'')+'</td>'
+        +'<td style="text-align:center;font-size:11px">'+(isS6c?methodTxtC:'<span style="color:var(--faint)">—</span>')+'</td>'
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td>'+(t.tvLink?('<a href="'+t.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> '):'')+'<button class="linkbtn" onclick="addLinkClosed(\''+t.ticker+'\','+t.entry+')">'+(t.tvLink?'✏️':'➕連結')+'</button></td>'
         +'<td><button class="linkbtn" onclick="editCloseTV(\''+t.ticker+'\','+t.entry+')">✏️編輯</button> <button class="linkbtn" style="color:#6aabf0" onclick="reopenTV(\''+t.ticker+'\','+t.entry+')">↩️打開返</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
@@ -666,6 +663,15 @@ async function addTV(){
 }
 let _editTVTicker=null;
 let _editTVStrategy=null;
+async function saveBreakoutRvol(ticker, entry, val){
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_edit',ticker,group:'TV',status:'open',matchEntry:entry,breakoutRvol:val})});
+    const rec=_allOpen.find(p=>p.ticker===ticker.toUpperCase()&&p.group==='TV'&&Number(p.entry)===Number(entry));
+    if(rec)rec.breakoutRvol=val;
+    renderTV(_allOpen.filter(p=>p.group==='TV'), _allClosed.filter(p=>p.group==='TV'));
+  }catch(e){alert('儲存失敗，再試');}
+}
 async function refillSnapshot(ticker, entry){
   ticker=ticker.toUpperCase();
   const rec=_allOpen.find(p=>p.ticker===ticker&&p.group==='TV'&&Number(p.entry)===Number(entry));
