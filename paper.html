@@ -561,7 +561,7 @@ function renderTV(openP, closed){
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
         +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> ':'<span style="color:var(--faint)">—</span> ')+'<a href="https://www.google.com/search?q='+p.ticker+'+stock+news&tbm=nws" target="_blank" class="linkbtn" title="check最新新聞">📰</a></td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
-        +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+(p.entry||0)+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+(p.entry||0)+',\'open\')">刪除</button></td>'
+        +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#6aabf0" onclick="refillSnapshot(\''+p.ticker+'\','+(p.entry||0)+')" title="由Scanner即時數據補返RSI/REQ/Bonus/Streak">🔄補數據</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+(p.entry||0)+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+(p.entry||0)+',\'open\')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
@@ -660,6 +660,26 @@ async function addTV(){
 }
 let _editTVTicker=null;
 let _editTVStrategy=null;
+async function refillSnapshot(ticker, entry){
+  ticker=ticker.toUpperCase();
+  const rec=_allOpen.find(p=>p.ticker===ticker&&p.group==='TV'&&Number(p.entry)===Number(entry));
+  const strategy=rec?(rec.state||'').split('|')[0].trim():null;
+  const s=_liveData[ticker];
+  const strat=(s&&strategy&&s.strategies&&s.strategies[strategy])?s.strategies[strategy]:null;
+  if(!strat){alert('Scanner而家搵唔到 '+ticker+' 呢隻嘅「'+(strategy||'？')+'」策略數據，冧補到（可能唔喺S&P500，或者策略tag認唔到）。');return;}
+  const cd=strat.conds||[], bn=strat.bonus||[];
+  const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_edit',ticker,group:'TV',status:'open',matchEntry:entry,
+        rsi:s.rsi, c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+        req:String(strat.score), streak:strat.streak,
+        trend:(strat.streakBefore??strat.recentMaxStreak??''),
+        bonus:(strat.bonusScore+'::'+bonusBreak)})});
+    alert('已補返 '+ticker+' 嘅Scanner數據。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('補數據失敗，再試');}
+}
 function editTV(ticker){
   const rec=_allOpen.find(p=>p.ticker===ticker&&p.group==='TV');
   if(!rec){alert('搵唔到記錄');return;}
