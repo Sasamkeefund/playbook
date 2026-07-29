@@ -176,12 +176,16 @@ const _MODES=['trader','work','mobile'];
         const today=new Date().toISOString().slice(0,10);
         const reqMax=(wlTab==='S5'||wlTab==='S4'||wlTab==='S1V1')?4:(wlTab==='S7'?6:5);
         const reqTxt=strat?String(strat.score):'';
+        const cv=(strat&&strat.condVals)||[];
+        const bv=(strat&&strat.bonusVals)||[];
         const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
         const bonusTxt=strat?(strat.bonusScore+'::'+bonusBreak):'';
         const trendVal=strat?(strat.streakBefore??strat.recentMaxStreak??strat.macroStreak??''):'';
         const body={action:'paper_open',ticker,group:'TV',entryDate:today,entry:'',stop:'',
               state:(wlTab==='ALL'?'':wlTab)+' | ',
-              rsi:s?s.rsi:'', c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+              rsi:s?s.rsi:'',
+              c1:cv[0]??(cd[0]?1:0), c2:cv[1]??(cd[1]?1:0), c3:cv[2]??(cd[2]?1:0), c4:cv[3]??(cd[3]?1:0), c5:cv[4]??(cd[4]?1:0),
+              b1:bv[0]??(bn[0]?1:0), b2:bv[1]??(bn[1]?1:0), b3:bv[2]??(bn[2]?1:0), b4:bv[3]??(bn[3]?1:0), b5:bv[4]??(bn[4]?1:0),
               req:reqTxt, streak:strat?strat.streak:'', trend:trendVal,
               bonus:bonusTxt};
         if(wlTab==='S6'&&s&&s.rvol!=null)body.breakoutRvol=s.rvol;
