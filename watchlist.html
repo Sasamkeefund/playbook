@@ -235,9 +235,15 @@ const _MODES=['trader','work','mobile'];
       // 篩選：ALL=全部；否則淨係嗰個 strategy ready 嘅
       let rows=list;
       if(wlTab!=='ALL'){
-        rows=list.filter(it=>{const s=dataMap[it.ticker.toUpperCase()];return s&&s.strategies[wlTab]&&s.strategies[wlTab].ready;});
+        // 有標低strategy(你自己揀嗰個tab加嘅) → 淨係跟返嗰個，唔理今日仲ready唔ready，企硬喺度
+        // 冇標低(舊資料，加落嚟嗰陣仲未有呢個功能) → 跌返用返舊邏輯(睇今日仲ready嘅)，avoid「唔見咗」
+        rows=list.filter(it=>{
+          if(it.strategy){return it.strategy===wlTab;}
+          const s=dataMap[it.ticker.toUpperCase()];
+          return s&&s.strategies[wlTab]&&s.strategies[wlTab].ready;
+        });
       }
-      if(!rows.length){th.innerHTML='';tb.innerHTML='<tr><td class="empty">呢個策略暫時冇 ready 嘅 watchlist 股</td></tr>';return;}
+      if(!rows.length){th.innerHTML='';tb.innerHTML='<tr><td class="empty">呢個策略暫時未有你標低嘅 watchlist 股</td></tr>';return;}
 
       const earningsBadge=it=>{
         const s=dataMap[it.ticker.toUpperCase()];
@@ -256,7 +262,14 @@ const _MODES=['trader','work','mobile'];
         if(d>0&&d<=5)return out+' <span title="仲有'+d+'日出業績（'+s.earningsDate+'）" style="color:#f5b945;font-size:11px;cursor:help">📊'+d+'日後業績</span>';
         return out;
       };
-      const linkCell=it=>`<td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${it.ticker}');return false;">${it.ticker} 📈</a>${earningsBadge(it)}</td>`;
+      const suggestOtherStrategies=it=>{
+        const s=dataMap[it.ticker.toUpperCase()]; if(!s||!it.strategy)return '';
+        const others=['S1','S1V1','S2','S3','S4','S5','S6','S7']
+          .filter(k=>k!==it.strategy&&s.strategies[k]&&s.strategies[k].ready);
+        if(!others.length)return '';
+        return '<br><span style="font-size:10px;color:#6aabf0" title="今日呢隻都啱用呢幾個策略，但呢度企硬用你原本揀嘅'+it.strategy+'">💡今日都啱：'+others.join('、')+'</span>';
+      };
+      const linkCell=it=>`<td class="ticker"><a href="#" class="ticker-link" style="color:var(--accent-2)" onclick="openChart('${it.ticker}');return false;">${it.ticker} 📈</a>${earningsBadge(it)}${suggestOtherStrategies(it)}</td>`;
       const noteCell=it=>`<td><input type="text" class="note-input" value="${(it.note||'').replace(/"/g,'&quot;')}" onchange="saveNote('${it.ticker}',this.value)" placeholder="加筆記" style="width:120px"></td>`;
       const delCell=it=>`<td style="text-align:center"><button class="del-btn" onclick="removeStock('${it.ticker}')">🗑️</button></td>`;
       const shortDate=s=>{ if(!s)return '—'; const d=new Date(s); return isNaN(d)?s:d.toDateString(); };
