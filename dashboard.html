@@ -857,7 +857,7 @@
       if(on){wlSet.delete(ticker);}else{wlSet.add(ticker);}
       if(btn){btn.textContent=wlSet.has(ticker)?'⭐':'☆';btn.style.color=wlSet.has(ticker)?'#f5b945':'var(--dim)';}
       try{
-        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:on?'remove':'add',ticker})});
+        await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:on?'remove':'add',ticker,strategy:activeTab})});
       }catch(e){/* 寫去 Google，唔阻 UI */}
     }
     function updateChartStarBtn(ticker){
@@ -871,7 +871,7 @@
       const on=wlSet.has(ticker);
       if(on){wlSet.delete(ticker);}else{wlSet.add(ticker);}
       updateChartStarBtn(ticker);
-      try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:on?'remove':'add',ticker})});}catch(e){}
+      try{await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:on?'remove':'add',ticker,strategy:activeTab})});}catch(e){}
       // 同步更新表格個星（如果表格重畫）
       if(typeof render==='function'){/* 表格會下次 render 更新 */}
     }
