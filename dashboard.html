@@ -829,12 +829,16 @@
         const trendVal=strat?(strat.streakBefore??strat.recentMaxStreak??strat.macroStreak??''):'';
         const reqMax=(activeTab==='S5'||activeTab==='S4'||activeTab==='S1V1')?4:(activeTab==='S7'?6:5);
         const reqTxt=strat?String(strat.score):'';
-        // Bonus 帶埋逐項breakdown，用 :: 分隔（前面數字係分數，後面係b1..bN 邊個中）方便顯示tooltip
+        const cv=(strat&&strat.condVals)||[];
+        const bv=(strat&&strat.bonusVals)||[];
         const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
         const bonusTxt=strat?(strat.bonusScore+'::'+bonusBreak):'';
+        // C1-C5/B1-B5 送真實數值（condVals/bonusVals），暫時未整到嘅策略跌返用1/0（起碼有嘢睇）
         const body={action:'paper_open',ticker,group:'TV',entryDate:today,entry:'',stop:'',
               state:activeTab+' | ',
-              rsi:stk?stk.rsi:'', c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+              rsi:stk?stk.rsi:'',
+              c1:cv[0]??(cd[0]?1:0), c2:cv[1]??(cd[1]?1:0), c3:cv[2]??(cd[2]?1:0), c4:cv[3]??(cd[3]?1:0), c5:cv[4]??(cd[4]?1:0),
+              b1:bv[0]??(bn[0]?1:0), b2:bv[1]??(bn[1]?1:0), b3:bv[2]??(bn[2]?1:0), b4:bv[3]??(bn[3]?1:0), b5:bv[4]??(bn[4]?1:0),
               req:reqTxt, streak:strat?strat.streak:'', trend:trendVal,
               bonus:bonusTxt};
         if(activeTab==='S6'&&stk&&stk.rvol!=null)body.breakoutRvol=stk.rvol;
