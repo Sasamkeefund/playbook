@@ -311,9 +311,9 @@ def detect_s5_confluence(idx, highs, lows, closes):
     if not h_piv or not l_piv:
         return None
 
-    # B：最近一個 H pivot（LTF升浪頂），起碼要已經開始回調（唔可以係今日先啱啱破頂）
+    # B：最近一個 H pivot（LTF升浪頂），要有足夠時間先算真正回調完成（唔可以係呢兩日先啱啱破頂）
     b_idx, b_price = h_piv[-1]
-    if b_idx >= n - 2:
+    if b_idx >= n - 5:
         if len(h_piv) >= 2:
             b_idx, b_price = h_piv[-2]
         else:
