@@ -765,7 +765,7 @@
       document.getElementById('searchTicker').value='';
       document.getElementById('filterScore').value='';
       document.getElementById('filterStreak').value='';
-      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1')?'green':'';
+      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S5')?'green':'';
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     document.getElementById('searchTicker').addEventListener('input',renderTable);
