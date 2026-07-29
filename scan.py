@@ -751,8 +751,8 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 # 突破要真正嘅旗形先算：
                 #   (1) 頸線起碼要形成咗5日以上（少過5日冧夠時間整固，只係「琴日高位今日升穿」）
                 #   (2) 回調唔可以太深（>80%即係已經跌穿返旗杆起點，唔算旗形，係另一種結構）
-                valid_flag_age = days_since_pole is not None and days_since_pole >= 5
-                valid_flag_depth = flag_retrace is not None and flag_retrace <= 0.8
+                valid_flag_age = days_since_pole is not None and days_since_pole >= 4
+                valid_flag_depth = flag_retrace is not None and flag_retrace <= 0.88
                 broke_h1 = (close > h1 and relvol is not None and relvol > 1.3
                             and valid_flag_age and valid_flag_depth)
     except Exception:
