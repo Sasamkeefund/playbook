@@ -283,8 +283,8 @@ const _MODES=['trader','work','mobile'];
       const tvCell=it=>`<td style="text-align:center"><input type="checkbox" ${tvOpenSet.has(it.ticker.toUpperCase())?'checked':''} onchange="toggleTVTrack('${it.ticker}',this)" style="width:16px;height:16px;cursor:pointer"></td>`;
 
       if(wlTab==='S1'){
-        // S1：跟 paper trade 欄（RSI/C1-C5/趨勢/跌穿/企返）——REQ/Bonus/Streak屬事後分析，唔擺網頁，去Google Sheet睇
-        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:right">RSI</th><th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th><th style="text-align:center">趨勢</th><th style="text-align:center">跌穿</th><th style="text-align:center">企返</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
+        // S1：跟 paper trade 欄（RSI/C1-C5/REQ/Bonus/Streak/趨勢/跌穿/企返）
+        th.innerHTML='<tr><th>Ticker</th><th>加入日期</th><th style="text-align:right">Close</th><th style="text-align:right">RSI</th><th style="text-align:center">C1</th><th style="text-align:center">C2</th><th style="text-align:center">C3</th><th style="text-align:center">C4</th><th style="text-align:center">C5</th><th style="text-align:center">REQ</th><th style="text-align:center">Bonus</th><th style="text-align:center">Streak</th><th style="text-align:center">趨勢</th><th style="text-align:center">跌穿</th><th style="text-align:center">企返</th><th>筆記</th><th style="text-align:center">📝TV</th><th style="text-align:center">移除</th></tr>';
         tb.innerHTML=rows.map(it=>{
           const s=dataMap[it.ticker.toUpperCase()]; if(!s)return '';
           const k=s.strategies.S1||{}; const cd=k.conds||[];
@@ -293,6 +293,9 @@ const _MODES=['trader','work','mobile'];
             +`<td style="text-align:right">${priceCell(it.ticker)}</td>`
             +`<td style="text-align:right" class="mono">${s.rsi.toFixed(1)}</td>`
             +`<td style="text-align:center">${ck(cd[0])}</td><td style="text-align:center">${ck(cd[1])}</td><td style="text-align:center">${ck(cd[2])}</td><td style="text-align:center">${ck(cd[3])}</td><td style="text-align:center">${ck(cd[4])}</td>`
+            +`<td style="text-align:center" class="mono">${k.score||'—'}</td>`
+            +`<td style="text-align:center" class="mono">${k.bonusScore||'—'}/5</td>`
+            +`<td style="text-align:center" class="mono">${k.streak||'—'}</td>`
             +`<td style="text-align:center" class="mono">${k.recentMaxStreak||'—'}</td>`
             +`<td style="text-align:center" class="mono">${pb}</td>`
             +`<td style="text-align:center">${k.aboveNow?'<span style="color:#2ee6a6">✓</span>':'—'}</td>`
