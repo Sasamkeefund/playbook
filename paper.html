@@ -638,11 +638,23 @@ async function addTV(){
   const t2=document.getElementById('tvT2').value;
   const notes=document.getElementById('tvNotes').value;
   if(!ticker||!entry||!stop){alert('至少要填 Ticker、買入價、止損');return;}
+  // 如果Scanner有呢隻股嘅即時數據，順手帶埋RSI/REQ/Bonus/Streak做snapshot參考（同tick checkbox個途徑一致）
+  const s=_liveData[ticker];
+  const strat=(s&&s.strategies&&s.strategies[strategy])?s.strategies[strategy]:null;
+  const cd=(strat&&strat.conds)||[];
+  const bn=(strat&&strat.bonus)||[];
+  const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
+  const extra=strat?{
+    rsi:s.rsi, c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
+    req:String(strat.score), streak:strat.streak,
+    trend:(strat.streakBefore??strat.recentMaxStreak??''),
+    bonus:(strat.bonusScore+'::'+bonusBreak)
+  }:{};
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate,entry,stop,
-        state:strategy+' | '+stopMethod+(entryMethod?' | '+entryMethod:''), t1, t2, notes})});
-    alert('已新增 '+ticker+'。1-2秒後刷新。');
+      body:JSON.stringify(Object.assign({action:'paper_open',ticker,group:'TV',entryDate,entry,stop,
+        state:strategy+' | '+stopMethod+(entryMethod?' | '+entryMethod:''), t1, t2, notes}, extra))});
+    alert('已新增 '+ticker+(strat?'（已自動帶埋Scanner今日嘅RSI/REQ/Bonus/Streak）':'')+'。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('新增失敗，再試');}
 }
