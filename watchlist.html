@@ -178,14 +178,16 @@ const _MODES=['trader','work','mobile'];
         const reqTxt=strat?String(strat.score):'';
         const bonusBreak=bn.map((x,i)=>'b'+(i+1)+(x?'✓':'✗')).join(' ');
         const bonusTxt=strat?(strat.bonusScore+'::'+bonusBreak):'';
-        const trendVal=strat?(strat.streakBefore||strat.recentMaxStreak||strat.macroStreak||''):'';
-        try{
-          await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-            body:JSON.stringify({action:'paper_open',ticker,group:'TV',entryDate:today,entry:'',stop:'',
+        const trendVal=strat?(strat.streakBefore??strat.recentMaxStreak??strat.macroStreak??''):'';
+        const body={action:'paper_open',ticker,group:'TV',entryDate:today,entry:'',stop:'',
               state:(wlTab==='ALL'?'':wlTab)+' | ',
               rsi:s?s.rsi:'', c1:cd[0]?1:0,c2:cd[1]?1:0,c3:cd[2]?1:0,c4:cd[3]?1:0,c5:cd[4]?1:0,
               req:reqTxt, streak:strat?strat.streak:'', trend:trendVal,
-              bonus:bonusTxt})});
+              bonus:bonusTxt};
+        if(wlTab==='S6'&&s&&s.rvol!=null)body.breakoutRvol=s.rvol;
+        try{
+          await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+            body:JSON.stringify(body)});
           tvOpenSet.add(ticker);
         }catch(e){alert('加入失敗，再試');checkbox.checked=false;}
       }else{
