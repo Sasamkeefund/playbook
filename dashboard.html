@@ -381,7 +381,8 @@
 
     <div id="forexModeWrap" style="display:none">
       <div style="font-size:11.5px;color:var(--dim);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">
-        💱 8隻major貨幣對 · 淨係S1(順勢交易) · 門檻已根據外匯自身歷史波幅重新校準(3M門檻2%、1M門檻5%，代替股票版嘅5%/25%) · 每日更新一次(跟美股同一個nightly scan)
+        💱 8隻major貨幣對 · 淨係S1(順勢交易) · 門檻已根據外匯自身歷史波幅重新校準(3M門檻2%、1M門檻5%，代替股票版嘅5%/25%)<br>
+        <span id="forexFreshness"></span>
       </div>
       <table>
         <thead><tr><th>貨幣對</th><th style="text-align:right">現價</th><th style="text-align:right">RSI</th><th style="text-align:center">Required</th><th style="text-align:center">Bonus</th><th style="text-align:right">1W%</th><th style="text-align:right">1M%</th><th style="text-align:right">3M%</th><th style="text-align:right">參考止蝕(1.5xATR)</th><th>結論</th></tr></thead>
@@ -793,16 +794,23 @@
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     let appMode='stock';
-    function switchMode(m){
+    async function switchMode(m){
       appMode=m;
       document.getElementById('stockModeWrap').style.display=(m==='stock')?'':'none';
       document.getElementById('forexModeWrap').style.display=(m==='forex')?'':'none';
       document.getElementById('modeBtnStock').style.background=(m==='stock')?'var(--accent)':'';
       document.getElementById('modeBtnForex').style.background=(m==='forex')?'var(--accent)':'';
-      if(m==='forex')renderForex();
+      if(m==='forex'){
+        document.getElementById('forexTbody').innerHTML='<tr><td colspan="10" class="empty">載入緊…</td></tr>';
+        try{
+          const fd=await ensureForexData();
+          document.getElementById('forexFreshness').textContent='💱 Forex 數據更新於 '+toHKT(fd.updated)+'（獨立、每小時更新一次）';
+          renderForex(fd);
+        }catch(e){document.getElementById('forexTbody').innerHTML='<tr><td colspan="10" class="empty">載入失敗</td></tr>';}
+      }
     }
     async function openForexChart(fxTicker){
-      const d=(globalData.forex&&globalData.forex.S1&&globalData.forex.S1[fxTicker])||{};
+      const d=(forexDataCache&&forexDataCache.forex&&forexDataCache.forex.S1&&forexDataCache.forex.S1[fxTicker])||{};
       const displayName=d.display||fxTicker;
       document.getElementById('chartTitle').textContent=displayName;
       const tvSymbol=(displayName||'').replace('/','');
@@ -814,7 +822,7 @@
       c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
       document.getElementById('chartModal').classList.add('show');
       try{
-        const all=await ensureCharts();
+        const all=await ensureForexCharts();
         const cd=all[fxTicker];
         if(!cd){c.innerHTML='<div style="padding:2rem;color:var(--dim)">呢對貨幣暫時冇圖數據</div>';return;}
         drawForexChart(c,displayName,cd);
@@ -840,8 +848,8 @@
       e50s.setData(d.t.map((t,i)=>({time:t,value:d.e50[i]})).filter(x=>x.value!=null));
       chart.timeScale().fitContent();
     }
-    function renderForex(){
-      const fx=(globalData.forex&&globalData.forex.S1)||{};
+    function renderForex(fd){
+      const fx=(fd&&fd.forex&&fd.forex.S1)||{};
       const tb=document.getElementById('forexTbody');
       const rows=Object.entries(fx);
       if(!rows.length){tb.innerHTML='<tr><td colspan="10" class="empty">冇外匯資料</td></tr>';return;}
@@ -983,6 +991,19 @@
       const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/charts.json?t='+Date.now());
       chartsCache=await r.json();
       return chartsCache;
+    }
+    let forexChartsCache=null, forexDataCache=null;
+    async function ensureForexCharts(){
+      if(forexChartsCache)return forexChartsCache;
+      const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/forex_charts.json?t='+Date.now());
+      forexChartsCache=await r.json();
+      return forexChartsCache;
+    }
+    async function ensureForexData(){
+      if(forexDataCache)return forexDataCache;
+      const r=await fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/forex_data.json?t='+Date.now());
+      forexDataCache=await r.json();
+      return forexDataCache;
     }
     function fakeoutBadge(st){
       const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.streakBefore??st.recentMaxStreak??0;
