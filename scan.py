@@ -1384,6 +1384,31 @@ def load_previous_ready():
 
 
 def main():
+    # ⚠️ TEMP TEST — S1邏輯套落8隻major貨幣對，結果寫入data.json嘅_forexS1Test key，check完就刪走
+    _forex_s1_test = {}
+    for fx in ["EURUSD=X", "GBPUSD=X", "JPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]:
+        try:
+            fxh = fetch_history(fx)
+            if not fxh or not fxh.get("close"):
+                _forex_s1_test[fx] = {"ok": False}
+                continue
+            fc, fh, fl, fv = fxh["close"], fxh["high"], fxh["low"], fxh.get("volume", [1] * len(fxh["close"]))
+            fe20 = ema(fc, 20); fe50 = ema(fc, 50); fe200 = ema(fc, 200)
+            fr = rsi(fc, 14); fa5 = atr(fh, fl, fc, 5); fa14 = atr(fh, fl, fc, 14)
+            fidx = len(fc) - 1
+            fev = eval_strategies(fidx, fc, fh, fl, fv, fe20, fe50, fe200, fr, fa5, fa14)
+            if fev:
+                s1 = fev["S1"]
+                _forex_s1_test[fx] = {
+                    "ok": True, "close": round(fc[-1], 5), "ready": s1["ready"],
+                    "score": s1["score"], "conds": s1["conds"], "bonusScore": s1["bonusScore"],
+                    "condVals": s1.get("condVals"),
+                }
+            else:
+                _forex_s1_test[fx] = {"ok": False, "reason": "eval_strategies returned None"}
+        except Exception as e:
+            _forex_s1_test[fx] = {"ok": False, "reason": str(e)[:300]}
+
     sp500 = set(get_sp500_tickers())
     sector_map = get_sector_map()
     print(f"Sector 分類：{len(sector_map)} 隻（淨係 S&P500 成份股有）")
@@ -1468,6 +1493,7 @@ def main():
         "strategyMeta": STRATEGY_META,
         "summary": summary,
         "stocks": records,
+        "_forexS1Test": _forex_s1_test,
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
