@@ -134,6 +134,18 @@
     </div>
   </div>
 
+  <div class="modal" id="t1CloseModal" onclick="if(event.target===this)closeT1Close()">
+    <div class="modalbox" style="width:min(480px,94vw)">
+      <div class="modalhead"><div style="font-weight:700">🎯 T1平倉 <span id="t1CloseTicker"></span></div><button class="x" onclick="closeT1Close()">×</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="sub">賣咗幾多股</label><input id="t1Qty" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+        <div><label class="sub">實際賣出價</label><input id="t1Px" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+      </div>
+      <div id="t1QtyHint" style="font-size:11.5px;color:var(--faint);margin-top:6px"></div>
+      <button class="btn primary" style="margin-top:14px;background:var(--accent);color:#fff;width:100%" onclick="saveT1Close()">確認T1平倉</button>
+    </div>
+  </div>
+
 <script>
 const WL_API="https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec";
 function toggleWork(){
@@ -555,16 +567,16 @@ function renderTV(openP, closed){
         +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+(((p.state||'').split('|')[2]||'').trim()?'<br><span style="color:var(--accent)">'+((p.state||'').split('|')[2]||'').trim()+'</span>':'')+'</td>'
         +'<td class="mono green">'+(p.t1?'$'+p.t1:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr1+'</td>'
-        +'<td style="text-align:center">'+(t1hitBool
-            ?('<span class="green">✓掂咗</span>'+(p.t1SoldQty?'<br><span style="font-size:9.5px;color:var(--faint)">已賣'+p.t1SoldQty+'股@$'+p.t1SoldPx+'</span>':'<br><button class="linkbtn" style="font-size:9.5px" onclick="recordT1Partial(\''+p.ticker+'\','+(p.entry||0)+')">記低賣咗幾多</button>'))
-            :'—')+'</td>'
+        +'<td style="text-align:center">'+(p.t1SoldQty
+            ?('<span class="green">✓掂咗</span><br><span style="font-size:9.5px;color:var(--faint)">已賣'+p.t1SoldQty+'股@$'+p.t1SoldPx+'</span>')
+            :(t1hitBool?'<span class="green">✓掂咗</span>':'—'))+'</td>'
         +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
         +rvolCell
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
         +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> ':'<span style="color:var(--faint)">—</span> ')+'<a href="https://www.google.com/search?q='+p.ticker+'+stock+news&tbm=nws" target="_blank" class="linkbtn" title="check最新新聞">📰</a></td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
-        +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#6aabf0" onclick="refillSnapshot(\''+p.ticker+'\','+(p.entry||0)+')" title="由Scanner即時數據補返RSI/REQ/Bonus/Streak">🔄補數據</button> <button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+(p.entry||0)+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+(p.entry||0)+',\'open\')">刪除</button></td>'
+        +'<td style="white-space:nowrap"><button class="linkbtn" onclick="editTV(\''+p.ticker+'\')">✏️編輯</button> <button class="linkbtn" style="color:#6aabf0" onclick="refillSnapshot(\''+p.ticker+'\','+(p.entry||0)+')" title="由Scanner即時數據補返RSI/REQ/Bonus/Streak">🔄補數據</button> '+(!p.t1SoldQty?'<button class="linkbtn" style="color:#f5b945" onclick="openT1Close(\''+p.ticker+'\','+(p.entry||0)+')">🎯T1平倉</button> ':'')+'<button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseTV(\''+p.ticker+'\','+(p.entry||0)+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+p.ticker+'\','+(p.entry||0)+',\'open\')">刪除</button></td>'
         +'</tr>';
     });
     h+='</tbody></table></div>';
@@ -669,18 +681,28 @@ async function addTV(){
 }
 let _editTVTicker=null;
 let _editTVStrategy=null;
-async function recordT1Partial(ticker, entry){
+let _t1CloseTicker=null, _t1CloseEntry=null;
+function openT1Close(ticker, entry){
   const rec=_allOpen.find(p=>p.ticker===ticker.toUpperCase()&&p.group==='TV'&&Number(p.entry)===Number(entry));
   const totalQty=rec?Number(rec.qty)||0:0;
-  const suggestQty=totalQty>0?(totalQty/2):'';
-  const qtyStr=prompt('掂咗T1，賣咗幾多股？'+(totalQty>0?'（總共買咗'+totalQty+'股，一半係'+suggestQty+'）':'（未填股數，可以直接打實際賣咗嘅股數）'), suggestQty);
-  if(qtyStr===null||qtyStr==='')return;
-  const pxStr=prompt('賣嗰陣實際成交價？（可以同T1唔一樣）', rec?rec.t1:'');
-  if(pxStr===null||pxStr==='')return;
+  _t1CloseTicker=ticker; _t1CloseEntry=entry;
+  document.getElementById('t1CloseTicker').textContent=ticker;
+  document.getElementById('t1Qty').value=totalQty>0?(totalQty/2):'';
+  document.getElementById('t1Px').value=rec?(rec.t1||''):'';
+  document.getElementById('t1QtyHint').textContent=totalQty>0?('總共買咗'+totalQty+'股，一半係'+(totalQty/2)+'股（可以自己改）'):'（未填股數，直接打實際賣咗嘅股數）';
+  document.getElementById('t1CloseModal').classList.add('show');
+}
+function closeT1Close(){document.getElementById('t1CloseModal').classList.remove('show');_t1CloseTicker=null;}
+async function saveT1Close(){
+  if(!_t1CloseTicker)return;
+  const qty=document.getElementById('t1Qty').value;
+  const px=document.getElementById('t1Px').value;
+  if(qty===''||px===''){alert('要填返賣咗幾多股同賣出價');return;}
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'paper_t1_partial',ticker,group:'TV',matchEntry:entry,t1SoldQty:parseFloat(qtyStr),t1SoldPx:parseFloat(pxStr)})});
-    alert('已記低。1-2秒後刷新。');
+      body:JSON.stringify({action:'paper_t1_partial',ticker:_t1CloseTicker,group:'TV',matchEntry:_t1CloseEntry,t1SoldQty:parseFloat(qty),t1SoldPx:parseFloat(px)})});
+    closeT1Close();
+    alert('已記低 '+_t1CloseTicker+' T1平倉。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('記錄失敗，再試');}
 }
