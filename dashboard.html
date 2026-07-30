@@ -798,7 +798,7 @@
       const displayName=d.display||fxTicker;
       document.getElementById('chartTitle').textContent=displayName;
       const tvSymbol=(displayName||'').replace('/','');
-      document.getElementById('chartOpenTV').href='https://www.tradingview.com/symbols/'+tvSymbol+'/';
+      document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol=FX:'+tvSymbol;
       document.getElementById('chartInfo').innerHTML='<span style="color:var(--dim)">💱 外匯 · Required '+d.score+'/5 · Bonus '+d.bonusScore+'/4 · RSI '+(d.rsi??'—')+' · 參考止蝕(1.5xATR) $'+(d.stopRef??'—')+'</span>';
       const starBtn=document.getElementById('chartStarBtn');
       if(starBtn)starBtn.style.display='none';  // Forex 未整Watchlist功能，暫時隱藏個星按鈕
