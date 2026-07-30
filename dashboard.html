@@ -608,7 +608,14 @@
     async function reloadData(){
       const b=document.getElementById('reloadBtn'),o=b.textContent;
       b.textContent='⏳ 載入緊…';b.disabled=true;
-      await loadData();
+      if(appMode==='forex'){
+        forexDataCache=null; forexChartsCache=null;  // 清cache，逼佢重新fetch
+        const fd=await ensureForexData();
+        document.getElementById('forexFreshness').textContent='💱 Forex 數據更新於 '+toHKT(fd.updated)+'（獨立、每小時更新一次）';
+        renderForex(fd);
+      }else{
+        await loadData();
+      }
       b.textContent='✅ 已更新';setTimeout(()=>{b.textContent=o;b.disabled=false;},1500);
     }
 
@@ -800,6 +807,7 @@
       document.getElementById('forexModeWrap').style.display=(m==='forex')?'':'none';
       document.getElementById('modeBtnStock').style.background=(m==='stock')?'var(--accent)':'';
       document.getElementById('modeBtnForex').style.background=(m==='forex')?'var(--accent)':'';
+      document.getElementById('dataFreshness').style.display=(m==='stock')?'':'none';  // Forex有自己嘅獨立時間戳，唔使顯示股票嗰個，以免混淆
       if(m==='forex'){
         document.getElementById('forexTbody').innerHTML='<tr><td colspan="10" class="empty">載入緊…</td></tr>';
         try{
