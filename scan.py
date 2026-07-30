@@ -1384,30 +1384,37 @@ def load_previous_ready():
 
 
 def main():
-    # ⚠️ TEMP ANALYSIS — 計8隻major貨幣對嘅1M/3M滾動回報分佈，搵有根據嘅門檻，check完就刪走
-    import statistics
-    _forex_dist = {}
+    # ⚠️ TEMP TEST — 用重新校準嘅門檻(3M>2%, 1M<5%)重新評估8隻major貨幣對，check完就刪走
+    _forex_recal = {}
     for fx in ["EURUSD=X", "GBPUSD=X", "JPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]:
         try:
             fxh = fetch_history(fx)
-            if not fxh or not fxh.get("close") or len(fxh["close"]) < 100:
+            if not fxh or not fxh.get("close"):
                 continue
-            fc = fxh["close"]
-            r1m, r3m = [], []
-            for i in range(63, len(fc)):
-                r1m.append((fc[i] - fc[i - 21]) / fc[i - 21] * 100)
-                r3m.append((fc[i] - fc[i - 63]) / fc[i - 63] * 100)
-            _forex_dist[fx] = {
-                "r1m_p50": round(statistics.median(r1m), 2),
-                "r1m_p75": round(sorted(r1m)[int(len(r1m) * 0.75)], 2),
-                "r1m_p90": round(sorted(r1m)[int(len(r1m) * 0.90)], 2),
-                "r3m_p50": round(statistics.median(r3m), 2),
-                "r3m_p75": round(sorted(r3m)[int(len(r3m) * 0.75)], 2),
-                "r3m_p90": round(sorted(r3m)[int(len(r3m) * 0.90)], 2),
-                "r3m_max": round(max(r3m), 2), "r3m_min": round(min(r3m), 2),
+            fc, fh, fl = fxh["close"], fxh["high"], fxh["low"]
+            fe20 = ema(fc, 20); fe50 = ema(fc, 50); fe200 = ema(fc, 200)
+            fr = rsi(fc, 14)
+            fidx = len(fc) - 1
+            fclose = fc[fidx]
+            fperf1m = (fc[fidx] - fc[fidx - 21]) / fc[fidx - 21] * 100 if fidx >= 21 else None
+            fperf3m = (fc[fidx] - fc[fidx - 63]) / fc[fidx - 63] * 100 if fidx >= 63 else None
+            f_e20v = fe20[fidx]; f_e50v = fe50[fidx]; f_e200v = fe200[fidx]; f_rv = fr[fidx]
+            # 用返S1嘅required結構，但c5用重新校準嘅門檻(2%/5%，代替股票嘅5%/25%)
+            c = [
+                fclose > f_e20v if f_e20v else False,
+                fclose > f_e50v if f_e50v else False,
+                fclose > f_e200v if f_e200v else False,
+                (40 <= f_rv <= 70) if f_rv is not None else False,
+                (fperf3m is not None and fperf1m is not None and fperf3m > 2 and fperf1m < 5),
+            ]
+            _forex_recal[fx] = {
+                "close": round(fclose, 5), "score": sum(c), "ready": sum(c) == 5, "conds": c,
+                "perf1m": round(fperf1m, 2) if fperf1m is not None else None,
+                "perf3m": round(fperf3m, 2) if fperf3m is not None else None,
+                "rsi": round(f_rv, 1) if f_rv is not None else None,
             }
         except Exception as e:
-            _forex_dist[fx] = {"error": str(e)[:200]}
+            _forex_recal[fx] = {"error": str(e)[:200]}
 
     sp500 = set(get_sp500_tickers())
     sector_map = get_sector_map()
@@ -1493,7 +1500,7 @@ def main():
         "strategyMeta": STRATEGY_META,
         "summary": summary,
         "stocks": records,
-        "_forexDist": _forex_dist,
+        "_forexRecal": _forex_recal,
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
