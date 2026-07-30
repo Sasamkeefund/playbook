@@ -101,6 +101,7 @@
         <div><label class="sub">止損法</label><select id="etStopMethod" onchange="suggestEditStop()" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"><option value="前底">前底</option><option value="1.5×ATR">1.5×ATR</option></select></div>
         <div><label class="sub">T1</label><input id="etT1" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
         <div><label class="sub">T2</label><input id="etT2" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+        <div><label class="sub">股數</label><input id="etQty" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
       </div>
       <div id="etEntryMethodWrap" style="display:none;margin-top:10px"><label class="sub">入場手法</label><select id="etEntryMethod" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"><option value="手法A(放量)">手法A(放量)</option><option value="手法C(縮量)">手法C(縮量)</option></select></div>
       <div style="margin-top:10px"><label class="sub">TradingView 連結</label><input id="etLink" type="url" placeholder="https://www.tradingview.com/x/..." style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
@@ -498,6 +499,7 @@ function renderTV(openP, closed){
     +'<div><label class="sub">止損法</label><select id="tvStopMethod" onchange="suggestTVStop()" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"><option value="前底">前底</option><option value="1.5×ATR">1.5×ATR</option></select></div>'
     +'<div><label class="sub">T1</label><input id="tvT1" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
     +'<div><label class="sub">T2</label><input id="tvT2" type="number" step="0.01" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
+    +'<div><label class="sub">股數</label><input id="tvQty" type="number" step="0.01" placeholder="買咗幾多股" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>'
     +'</div>'
     +'<div style="margin-top:10px"><label class="sub">入場原因 / 筆記</label><textarea id="tvNotes" rows="2" placeholder="點解入呢隻？睇到咩訊號？" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit"></textarea></div>'
     +'<button class="btn primary" style="margin-top:10px;background:var(--accent);color:#fff" onclick="addTV()">新增</button>'
@@ -553,7 +555,9 @@ function renderTV(openP, closed){
         +'<td style="font-size:11px;color:var(--dim)">'+((p.state||'').split('|')[1]||'—').trim()+(((p.state||'').split('|')[2]||'').trim()?'<br><span style="color:var(--accent)">'+((p.state||'').split('|')[2]||'').trim()+'</span>':'')+'</td>'
         +'<td class="mono green">'+(p.t1?'$'+p.t1:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr1+'</td>'
-        +'<td style="text-align:center">'+(t1hitBool?'<span class="green">✓掂咗</span>':'—')+'</td>'
+        +'<td style="text-align:center">'+(t1hitBool
+            ?('<span class="green">✓掂咗</span>'+(p.t1SoldQty?'<br><span style="font-size:9.5px;color:var(--faint)">已賣'+p.t1SoldQty+'股@$'+p.t1SoldPx+'</span>':'<br><button class="linkbtn" style="font-size:9.5px" onclick="recordT1Partial(\''+p.ticker+'\','+(p.entry||0)+')">記低賣咗幾多</button>'))
+            :'—')+'</td>'
         +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
         +rvolCell
@@ -571,7 +575,7 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
   if(cl.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>突破RVOL</th><th>筆記</th><th>連結</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>總$</th><th>突破RVOL</th><th>筆記</th><th>連結</th><th>操作</th>'
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
@@ -587,6 +591,7 @@ function renderTV(openP, closed){
         +'<td class="mono">$'+t.exitPx+'</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td>'
         +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
+        +'<td class="mono '+rcol+'">'+(t.totalDollarPnL!=null&&t.totalDollarPnL!==''?'$'+(Number(t.totalDollarPnL)>=0?'+':'')+t.totalDollarPnL:'<span style="color:var(--faint)">—</span>')+'</td>'
         +'<td style="text-align:center;font-size:11px">'+(isS6c?methodTxtC:'<span style="color:var(--faint)">—</span>')+'</td>'
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td>'+(t.tvLink?('<a href="'+t.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> '):'')+'<button class="linkbtn" onclick="addLinkClosed(\''+t.ticker+'\','+t.entry+')">'+(t.tvLink?'✏️':'➕連結')+'</button></td>'
@@ -633,6 +638,7 @@ async function addTV(){
   const entryMethod=(strategy==='S6'||strategy==='S3')?document.getElementById('tvEntryMethod').value:'';
   const t1=document.getElementById('tvT1').value;
   const t2=document.getElementById('tvT2').value;
+  const qty=document.getElementById('tvQty').value;
   const notes=document.getElementById('tvNotes').value;
   if(!ticker||!entry||!stop){alert('至少要填 Ticker、買入價、止損');return;}
   // 如果Scanner有呢隻股嘅即時數據，順手帶埋RSI/REQ/Bonus/Streak做snapshot參考（同tick checkbox個途徑一致）
@@ -656,13 +662,28 @@ async function addTV(){
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify(Object.assign({action:'paper_open',ticker,group:'TV',entryDate,entry,stop,
-        state:strategy+' | '+stopMethod+(entryMethod?' | '+entryMethod:''), t1, t2, notes}, extra))});
+        state:strategy+' | '+stopMethod+(entryMethod?' | '+entryMethod:''), t1, t2, qty, notes}, extra))});
     alert('已新增 '+ticker+(strat?'（已自動帶埋Scanner今日嘅RSI/REQ/Bonus/Streak）':'')+'。1-2秒後刷新。');
     setTimeout(()=>load(),1500);
   }catch(e){alert('新增失敗，再試');}
 }
 let _editTVTicker=null;
 let _editTVStrategy=null;
+async function recordT1Partial(ticker, entry){
+  const rec=_allOpen.find(p=>p.ticker===ticker.toUpperCase()&&p.group==='TV'&&Number(p.entry)===Number(entry));
+  const totalQty=rec?Number(rec.qty)||0:0;
+  const suggestQty=totalQty>0?(totalQty/2):'';
+  const qtyStr=prompt('掂咗T1，賣咗幾多股？'+(totalQty>0?'（總共買咗'+totalQty+'股，一半係'+suggestQty+'）':'（未填股數，可以直接打實際賣咗嘅股數）'), suggestQty);
+  if(qtyStr===null||qtyStr==='')return;
+  const pxStr=prompt('賣嗰陣實際成交價？（可以同T1唔一樣）', rec?rec.t1:'');
+  if(pxStr===null||pxStr==='')return;
+  try{
+    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'paper_t1_partial',ticker,group:'TV',matchEntry:entry,t1SoldQty:parseFloat(qtyStr),t1SoldPx:parseFloat(pxStr)})});
+    alert('已記低。1-2秒後刷新。');
+    setTimeout(()=>load(),1500);
+  }catch(e){alert('記錄失敗，再試');}
+}
 async function saveBreakoutRvol(ticker, entry, val){
   try{
     await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -722,6 +743,7 @@ function editTV(ticker){
   }
   document.getElementById('etT1').value=rec.t1||'';
   document.getElementById('etT2').value=rec.t2||'';
+  document.getElementById('etQty').value=rec.qty||'';
   document.getElementById('etLink').value=rec.tvLink||'';
   document.getElementById('etNotes').value=rec.notes||'';
   document.getElementById('editTVModal').classList.add('show');
@@ -747,12 +769,14 @@ async function saveEditTV(){
   const entryMethod=(_editTVStrategy==='S6'||_editTVStrategy==='S3')?document.getElementById('etEntryMethod').value:'';
   const t1=document.getElementById('etT1').value;
   const t2=document.getElementById('etT2').value;
+  const qty=document.getElementById('etQty').value;
   const link=document.getElementById('etLink').value;
   const notes=document.getElementById('etNotes').value;
   if(entry!=='')payload.entry=parseFloat(entry);
   if(stop!=='')payload.stop=parseFloat(stop);
   if(t1!=='')payload.t1=parseFloat(t1);
   if(t2!=='')payload.t2=parseFloat(t2);
+  if(qty!=='')payload.qty=parseFloat(qty);
   payload.state=(_editTVStrategy||'')+' | '+stopMethod+(entryMethod?' | '+entryMethod:'');
   payload.tvLink=link;
   payload.notes=notes;
