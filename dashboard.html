@@ -249,6 +249,11 @@
   </div>
 
   <div class="container">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="tab-btn" id="modeBtnStock" onclick="switchMode('stock')" style="font-weight:700">📈 US Stock</button>
+      <button class="tab-btn" id="modeBtnForex" onclick="switchMode('forex')" style="font-weight:700">💱 Forex</button>
+    </div>
+    <div id="stockModeWrap">
     <div class="tabs" id="tabs"></div>
 
     <div class="controls">
@@ -371,6 +376,17 @@
     </div>
 
     <div class="footer"><p>實時讀取：<a href="https://github.com/Sasamkeefund/playbook" target="_blank">GitHub data.json</a></p></div>
+    </div>
+
+    <div id="forexModeWrap" style="display:none">
+      <div style="font-size:11.5px;color:var(--dim);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        💱 8隻major貨幣對 · 淨係S1(順勢交易) · 門檻已根據外匯自身歷史波幅重新校準(3M門檻2%、1M門檻5%，代替股票版嘅5%/25%) · 每日更新一次(跟美股同一個nightly scan)
+      </div>
+      <table>
+        <thead><tr><th>貨幣對</th><th style="text-align:right">現價</th><th style="text-align:right">RSI</th><th style="text-align:center">Required</th><th style="text-align:center">Bonus</th><th style="text-align:right">1W%</th><th style="text-align:right">1M%</th><th style="text-align:right">3M%</th><th style="text-align:right">參考止蝕(1.5xATR)</th><th>結論</th></tr></thead>
+        <tbody id="forexTbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- TradingView 圖 modal -->
@@ -768,6 +784,40 @@
       document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S5')?'green':'';
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
+    let appMode='stock';
+    function switchMode(m){
+      appMode=m;
+      document.getElementById('stockModeWrap').style.display=(m==='stock')?'':'none';
+      document.getElementById('forexModeWrap').style.display=(m==='forex')?'':'none';
+      document.getElementById('modeBtnStock').style.background=(m==='stock')?'var(--accent)':'';
+      document.getElementById('modeBtnForex').style.background=(m==='forex')?'var(--accent)':'';
+      if(m==='forex')renderForex();
+    }
+    function renderForex(){
+      const fx=(globalData.forex&&globalData.forex.S1)||{};
+      const tb=document.getElementById('forexTbody');
+      const rows=Object.entries(fx);
+      if(!rows.length){tb.innerHTML='<tr><td colspan="10" class="empty">冇外匯資料</td></tr>';return;}
+      tb.innerHTML=rows.map(([sym,d])=>{
+        const req=d.score, bonus=d.bonusScore;
+        let verdict;
+        if(req<5)verdict='<span class="v-red">— 未 ready</span>';
+        else if(bonus>=3)verdict='<span class="v-green">🔥 強勢，可以考慮</span>';
+        else verdict='<span class="v-green">✅ 符合條件</span>';
+        return `<tr>
+          <td><b>${d.display}</b></td>
+          <td style="text-align:right" class="mono">${d.close}</td>
+          <td style="text-align:right" class="mono">${d.rsi??'—'}</td>
+          <td style="text-align:center">${req}/5</td>
+          <td style="text-align:center">${bonus}/4</td>
+          <td style="text-align:right" class="mono ${d.perf1w>=0?'green':'red'}">${d.perf1w!=null?(d.perf1w>=0?'+':'')+d.perf1w+'%':'—'}</td>
+          <td style="text-align:right" class="mono ${d.perf1m>=0?'green':'red'}">${d.perf1m!=null?(d.perf1m>=0?'+':'')+d.perf1m+'%':'—'}</td>
+          <td style="text-align:right" class="mono ${d.perf3m>=0?'green':'red'}">${d.perf3m!=null?(d.perf3m>=0?'+':'')+d.perf3m+'%':'—'}</td>
+          <td style="text-align:right" class="mono">${d.stopRef??'—'}</td>
+          <td>${verdict}</td>
+        </tr>`;
+      }).join('');
+    }
     document.getElementById('searchTicker').addEventListener('input',renderTable);
     document.getElementById('filterScore').addEventListener('change',renderTable);
     document.getElementById('filterStreak').addEventListener('change',renderTable);
