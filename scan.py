@@ -1384,6 +1384,19 @@ def load_previous_ready():
 
 
 def main():
+    # ⚠️ TEMP TEST — 測試外匯data source，跑完check log就會刪走
+    print("=== TEMP FOREX TEST ===")
+    for fx in ["EURUSD=X", "GBPUSD=X", "JPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]:
+        try:
+            fxh = fetch_history(fx)
+            if fxh and fxh.get("close"):
+                print(f"✅ {fx}: {len(fxh['close'])}日, 最新close={fxh['close'][-1]}")
+            else:
+                print(f"❌ {fx}: 攞唔到（回傳None或空）")
+        except Exception as e:
+            print(f"❌ {fx}: Exception - {e}")
+    print("=== END TEMP FOREX TEST ===")
+
     sp500 = set(get_sp500_tickers())
     sector_map = get_sector_map()
     print(f"Sector 分類：{len(sector_map)} 隻（淨係 S&P500 成份股有）")
