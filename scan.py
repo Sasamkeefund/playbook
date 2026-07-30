@@ -1384,18 +1384,6 @@ def load_previous_ready():
 
 
 def main():
-    # ⚠️ TEMP TEST — 測試外匯data source，結果會寫入data.json嘅_forexTest key，check完就刪走
-    _forex_test_result = {}
-    for fx in ["EURUSD=X", "GBPUSD=X", "JPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]:
-        try:
-            fxh = fetch_history(fx)
-            if fxh and fxh.get("close"):
-                _forex_test_result[fx] = {"ok": True, "days": len(fxh["close"]), "lastClose": fxh["close"][-1]}
-            else:
-                _forex_test_result[fx] = {"ok": False, "reason": "empty_or_none"}
-        except Exception as e:
-            _forex_test_result[fx] = {"ok": False, "reason": str(e)[:200]}
-
     sp500 = set(get_sp500_tickers())
     sector_map = get_sector_map()
     print(f"Sector 分類：{len(sector_map)} 隻（淨係 S&P500 成份股有）")
@@ -1480,7 +1468,6 @@ def main():
         "strategyMeta": STRATEGY_META,
         "summary": summary,
         "stocks": records,
-        "_forexTest": _forex_test_result,
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
