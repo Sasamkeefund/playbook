@@ -1383,23 +1383,35 @@ def load_previous_ready():
     return prev
 
 
-def main():
-    # ⚠️ TEMP TEST — 用重新校準嘅門檻(3M>2%, 1M<5%)重新評估8隻major貨幣對，check完就刪走
-    _forex_recal = {}
-    for fx in ["EURUSD=X", "GBPUSD=X", "JPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]:
+FOREX_PAIRS = ["EURUSD=X", "GBPUSD=X", "JPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]
+FOREX_DISPLAY_NAMES = {"EURUSD=X": "EUR/USD", "GBPUSD=X": "GBP/USD", "JPY=X": "USD/JPY",
+                        "AUDUSD=X": "AUD/USD", "USDCAD=X": "USD/CAD", "USDCHF=X": "USD/CHF",
+                        "NZDUSD=X": "NZD/USD", "EURGBP=X": "EUR/GBP"}
+
+
+def get_forex_s1_data():
+    """
+    S1(順勢交易)套用落8隻major貨幣對。門檻已經用真實歷史分佈重新校準：
+    3個月表現 >2%（原股票版 >5%，但外匯波幅天生細好多，2%約等於外匯自己嘅75百分位）
+    1個月表現 <5%（原股票版 <25%，約等於外匯自己嘅90百分位，代表「未過熱」）
+    其餘（EMA20/50/200、RSI 40-70）跟返股票版一樣嘅邏輯，因為呢啲係相對關係，唔受絕對波幅影響。
+    """
+    out = {}
+    for fx in FOREX_PAIRS:
         try:
             fxh = fetch_history(fx)
             if not fxh or not fxh.get("close"):
                 continue
             fc, fh, fl = fxh["close"], fxh["high"], fxh["low"]
             fe20 = ema(fc, 20); fe50 = ema(fc, 50); fe200 = ema(fc, 200)
-            fr = rsi(fc, 14)
+            fr = rsi(fc, 14); fa14 = atr(fh, fl, fc, 14)
             fidx = len(fc) - 1
             fclose = fc[fidx]
             fperf1m = (fc[fidx] - fc[fidx - 21]) / fc[fidx - 21] * 100 if fidx >= 21 else None
+            fperf1w = (fc[fidx] - fc[fidx - 5]) / fc[fidx - 5] * 100 if fidx >= 5 else None
             fperf3m = (fc[fidx] - fc[fidx - 63]) / fc[fidx - 63] * 100 if fidx >= 63 else None
             f_e20v = fe20[fidx]; f_e50v = fe50[fidx]; f_e200v = fe200[fidx]; f_rv = fr[fidx]
-            # 用返S1嘅required結構，但c5用重新校準嘅門檻(2%/5%，代替股票嘅5%/25%)
+            f_atr = fa14[fidx] if fa14[fidx] is not None else None
             c = [
                 fclose > f_e20v if f_e20v else False,
                 fclose > f_e50v if f_e50v else False,
@@ -1407,17 +1419,35 @@ def main():
                 (40 <= f_rv <= 70) if f_rv is not None else False,
                 (fperf3m is not None and fperf1m is not None and fperf3m > 2 and fperf1m < 5),
             ]
-            _forex_recal[fx] = {
-                "close": round(fclose, 5), "score": sum(c), "ready": sum(c) == 5, "conds": c,
+            b = [
+                (f_e20v is not None and f_e50v is not None and f_e20v > f_e50v),
+                (f_e50v is not None and f_e200v is not None and f_e50v > f_e200v),
+                (fperf1w is not None and -1.5 <= fperf1w <= 0.5),
+                (fperf3m is not None and fperf3m > 4),  # 接近90百分位，強勢額外加分
+            ]
+            # 參考止蝕（1.5xATR14，同美股S1 order panel嘅慣例一致）
+            stop_ref = round(fclose - 1.5 * f_atr, 5) if f_atr else None
+            out[fx] = {
+                "display": FOREX_DISPLAY_NAMES.get(fx, fx),
+                "close": round(fclose, 5), "score": sum(c), "bonusScore": sum(b),
+                "ready": sum(c) == 5, "conds": c, "bonus": b,
+                "perf1w": round(fperf1w, 2) if fperf1w is not None else None,
                 "perf1m": round(fperf1m, 2) if fperf1m is not None else None,
                 "perf3m": round(fperf3m, 2) if fperf3m is not None else None,
                 "rsi": round(f_rv, 1) if f_rv is not None else None,
+                "ema20": round(f_e20v, 5) if f_e20v else None,
+                "atr14": round(f_atr, 5) if f_atr else None,
+                "stopRef": stop_ref,
             }
-        except Exception as e:
-            _forex_recal[fx] = {"error": str(e)[:200]}
+        except Exception:
+            continue
+    return out
 
+
+def main():
     sp500 = set(get_sp500_tickers())
     sector_map = get_sector_map()
+
     print(f"Sector 分類：{len(sector_map)} 隻（淨係 S&P500 成份股有）")
     earnings_map = get_earnings_calendar()
     print(f"業績日曆：攞到 {len(earnings_map)} 隻嘅業績日期（可能因為 NASDAQ API 唔穩而係0，唔會影響其他數據）")
@@ -1500,7 +1530,7 @@ def main():
         "strategyMeta": STRATEGY_META,
         "summary": summary,
         "stocks": records,
-        "_forexRecal": _forex_recal,
+        "forex": {"S1": get_forex_s1_data()},
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
