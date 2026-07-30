@@ -1539,14 +1539,11 @@ def main():
         if ch is not None:
             charts[r["ticker"]] = ch
 
-    forex_s1 = get_forex_s1_data(charts)  # 順手將forex嘅圖表數據都寫入同一個charts dict
-
     output = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "strategyMeta": STRATEGY_META,
         "summary": summary,
         "stocks": records,
-        "forex": {"S1": forex_s1},
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
