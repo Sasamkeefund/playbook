@@ -1384,6 +1384,31 @@ def load_previous_ready():
 
 
 def main():
+    # ⚠️ TEMP ANALYSIS — 計8隻major貨幣對嘅1M/3M滾動回報分佈，搵有根據嘅門檻，check完就刪走
+    import statistics
+    _forex_dist = {}
+    for fx in ["EURUSD=X", "GBPUSD=X", "JPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X", "NZDUSD=X", "EURGBP=X"]:
+        try:
+            fxh = fetch_history(fx)
+            if not fxh or not fxh.get("close") or len(fxh["close"]) < 100:
+                continue
+            fc = fxh["close"]
+            r1m, r3m = [], []
+            for i in range(63, len(fc)):
+                r1m.append((fc[i] - fc[i - 21]) / fc[i - 21] * 100)
+                r3m.append((fc[i] - fc[i - 63]) / fc[i - 63] * 100)
+            _forex_dist[fx] = {
+                "r1m_p50": round(statistics.median(r1m), 2),
+                "r1m_p75": round(sorted(r1m)[int(len(r1m) * 0.75)], 2),
+                "r1m_p90": round(sorted(r1m)[int(len(r1m) * 0.90)], 2),
+                "r3m_p50": round(statistics.median(r3m), 2),
+                "r3m_p75": round(sorted(r3m)[int(len(r3m) * 0.75)], 2),
+                "r3m_p90": round(sorted(r3m)[int(len(r3m) * 0.90)], 2),
+                "r3m_max": round(max(r3m), 2), "r3m_min": round(min(r3m), 2),
+            }
+        except Exception as e:
+            _forex_dist[fx] = {"error": str(e)[:200]}
+
     sp500 = set(get_sp500_tickers())
     sector_map = get_sector_map()
     print(f"Sector 分類：{len(sector_map)} 隻（淨係 S&P500 成份股有）")
@@ -1468,6 +1493,7 @@ def main():
         "strategyMeta": STRATEGY_META,
         "summary": summary,
         "stocks": records,
+        "_forexDist": _forex_dist,
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
