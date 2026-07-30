@@ -793,6 +793,45 @@
       document.getElementById('modeBtnForex').style.background=(m==='forex')?'var(--accent)':'';
       if(m==='forex')renderForex();
     }
+    async function openForexChart(fxTicker){
+      const d=(globalData.forex&&globalData.forex.S1&&globalData.forex.S1[fxTicker])||{};
+      const displayName=d.display||fxTicker;
+      document.getElementById('chartTitle').textContent=displayName;
+      const tvSymbol=(displayName||'').replace('/','');
+      document.getElementById('chartOpenTV').href='https://www.tradingview.com/symbols/'+tvSymbol+'/';
+      document.getElementById('chartInfo').innerHTML='<span style="color:var(--dim)">💱 外匯 · Required '+d.score+'/5 · Bonus '+d.bonusScore+'/4 · RSI '+(d.rsi??'—')+' · 參考止蝕(1.5xATR) $'+(d.stopRef??'—')+'</span>';
+      const starBtn=document.getElementById('chartStarBtn');
+      if(starBtn)starBtn.style.display='none';  // Forex 未整Watchlist功能，暫時隱藏個星按鈕
+      const c=document.getElementById('chartContainer');
+      c.innerHTML='<div style="padding:2rem;color:var(--dim)">載入緊圖表…</div>';
+      document.getElementById('chartModal').classList.add('show');
+      try{
+        const all=await ensureCharts();
+        const cd=all[fxTicker];
+        if(!cd){c.innerHTML='<div style="padding:2rem;color:var(--dim)">呢對貨幣暫時冇圖數據</div>';return;}
+        drawForexChart(c,displayName,cd);
+      }catch(e){c.innerHTML='<div style="padding:2rem;color:var(--down)">圖表載入失敗</div>';}
+    }
+    function drawForexChart(c,displayName,d){
+      c.innerHTML='';
+      const box=document.createElement('div');
+      box.style.cssText='width:100%;height:100%';
+      c.appendChild(box);
+      const chart=LightweightCharts.createChart(box,{
+        layout:{background:{color:'transparent'},textColor:'#aab'},
+        grid:{vertLines:{color:'#222'},horzLines:{color:'#222'}},
+        timeScale:{timeVisible:false},
+        autoSize:true,
+      });
+      const series=chart.addCandlestickSeries({upColor:'#2ee6a6',downColor:'#ff5d6c',borderVisible:false,wickUpColor:'#2ee6a6',wickDownColor:'#ff5d6c'});
+      const bars=d.t.map((t,i)=>({time:t,open:d.o[i],high:d.h[i],low:d.l[i],close:d.c[i]}));
+      series.setData(bars);
+      const e20s=chart.addLineSeries({color:'#f5b945',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+      e20s.setData(d.t.map((t,i)=>({time:t,value:d.e20[i]})).filter(x=>x.value!=null));
+      const e50s=chart.addLineSeries({color:'#6aabf0',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+      e50s.setData(d.t.map((t,i)=>({time:t,value:d.e50[i]})).filter(x=>x.value!=null));
+      chart.timeScale().fitContent();
+    }
     function renderForex(){
       const fx=(globalData.forex&&globalData.forex.S1)||{};
       const tb=document.getElementById('forexTbody');
@@ -805,7 +844,7 @@
         else if(bonus>=3)verdict='<span class="v-green">🔥 強勢，可以考慮</span>';
         else verdict='<span class="v-green">✅ 符合條件</span>';
         return `<tr>
-          <td><b>${d.display}</b></td>
+          <td><a href="#" style="color:var(--accent-2);font-weight:700" onclick="openForexChart('${sym}');return false;">${d.display} 📈</a></td>
           <td style="text-align:right" class="mono">${d.close}</td>
           <td style="text-align:right" class="mono">${d.rsi??'—'}</td>
           <td style="text-align:center">${req}/5</td>
@@ -984,6 +1023,8 @@
     async function openChart(ticker){
       document.getElementById('chartTitle').textContent=ticker;
       document.getElementById('chartOpenTV').href='https://www.tradingview.com/chart/?symbol='+ticker;
+      const starBtn0=document.getElementById('chartStarBtn');
+      if(starBtn0)starBtn0.style.display='';
       updateChartStarBtn(ticker);
       fillChartInfo(ticker);
       const c=document.getElementById('chartContainer');
