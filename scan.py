@@ -1389,12 +1389,13 @@ FOREX_DISPLAY_NAMES = {"EURUSD=X": "EUR/USD", "GBPUSD=X": "GBP/USD", "JPY=X": "U
                         "NZDUSD=X": "NZD/USD", "EURGBP=X": "EUR/GBP"}
 
 
-def get_forex_s1_data():
+def get_forex_s1_data(forex_charts):
     """
     S1(順勢交易)套用落8隻major貨幣對。門檻已經用真實歷史分佈重新校準：
     3個月表現 >2%（原股票版 >5%，但外匯波幅天生細好多，2%約等於外匯自己嘅75百分位）
     1個月表現 <5%（原股票版 <25%，約等於外匯自己嘅90百分位，代表「未過熱」）
     其餘（EMA20/50/200、RSI 40-70）跟返股票版一樣嘅邏輯，因為呢啲係相對關係，唔受絕對波幅影響。
+    forex_charts：傳入嘅dict，會寫低每對嘅圖表數據（最後120日），等前端可以開圖。
     """
     out = {}
     for fx in FOREX_PAIRS:
@@ -1403,6 +1404,8 @@ def get_forex_s1_data():
             if not fxh or not fxh.get("close"):
                 continue
             fc, fh, fl = fxh["close"], fxh["high"], fxh["low"]
+            fo = fxh.get("open", fc)
+            ft = fxh.get("time", [])
             fe20 = ema(fc, 20); fe50 = ema(fc, 50); fe200 = ema(fc, 200)
             fr = rsi(fc, 14); fa14 = atr(fh, fl, fc, 14)
             fidx = len(fc) - 1
@@ -1423,9 +1426,8 @@ def get_forex_s1_data():
                 (f_e20v is not None and f_e50v is not None and f_e20v > f_e50v),
                 (f_e50v is not None and f_e200v is not None and f_e50v > f_e200v),
                 (fperf1w is not None and -1.5 <= fperf1w <= 0.5),
-                (fperf3m is not None and fperf3m > 4),  # 接近90百分位，強勢額外加分
+                (fperf3m is not None and fperf3m > 4),
             ]
-            # 參考止蝕（1.5xATR14，同美股S1 order panel嘅慣例一致）
             stop_ref = round(fclose - 1.5 * f_atr, 5) if f_atr else None
             out[fx] = {
                 "display": FOREX_DISPLAY_NAMES.get(fx, fx),
@@ -1438,6 +1440,18 @@ def get_forex_s1_data():
                 "ema20": round(f_e20v, 5) if f_e20v else None,
                 "atr14": round(f_atr, 5) if f_atr else None,
                 "stopRef": stop_ref,
+            }
+            win = 120
+            fstart = max(0, fidx - win)
+            forex_charts[fx] = {
+                "t": [ft[i] if i < len(ft) else 0 for i in range(fstart, fidx + 1)],
+                "o": [round(fo[i], 5) for i in range(fstart, fidx + 1)],
+                "h": [round(fh[i], 5) for i in range(fstart, fidx + 1)],
+                "l": [round(fl[i], 5) for i in range(fstart, fidx + 1)],
+                "c": [round(fc[i], 5) for i in range(fstart, fidx + 1)],
+                "e20": [round(fe20[i], 5) if fe20[i] is not None else None for i in range(fstart, fidx + 1)],
+                "e50": [round(fe50[i], 5) if fe50[i] is not None else None for i in range(fstart, fidx + 1)],
+                "e200": [round(fe200[i], 5) if fe200[i] is not None else None for i in range(fstart, fidx + 1)],
             }
         except Exception:
             continue
@@ -1525,12 +1539,14 @@ def main():
         if ch is not None:
             charts[r["ticker"]] = ch
 
+    forex_s1 = get_forex_s1_data(charts)  # 順手將forex嘅圖表數據都寫入同一個charts dict
+
     output = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "strategyMeta": STRATEGY_META,
         "summary": summary,
         "stocks": records,
-        "forex": {"S1": get_forex_s1_data()},
+        "forex": {"S1": forex_s1},
     }
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
