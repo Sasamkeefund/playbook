@@ -171,13 +171,14 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
   document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
 }});
 
-let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={};
+let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null;
 async function load(){
   const now=new Date();
   const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
-  const [paperResult, dataResult] = await Promise.allSettled([
+  const [paperResult, dataResult, marketResult] = await Promise.allSettled([
     fetch(WL_API+"?action=paper_list").then(r=>r.json()),
-    fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json())
+    fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
+    fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t='+hourKey).then(r=>r.json())
   ]);
   if(paperResult.status==='rejected'){
     document.getElementById('content').innerHTML='<div class="warn">載入失敗。請確認 Apps Script 已更新（加咗 Paper trade）。</div>';
@@ -189,6 +190,7 @@ async function load(){
   if(dataResult.status==='fulfilled'){
     (dataResult.value.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
   }
+  _macroData=(marketResult.status==='fulfilled')?marketResult.value:null;
   renderCurrent();
 }
 function switchPT(m){
@@ -444,6 +446,19 @@ function renderTV(openP, closed){
     const rOk = t.r!==''&&t.r!==null&&t.r!==undefined&&!isNaN(Number(t.r));
     return rOk;
   });
+  const macroEvents=(_macroData&&_macroData.macroCalendar)||[];
+  const todayStr=new Date().toISOString().slice(0,10);
+  const upcomingMacro=macroEvents.filter(e=>e.date>=todayStr).slice(0,2);
+  let macroBannerHtml='';
+  if(openP.length&&upcomingMacro.length){
+    const pills=upcomingMacro.map(e=>{
+      const days=Math.round((new Date(e.date)-new Date(todayStr))/86400000);
+      const when=days===0?'今日':days===1?'聽日':days+'日後';
+      const urgent=days<=2;
+      return '<span style="background:'+(urgent?'rgba(255,93,108,.15)':'var(--surface-2)')+';border:1px solid '+(urgent?'#ff5d6c':'var(--border)')+';border-radius:20px;padding:4px 10px;white-space:nowrap;font-size:11.5px">'+e.icon+' '+e.name+' · '+when+'（'+e.date+'）</span>';
+    }).join(' ');
+    macroBannerHtml='<div style="background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px"><b style="color:#f5b945">📅 你而家有'+openP.length+'個持倉，呢排宏觀大事：</b> '+pills+' <span style="color:var(--faint)">（呢1-2日附近，成個市可能波動較大，留意止蝕距離）</span></div>';
+  }
   let h='';
   const cl=closed, w=cl.filter(t=>Number(t.r)>0);
   const tR=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
@@ -517,6 +532,7 @@ function renderTV(openP, closed){
     +'<button class="btn primary" style="margin-top:10px;background:var(--accent);color:#fff" onclick="addTV()">新增</button>'
     +'</div>';
 
+  h+=macroBannerHtml;
   // 持倉中
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
