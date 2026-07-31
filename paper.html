@@ -464,6 +464,26 @@ function renderTV(openP, closed){
     else noteTxt='都仲有'+nearestDays+'日先到，純粹畀你心中有數，唔使而家就特別調整';
     macroBannerHtml='<div style="background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px"><b style="color:#f5b945">📅 你而家有'+openP.length+'個持倉，呢排宏觀大事：</b> '+pills+' <span style="color:var(--faint)">（'+noteTxt+'）</span></div>';
   }
+
+  // 業績提醒：掃晒你所有持倉，逐隻check即市Scanner嘅daysToEarnings，唔使你自己逐行留意
+  let earningsBannerHtml='';
+  if(openP.length){
+    const earningsRows=openP.map(p=>{
+      const live=_liveData[p.ticker.toUpperCase()];
+      if(!live||live.daysToEarnings==null)return null;
+      const d=live.daysToEarnings;
+      if(d<-5||d>5)return null;
+      let tag,color;
+      if(d>=0&&d<=2){tag='📊剛出業績（'+live.earningsDate+'）';color='#ff5d6c';}
+      else if(d<0){tag='📊業績後'+Math.abs(d)+'日（'+live.earningsDate+'）';color='#ff9838';}
+      else{tag='📊'+d+'日後業績（'+live.earningsDate+'）';color='#f5b945';}
+      return {ticker:p.ticker, tag, color, urgentSort:(d>=0&&d<=2)?0:(d<0?1:2)};
+    }).filter(Boolean).sort((a,b)=>a.urgentSort-b.urgentSort);
+    if(earningsRows.length){
+      const pills2=earningsRows.map(r=>'<span style="background:var(--surface-2);border:1px solid '+r.color+';border-radius:20px;padding:4px 10px;white-space:nowrap;font-size:11.5px"><b>'+r.ticker+'</b> '+r.tag+'</span>').join(' ');
+      earningsBannerHtml='<div style="background:rgba(255,152,56,.08);border:1px solid rgba(255,152,56,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px"><b style="color:#ff9838">📊 你持倉入面，有股票業績相關要留意：</b><br><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">'+pills2+'</div></div>';
+    }
+  }
   let h='';
   const cl=closed, w=cl.filter(t=>Number(t.r)>0);
   const tR=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
@@ -538,6 +558,7 @@ function renderTV(openP, closed){
     +'</div>';
 
   h+=macroBannerHtml;
+  h+=earningsBannerHtml;
   // 持倉中
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
