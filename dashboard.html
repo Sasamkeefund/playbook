@@ -380,13 +380,25 @@
     </div>
 
     <div id="forexModeWrap" style="display:none">
-      <div style="font-size:11.5px;color:var(--dim);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">
-        💱 8隻major貨幣對 · 淨係S1(順勢交易) · 門檻已根據外匯自身歷史波幅重新校準(3M門檻2%、1M門檻5%，代替股票版嘅5%/25%)<br>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="tab-btn" id="forexSubS1" onclick="switchForexSub('S1')" style="font-weight:700">S1 順勢交易</button>
+        <button class="tab-btn" id="forexSubS5" onclick="switchForexSub('S5')" style="font-weight:700">S5 支持阻力</button>
+      </div>
+      <div id="forexInfoS1" style="font-size:11.5px;color:var(--dim);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        💱 8隻major貨幣對 · S1(順勢交易) · 門檻已根據外匯自身歷史波幅重新校準(3M門檻2%、1M門檻5%，代替股票版嘅5%/25%)<br>
         <span id="forexFreshness"></span>
       </div>
-      <table>
+      <div id="forexInfoS5" style="display:none;font-size:11.5px;color:var(--dim);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        💱 8隻major貨幣對 · S5(支持阻力被尊重) · 呢個策略唔靠絕對百分比門檻，冧使校準——淨係搵「直線升浪+窄幅整理區，回調0.786重疊」<br>
+        <span id="forexFreshnessS5"></span>
+      </div>
+      <table id="forexTableS1">
         <thead><tr><th>貨幣對</th><th style="text-align:right">現價</th><th style="text-align:right">RSI</th><th style="text-align:center">Required</th><th style="text-align:center">Bonus</th><th style="text-align:right">1W%</th><th style="text-align:right">1M%</th><th style="text-align:right">3M%</th><th style="text-align:right">參考止蝕(1.5xATR)</th><th>結論</th></tr></thead>
         <tbody id="forexTbody"></tbody>
+      </table>
+      <table id="forexTableS5" style="display:none">
+        <thead><tr><th>貨幣對</th><th style="text-align:right">現價</th><th style="text-align:center">A(升浪底)</th><th style="text-align:center">B(升浪頂)</th><th style="text-align:center">整理區</th><th style="text-align:center">狀態</th><th style="text-align:right">入場/止蝕/T1/T2</th></tr></thead>
+        <tbody id="forexTbodyS5"></tbody>
       </table>
     </div>
   </div>
@@ -812,10 +824,45 @@
         document.getElementById('forexTbody').innerHTML='<tr><td colspan="10" class="empty">載入緊…</td></tr>';
         try{
           const fd=await ensureForexData();
-          document.getElementById('forexFreshness').textContent='💱 Forex 數據更新於 '+toHKT(fd.updated)+'（獨立、每小時更新一次）';
+          const fresh='💱 Forex 數據更新於 '+toHKT(fd.updated)+'（獨立、每小時更新一次）';
+          document.getElementById('forexFreshness').textContent=fresh;
+          document.getElementById('forexFreshnessS5').textContent=fresh;
           renderForex(fd);
+          renderForexS5(fd);
         }catch(e){document.getElementById('forexTbody').innerHTML='<tr><td colspan="10" class="empty">載入失敗</td></tr>';}
       }
+    }
+    let forexSubTab='S1';
+    function switchForexSub(s){
+      forexSubTab=s;
+      document.getElementById('forexSubS1').style.background=(s==='S1')?'var(--accent)':'';
+      document.getElementById('forexSubS5').style.background=(s==='S5')?'var(--accent)':'';
+      document.getElementById('forexInfoS1').style.display=(s==='S1')?'':'none';
+      document.getElementById('forexInfoS5').style.display=(s==='S5')?'':'none';
+      document.getElementById('forexTableS1').style.display=(s==='S1')?'':'none';
+      document.getElementById('forexTableS5').style.display=(s==='S5')?'':'none';
+    }
+    function renderForexS5(fd){
+      const fx=(fd&&fd.forex&&fd.forex.S5)||{};
+      const tb=document.getElementById('forexTbodyS5');
+      const rows=Object.entries(fx);
+      if(!rows.length){tb.innerHTML='<tr><td colspan="7" class="empty">冇外匯S5資料</td></tr>';return;}
+      tb.innerHTML=rows.map(([sym,d])=>{
+        let stat;
+        if(!d.confluenceFound)stat='<span style="color:var(--faint)">未搵到confluence結構</span>';
+        else if(d.confFailed)stat='<span class="v-red">❌結構已失敗</span>';
+        else if(d.touched)stat='<span class="v-green">🔥已到入場位</span>';
+        else stat='<span style="color:var(--dim)">👀等入場位</span>';
+        return `<tr>
+          <td><a href="#" style="color:var(--accent-2);font-weight:700" onclick="openForexChart('${sym}');return false;">${d.display} 📈</a></td>
+          <td style="text-align:right" class="mono">${d.close}</td>
+          <td style="text-align:center" class="mono">${d.confA??'—'}</td>
+          <td style="text-align:center" class="mono">${d.confB??'—'}</td>
+          <td style="text-align:center;font-size:10.5px" class="mono">${d.congesTop!=null?d.congesBottom+'-'+d.congesTop:'—'}</td>
+          <td style="text-align:center">${stat}</td>
+          <td style="text-align:right;font-size:10.5px" class="mono">${d.entry!=null?'入'+d.entry+' 止'+d.stop+' T1'+d.t1+' T2'+d.t2:'—'}</td>
+        </tr>`;
+      }).join('');
     }
     async function openForexChart(fxTicker){
       const d=(forexDataCache&&forexDataCache.forex&&forexDataCache.forex.S1&&forexDataCache.forex.S1[fxTicker])||{};
