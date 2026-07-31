@@ -451,13 +451,18 @@ function renderTV(openP, closed){
   const upcomingMacro=macroEvents.filter(e=>e.date>=todayStr).slice(0,2);
   let macroBannerHtml='';
   if(openP.length&&upcomingMacro.length){
+    const nearestDays=Math.round((new Date(upcomingMacro[0].date)-new Date(todayStr))/86400000);
     const pills=upcomingMacro.map(e=>{
       const days=Math.round((new Date(e.date)-new Date(todayStr))/86400000);
       const when=days===0?'今日':days===1?'聽日':days+'日後';
       const urgent=days<=2;
       return '<span style="background:'+(urgent?'rgba(255,93,108,.15)':'var(--surface-2)')+';border:1px solid '+(urgent?'#ff5d6c':'var(--border)')+';border-radius:20px;padding:4px 10px;white-space:nowrap;font-size:11.5px">'+e.icon+' '+e.name+' · '+when+'（'+e.date+'）</span>';
     }).join(' ');
-    macroBannerHtml='<div style="background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px"><b style="color:#f5b945">📅 你而家有'+openP.length+'個持倉，呢排宏觀大事：</b> '+pills+' <span style="color:var(--faint)">（呢1-2日附近，成個市可能波動較大，留意止蝕距離）</span></div>';
+    let noteTxt;
+    if(nearestDays<=2)noteTxt='最近嗰個就喺'+(nearestDays===0?'今日':nearestDays===1?'聽日':nearestDays+'日後')+'，成個市可能波動較大，留意止蝕距離';
+    else if(nearestDays<=5)noteTxt='都仲有'+nearestDays+'日，暫時未使太緊張，但可以開始留意';
+    else noteTxt='都仲有'+nearestDays+'日先到，純粹畀你心中有數，唔使而家就特別調整';
+    macroBannerHtml='<div style="background:rgba(245,185,69,.08);border:1px solid rgba(245,185,69,.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px"><b style="color:#f5b945">📅 你而家有'+openP.length+'個持倉，呢排宏觀大事：</b> '+pills+' <span style="color:var(--faint)">（'+noteTxt+'）</span></div>';
   }
   let h='';
   const cl=closed, w=cl.filter(t=>Number(t.r)>0);
