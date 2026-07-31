@@ -1389,6 +1389,39 @@ FOREX_DISPLAY_NAMES = {"EURUSD=X": "EUR/USD", "GBPUSD=X": "GBP/USD", "JPY=X": "U
                         "NZDUSD=X": "NZD/USD", "EURGBP=X": "EUR/GBP"}
 
 
+def get_forex_s5_data():
+    """
+    S5(支持阻力被尊重)套用落8隻major貨幣對。呢個策略唔需要「持續單邊動能」——
+    淨係需要一段直線向上嘅LTF升浪 + 之前有窄幅Congestion Area，現價回調到0.786同佢重疊。
+    外匯係全世界機構參與最深嘅市場，「支持位受尊重」呢個邏輯（大戶以期望值思考，
+    响高期望值進場點同時進場，形成支持）可能仲穩過股票。公式完全跟返detect_s5_confluence，
+    冧使額外校準（因為呢個策略本身就係relative嘅位置關係，唔靠絕對百分比門檻）。
+    """
+    out = {}
+    for fx in FOREX_PAIRS:
+        try:
+            fxh = fetch_history(fx)
+            if not fxh or not fxh.get("close"):
+                continue
+            fc, fh, fl = fxh["close"], fxh["high"], fxh["low"]
+            fidx = len(fc) - 1
+            conf = detect_s5_confluence(fidx, fh, fl, fc)
+            out[fx] = {
+                "display": FOREX_DISPLAY_NAMES.get(fx, fx),
+                "close": round(fc[fidx], 5),
+                "confluenceFound": conf is not None,
+                "confA": conf["a"] if conf else None, "confB": conf["b"] if conf else None,
+                "congesTop": conf["congesTop"] if conf else None, "congesBottom": conf["congesBottom"] if conf else None,
+                "entry": conf["entry"] if conf else None, "stop": conf["stop"] if conf else None,
+                "t1": conf["t1"] if conf else None, "t2": conf["t2"] if conf else None,
+                "touched": conf["touched"] if conf else None, "confFailed": conf["failed"] if conf else None,
+                "daysSinceB": conf["daysSinceB"] if conf else None,
+            }
+        except Exception:
+            continue
+    return out
+
+
 def get_forex_s1_data(forex_charts):
     """
     S1(順勢交易)套用落8隻major貨幣對。門檻已經用真實歷史分佈重新校準：
