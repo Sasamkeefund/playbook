@@ -329,6 +329,8 @@ def detect_s5_confluence(idx, highs, lows, closes):
         return None
     if impulse_h / a_price * 100 < 6:
         return None  # 升浪太細，唔算數（避免噪音）
+    if (b_idx - a_idx) < 5:
+        return None  # A到B少過5日就成形，太急太短，好可能係插針式短炒，唔係健康嘅持續買盤
 
     # 「直線向上」檢查：A到B之間，唔可以有太多內部反覆pivot（超過1個轉勢就唔算直線）
     mid_piv = [x for x in zz if a_idx < x[0] < b_idx]
