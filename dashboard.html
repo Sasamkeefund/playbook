@@ -982,6 +982,17 @@
       ticker=ticker.toUpperCase();
       if(checkbox.checked){
         const stk=globalData.stocks.find(x=>x.ticker===ticker);
+        // 業績風險check：tick落嗰一刻，如果有業績風險，要你額外confirm先繼續，唔係淨係擺個細badge
+        if(stk&&stk.daysToEarnings!=null){
+          const d=stk.daysToEarnings;
+          if(d>=-5&&d<=5){
+            let msg;
+            if(d>=0&&d<=2)msg='⚠️ '+ticker+' 岩岩出咗業績（'+stk.earningsDate+'），仲喺高波動期。真係想加落「我的記錄」？';
+            else if(d<0)msg='⚠️ '+ticker+' '+Math.abs(d)+'日前出咗業績（'+stk.earningsDate+'），可能仲未完全消化。真係想加落「我的記錄」？';
+            else msg='⚠️ '+ticker+' 仲有'+d+'日出業績（'+stk.earningsDate+'）。如果會持倉過嗰日，真係想加落「我的記錄」？';
+            if(!confirm(msg)){checkbox.checked=false;return;}
+          }
+        }
         const strat=stk?stk.strategies[activeTab]:null;
         const cd=(strat&&strat.conds)||[];
         const bn=(strat&&strat.bonus)||[];
