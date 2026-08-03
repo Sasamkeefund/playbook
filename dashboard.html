@@ -987,9 +987,10 @@
           const d=stk.daysToEarnings;
           if(d>=-5&&d<=5){
             let msg;
-            if(d>=0&&d<=2)msg='⚠️ '+ticker+' 岩岩出咗業績（'+stk.earningsDate+'），仲喺高波動期。真係想加落「我的記錄」？';
-            else if(d<0)msg='⚠️ '+ticker+' '+Math.abs(d)+'日前出咗業績（'+stk.earningsDate+'），可能仲未完全消化。真係想加落「我的記錄」？';
-            else msg='⚠️ '+ticker+' 仲有'+d+'日出業績（'+stk.earningsDate+'）。如果會持倉過嗰日，真係想加落「我的記錄」？';
+            const tipTxt='\n\n提你：唔係「唔可以買」，係「診清楚先落單」\n🔴岩岩出(0-2日)=最高風險，避開或細注碼\n🟠業績後3-5日=仲喺消化期，留意\n🟡5日內快出=如果持倉過嗰日，診清楚風險';
+            if(d>=0&&d<=2)msg='⚠️ '+ticker+' 岩岩出咗業績（'+stk.earningsDate+'），仲喺高波動期。真係想加落「我的記錄」？'+tipTxt;
+            else if(d<0)msg='⚠️ '+ticker+' '+Math.abs(d)+'日前出咗業績（'+stk.earningsDate+'），可能仲未完全消化。真係想加落「我的記錄」？'+tipTxt;
+            else msg='⚠️ '+ticker+' 仲有'+d+'日出業績（'+stk.earningsDate+'）。如果會持倉過嗰日，真係想加落「我的記錄」？'+tipTxt;
             if(!confirm(msg)){checkbox.checked=false;return;}
           }
         }
