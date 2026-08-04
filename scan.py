@@ -421,14 +421,19 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     # ── EMA20 假突破偵測（參考用，可能同 TradingView 差 1 日）──
     # daysBelow   = 最近一次連續「收市跌穿 EMA20」嘅日數
     # daysRecover = 跌穿之後用咗幾多日 close 返上 EMA20（今日返到 = 1；仲喺下面 = 0）
+    # dipBreachEma50 = 呢段跌穿EMA20期間，有冇任何一日 close 都連埋 EMA50 一齊跌穿
+    #   （原文Playbook：跌穿EMA20但冧穿EMA50 = 健康回調；連EMA50都跌埋 = 較弱訊號，兩者質素唔同）
     days_below = 0
     days_recover = 0
+    dip_breach_ema50 = False
     if e20 is not None:
         if close < e20:
             # 今日仲喺下面 → 數連續跌穿日數，未收復
             j = idx
             while j >= 0 and ema20a[j] is not None and closes[j] < ema20a[j]:
                 days_below += 1
+                if ema50a[j] is not None and closes[j] < ema50a[j]:
+                    dip_breach_ema50 = True
                 j -= 1
             days_recover = 0
         else:
@@ -444,6 +449,8 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 k = j
                 while k >= 0 and ema20a[k] is not None and closes[k] < ema20a[k]:
                     days_below += 1
+                    if ema50a[k] is not None and closes[k] < ema50a[k]:
+                        dip_breach_ema50 = True
                     k -= 1
             else:
                 days_below = 0
@@ -480,7 +487,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         round(pct_from_high, 1) if pct_from_high is not None else None,
     ]
     res["S1"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) == 5,
-                 "daysBelow20": days_below, "daysRecover": days_recover,
+                 "daysBelow20": days_below, "daysRecover": days_recover, "dipBreachEma50": dip_breach_ema50,
                  "condVals": c_vals, "bonusVals": b_vals,
                  "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
@@ -1267,6 +1274,7 @@ def build_record(ticker, hist):
             dr = today[s].get("daysRecover", 0)
             strategies[s]["daysBelow20"] = db
             strategies[s]["daysRecover"] = dr
+            strategies[s]["dipBreachEma50"] = today[s].get("dipBreachEma50", False)
             # 跌穿前 S1 連續 5/5 日數（s1_ready streak before the dip）
             streak_before = 0
             if db > 0:
