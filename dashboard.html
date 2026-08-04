@@ -14,7 +14,7 @@
       --border:#262a3d; --border-2:#323754;
       --text:#e6e8f0; --dim:#8a8fa3; --faint:#5b6075;
       --accent:#7c5cff; --accent-2:#4d8dff;
-      --up:#2ee6a6; --down:#ff5d6c; --amber:#f5b945;
+      --up:#2ee6a6; --down:#ff5d6c; --amber:#f5b945; --cyan:#22d3ee;
       --glow:0 0 0 1px rgba(124,92,255,.4), 0 0 18px rgba(124,92,255,.25);
     }
     /* 返工 Mode：淡色樸素，似 Excel/文件 */
@@ -23,7 +23,7 @@
       --border:#d0d0d0; --border-2:#bcbcbc;
       --text:#1a1a1a; --dim:#555; --faint:#888;
       --accent:#444; --accent-2:#444;
-      --up:#177245; --down:#b00020; --amber:#7a5c00;
+      --up:#177245; --down:#b00020; --amber:#7a5c00; --cyan:#0e6e78;
       --glow:none;
       background-image:none !important;
     }
@@ -48,7 +48,7 @@
     body.work .emacell{color:#777 !important}
     body.work .up{color:#177245 !important} body.work .down{color:#b00020 !important}
     body.work .c.ok{color:#177245 !important} body.work .c.no{color:#b00020 !important}
-    body.work .verdict.v-green{color:#177245 !important} body.work .verdict.v-amber{color:#7a5c00 !important} body.work .verdict.v-red{color:#b00020 !important}
+    body.work .verdict.v-green{color:#177245 !important} body.work .verdict.v-amber{color:#7a5c00 !important} body.work .verdict.v-red{color:#b00020 !important} body.work .verdict.v-cyan{color:#0e6e78 !important}
     body.work input,body.work select{background:#fff !important;color:#1a1a1a !important;border-color:#ccc !important}
     body.work .modal-inner{background:#fff !important}
     *{margin:0;padding:0;box-sizing:border-box}
@@ -209,7 +209,7 @@
       padding:3px 7px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.5px;box-shadow:0 0 12px rgba(124,92,255,.5)}
 
     .verdict{font-size:12.5px;font-weight:500}
-    .verdict.v-green{color:var(--up)} .verdict.v-amber{color:var(--amber)} .verdict.v-red{color:var(--down)}
+    .verdict.v-green{color:var(--up)} .verdict.v-amber{color:var(--amber)} .verdict.v-red{color:var(--down)} .verdict.v-cyan{color:var(--cyan)}
 
     .empty{text-align:center;padding:2.5rem;color:var(--dim)}
     .footer{margin-top:1.6rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--faint)}
@@ -286,7 +286,8 @@
       <select id="filterVerdict">
         <option value="">入場建議 不限</option>
         <option value="green">🟢 可考慮（頂級/良好/突破/setup）</option>
-        <option value="amber">🟡 一般/觀察（細倉或續watch）</option>
+        <option value="cyan">🔵 已成立但質素較低（細倉）</option>
+        <option value="amber">🟡 未成立/等緊（續watch）</option>
         <option value="red">🔴 未夠班/跳過</option>
       </select>
       <select id="filterRetrace" class="s6filter" title="只 S6 有效（Patreon: 回調 ≤ 0.236）">
@@ -525,11 +526,12 @@
         // 升返日數 — checklist：1-2日 ✅／3日 ⚠️細倉／4日+ ❌唔入
         if(ago>=3)return{text:'❌ 唔入 — 升返第'+(ago+1)+'日(4日+)，Setup唔成立，唔係假突破係真跌穿',color:'red'};
         const tail=' ｜ '+qMark+' '+qLabel+e50Tag+' ｜ R:R OK 先入，TradingView confirm';
-        if(ago===2)return{text:'⚠️ 3日升返 — 訊號較弱，考慮細position'+tail,color:'amber'};
-        // ago 0-1（升返第1-2日）且 rms≥3：再睇趨勢質素分綠/黃
-        if(rms<7)return{text:'⚠️ setup（趨勢轉弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'amber'};
-        // 原本會係綠色嘅setup，但回調連EMA50都跌穿 → 降級做黃色警示，唔hard reject
-        if(breachE50)return{text:'⚠️ setup（回調連EMA50都跌穿，訊號較弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'amber'};
+        // 以下三種：Setup已經成立(R1-R5全過)，但質素較低 → 用青色(cyan)獨立標示，同「仲未成立」嘅黃色分開
+        if(ago===2)return{text:'🔷 3日升返 — 訊號較弱，考慮細position'+tail,color:'cyan'};
+        // ago 0-1（升返第1-2日）且 rms≥3：再睇趨勢質素分綠/青
+        if(rms<7)return{text:'🔷 setup（趨勢轉弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'cyan'};
+        // 原本會係綠色嘅setup，但回調連EMA50都跌穿 → 降級做青色警示，唔hard reject
+        if(breachE50)return{text:'🔷 setup（回調連EMA50都跌穿，訊號較弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'cyan'};
         if(bonus>=4)return{text:'🔥 高質 setup：升返第'+(ago+1)+'日（入場窗口）+ Bonus高'+tail,color:'green'};
         return{text:'✅ setup：升返第'+(ago+1)+'日（入場窗口）'+tail,color:'green'};}
       if(tab==='S6'){const b1=b[0],b5=b[4];
@@ -1097,7 +1099,7 @@
       const st=s.strategies[activeTab];
       const v=getVerdict(activeTab,st,s.close);
       const chCol=s.chgPct>0?'#2ee6a6':s.chgPct<0?'#ff5d6c':'var(--dim)';
-      const vCol=v.color==='green'?'#2ee6a6':v.color==='amber'?'#f5b945':'#ff5d6c';
+      const vCol=v.color==='green'?'#2ee6a6':v.color==='amber'?'#f5b945':v.color==='cyan'?'#22d3ee':'#ff5d6c';
       const cd=st.conds||[];
       const b=st.bonus||[];
       // Required 條件標籤：S1V1 用有意義嘅 R1-R4 名，其他 tab 沿用通用 C1-C5
