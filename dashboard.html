@@ -1081,14 +1081,18 @@
     }
     function fakeoutBadge(st){
       const touch=st.pullbackTouch, ago=st.pullbackDaysAgo, above=st.aboveNow, rms=st.streakBefore??st.recentMaxStreak??0;
+      const breachE50=!!st.dipBreachEma50;
       const trendTxt=`（趨勢 ${rms}日${rms>=7?' ✓健康':rms>=3?' ⚠️保守':' 🛑唔支持'}）`;
+      const e50Txt=breachE50?' ⚠️連EMA50都跌穿':'';
       if(!touch)return `<span style="color:var(--faint)">近6日收市未跌穿 EMA20 ${trendTxt}</span>`;
-      if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，等收市企返上 ${trendTxt}</span>`;
+      if(!above)return `<span style="color:#f5b945">⬇ ${ago}日前收市跌穿，等收市企返上 ${trendTxt}${e50Txt}</span>`;
       if(rms<3)return `<span style="color:#ff5d6c">🛑 大趨勢唔支持，唔入 ${trendTxt}</span>`;
       // 已企返：升返第幾日
       const day=ago+1; // ago0=升返第1日
       if(ago>=3)return `<span style="color:#ff5d6c">升返第${day}日(4日+) — 唔入，Setup唔成立 ${trendTxt}</span>`;
-      if(ago===2)return `<span style="color:#f5b945">3日升返 — 較弱，考慮細position ${trendTxt}</span>`;
+      if(ago===2)return `<span style="color:#22d3ee">🔷 3日升返 — 較弱，考慮細position ${trendTxt}${e50Txt}</span>`;
+      // 已成立(R1-R5全過)但質素較低：跌穿前趨勢3-6日 或 breach EMA50 → 青色，同getVerdict睇齊
+      if(rms<7||breachE50)return `<span style="color:#22d3ee">🔷 升返第${day}日 — 已成立但較弱，考慮細position ${trendTxt}${e50Txt}</span>`;
       return `<span style="color:#2ee6a6">🔥 升返第${day}日（入場窗口）${trendTxt}</span>`;
     }
     function fillChartInfo(ticker){
