@@ -282,7 +282,8 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
     }
 
 
-def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
+def detect_s5_confluence(idx, highs, lows, closes, diag_out=None,
+                          min_pct=4.0, leg_min_pct=6.0, conges_max_pct=9.0, price_round=2):
     """
     S5 支持阻力會被尊重（Playbook）：
     搵一段「直線向上」嘅 LTF 升浪(A底→B頂，中間唔可以有太多內部反覆)，
@@ -299,6 +300,14 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
     diag_out（optional）：如果傳一個dict入嚟，會畀呢個function喺內部逐步寫低行到邊一步、
     嗰步嘅實際數值係咩，等你搵唔到confluence嗰陣可以知道係邊一關卡住，唔係淨係得一個None。
     唔傳（default）就完全冧有額外開銷，行為同之前一模一樣——股票版嗰個call site冧使郁。
+
+    min_pct/leg_min_pct/conges_max_pct（optional，default=股票版原本嘅硬編碼值4.0/6.0/9.0）：
+    2026-08-05debug發現，forex call site一直用緊呢組股票校準嘅硬門檻，
+    但forex major pair嘅日常波幅細好多（8對pair嘅ATR%由0.35%到0.99%不等，
+    差成接近3倍），單一個4%門檻套落所有pair度，結果係60日窗口入面
+    幾乎搵唔到一個pivot（EURUSD/GBPUSD/USDCAD/USDCHF/EURGBP全部0個confluence，
+    連續6日61次hourly scan全數落空）。而家開返呢3個門檻做參數，
+    等forex call site可以按自己pair嘅ATR%動態校準，股票call site唔傳就同原本行為一致。
     """
     win = 60
     start = max(0, idx - win)
@@ -310,7 +319,7 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
         if diag_out is not None: diag_out['failedAt'] = 'history_too_short'
         return None
 
-    zz = zigzag_pivots(seg_h, seg_l, min_pct=4.0)
+    zz = zigzag_pivots(seg_h, seg_l, min_pct=min_pct)
     h_piv = [(i, p) for i, p, t in zz if t == 'H']
     l_piv = [(i, p) for i, p, t in zz if t == 'L']
     if not h_piv or not l_piv:
@@ -344,7 +353,7 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
         return None
     leg_pct = impulse_h / a_price * 100
     if diag_out is not None: diag_out['legPct'] = round(leg_pct, 2)
-    if leg_pct < 6:
+    if leg_pct < leg_min_pct:
         if diag_out is not None: diag_out['failedAt'] = 'leg_too_small'
         return None  # 升浪太細，唔算數（避免噪音）
     if (b_idx - a_idx) < 5:
@@ -369,7 +378,7 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
         return None
     conges_range_pct = (conges_top - conges_bottom) / conges_bottom * 100
     if diag_out is not None: diag_out['congesRangePct'] = round(conges_range_pct, 2)
-    if conges_range_pct > 9:
+    if conges_range_pct > conges_max_pct:
         if diag_out is not None: diag_out['failedAt'] = 'congestion_too_wide'
         return None  # 太闊，唔算「窄幅」整理區
 
@@ -392,18 +401,18 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
     # 已經跌穿 A 底 = 結構失敗
     failed = today_c < a_price
 
-    entry = round(fib786, 2)
-    stop = round(a_price, 2)
+    entry = round(fib786, price_round)
+    stop = round(a_price, price_round)
     post_b_low = min(seg_l[b_idx + 1:n]) if n > b_idx + 1 else today_c
-    t1 = round(post_b_low + (b_price - post_b_low) * 0.618, 2)
-    t2 = round(b_price, 2)
+    t1 = round(post_b_low + (b_price - post_b_low) * 0.618, price_round)
+    t2 = round(b_price, price_round)
 
     days_since_b = (n - 1) - b_idx
     touched = today_c <= entry * 1.01  # 現價已經貼近/跌到入場位
 
     return {
-        "a": round(a_price, 2), "b": round(b_price, 2),
-        "congesTop": round(conges_top, 2), "congesBottom": round(conges_bottom, 2),
+        "a": round(a_price, price_round), "b": round(b_price, price_round),
+        "congesTop": round(conges_top, price_round), "congesBottom": round(conges_bottom, price_round),
         "fib786": entry, "entry": entry, "stop": stop, "t1": t1, "t2": t2,
         "failed": failed, "touched": touched, "daysSinceB": days_since_b,
     }
@@ -1435,8 +1444,19 @@ def get_forex_s5_data():
     S5(支持阻力被尊重)套用落8隻major貨幣對。呢個策略唔需要「持續單邊動能」——
     淨係需要一段直線向上嘅LTF升浪 + 之前有窄幅Congestion Area，現價回調到0.786同佢重疊。
     外匯係全世界機構參與最深嘅市場，「支持位受尊重」呢個邏輯（大戶以期望值思考，
-    响高期望值進場點同時進場，形成支持）可能仲穩過股票。公式完全跟返detect_s5_confluence，
-    冧使額外校準（因為呢個策略本身就係relative嘅位置關係，唔靠絕對百分比門檻）。
+    响高期望值進場點同時進場，形成支持）可能仲穩過股票。
+
+    2026-08-05 debug：之前直接冧校準，call detect_s5_confluence()冇傳任何門檻，
+    即係一直用緊股票版嘅硬門檻(zigzag 4%/leg 6%/congestion 9%)。實測連續6日、
+    61次hourly scan、8對pair全部confluenceFound=False——因為major forex pair嘅
+    日常波幅（14期ATR%）由0.35%(EURGBP)到0.99%(NZDUSD)不等，遠低於股票，
+    60日窗口入面幾乎搵唔到一個夠格嘅zigzag pivot。而家改用「每對pair自己嘅
+    ATR% × 1.5」做動態門檻，等每對貨幣按自己嘅波幅自我校準（呢個k=1.5係
+    根據forex_charts.json歷史數據backtest嘅起始值，令8對pair都有合理、
+    分佈平均嘅confluenceFound命中率，唔再淨係得一兩隻高波幅pair先有反應——
+    但呢個只係第一版校準，要睇住實際touched=true嘅trigger質素再微調）。
+    price_round改用5位（forex pip精度），唔再好似股票咁淨係影2位小數
+    （會令entry/stop/t1/t2全部變成冇意義嘅"1.15"）。
     """
     out = {}
     for fx in FOREX_PAIRS:
@@ -1446,8 +1466,17 @@ def get_forex_s5_data():
                 continue
             fc, fh, fl = fxh["close"], fxh["high"], fxh["low"]
             fidx = len(fc) - 1
+            f_atr14 = atr(fh, fl, fc, 14)
+            atr_val = f_atr14[fidx] if fidx < len(f_atr14) else None
+            atr_pct = (atr_val / fc[fidx] * 100) if (atr_val and fc[fidx]) else 1.5  # fallback 1.5% 若ATR未算到
+            dyn_min_pct = max(0.5, atr_pct * 1.5)   # 每對pair自己ATR%×1.5，設0.5%地板避免極端窄幅pair門檻歸零
+            dyn_leg_pct = dyn_min_pct * 1.5
             diag = {}
-            conf = detect_s5_confluence(fidx, fh, fl, fc, diag_out=diag)
+            conf = detect_s5_confluence(fidx, fh, fl, fc, diag_out=diag,
+                                         min_pct=dyn_min_pct, leg_min_pct=dyn_leg_pct,
+                                         conges_max_pct=9.0, price_round=5)
+            if diag is not None:
+                diag['dynMinPct'] = round(dyn_min_pct, 3)
             out[fx] = {
                 "display": FOREX_DISPLAY_NAMES.get(fx, fx),
                 "close": round(fc[fidx], 5),
