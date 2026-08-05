@@ -603,9 +603,10 @@
       // 但撳「🔄 刷新」係想真係逼佢重新check，所以呢個情況要用Date.now()真正bypass cache
       const dayKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
       const hourKey=forceFresh?Date.now():dayKey;
-      const [dataR, paperR] = await Promise.allSettled([
+      // bootstrap：合併返watchlist+skips+fibAll+paper，1個request代替返之前3個分開打去Apps Script嘅call
+      const [dataR, bootR] = await Promise.allSettled([
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
-        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json())
+        fetch(WL_API+'?action=bootstrap&t='+Date.now()).then(r=>r.json())
       ]);
       if(dataR.status==='rejected'){
         document.getElementById('updated').textContent='❌ 無法讀取 data.json';
@@ -623,9 +624,20 @@
       if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
         document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S5')?'green':'';
       }
-      tvOpenSet = (paperR.status==='fulfilled')
-        ? new Set((paperR.value.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()))
-        : new Set();
+      if(bootR.status==='fulfilled'){
+        const bd=bootR.value;
+        wlSet=new Set((bd.watchlist||[]).map(x=>x.ticker.toUpperCase()));
+        skipSet=new Set();
+        const nowTs=Date.now();
+        (bd.skips||[]).forEach(s=>{
+          const days=(nowTs-new Date(s.dateSkipped).getTime())/86400000;
+          if(days<=7)skipSet.add(s.ticker.toUpperCase()+'|'+(s.strategy||'').toUpperCase());
+        });
+        fibMap=bd.fibAll||{};
+        tvOpenSet=new Set((bd.paperOpen||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()));
+      }else{
+        wlSet=new Set();skipSet=new Set();fibMap={};tvOpenSet=new Set();
+      }
       render();
     }
     async function reloadData(){
@@ -1528,9 +1540,8 @@
     }
     loadColSettings();
 
+    // watchlist/skips/fibMap 而家已經跟埋落loadData()嗰個bootstrap request一齊攞，唔使再分開call
     loadData();
-    loadWatchlist();
-    loadFibAll();
   </script>
 </body>
 </html>
