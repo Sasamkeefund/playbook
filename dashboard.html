@@ -596,9 +596,13 @@
     }
 
     let tvOpenSet=new Set();
-    async function loadData(){
+    async function loadData(forceFresh){
       const now=new Date();
-      const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
+      // cache key 精確到「日」就夠——data.json 一日淨係夜晚nightly scan更新一次，
+      // 之前精確到小時會令返工期間每過一個鐘就強制重新下載成3MB，瀏覽器HTTP cache完全幫唔到手
+      // 但撳「🔄 刷新」係想真係逼佢重新check，所以呢個情況要用Date.now()真正bypass cache
+      const dayKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0');
+      const hourKey=forceFresh?Date.now():dayKey;
       const [dataR, paperR] = await Promise.allSettled([
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
         fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json())
@@ -633,7 +637,7 @@
         document.getElementById('forexFreshness').textContent='💱 Forex 數據更新於 '+toHKT(fd.updated)+'（獨立、每小時更新一次）';
         renderForex(fd);
       }else{
-        await loadData();
+        await loadData(true);
       }
       b.textContent='✅ 已更新';setTimeout(()=>{b.textContent=o;b.disabled=false;},1500);
     }
