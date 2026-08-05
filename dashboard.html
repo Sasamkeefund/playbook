@@ -539,9 +539,14 @@
         const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1, fr=strat.flagRetrace, streak=strat.streak||0;
         const frTxt=(fr!==null&&fr!==undefined)?' ｜ 回調 '+(fr*100).toFixed(0)+'%'+(fr<=0.236?' ✓淺':fr<=0.382?' ⚠️':' 🔻深'):'';
         const h1txt=(h1?(' ｜ H1≈$'+h1+(pth!==null?'('+(pth>0?'+':'')+pth+'%)':'')):'')+frTxt;
+        // 跟 checklist Step1：Scanner 要連續 5日🔥以上先算開始評估——要行喺broke之前check，
+        // 唔係嘅話，今日先第一日撞到5/5就即刻突破（例如業績/新聞跳空），都會被誤判做「🔥突破」，
+        // 但呢種情況streak=1，根本未有過真正嘅縮量整固歷史，唔算原文定義嘅旗形
+        if(streak<5){
+          const brokeWarn=broke?('⚠️今日已經破H1+放量，但streak淨係'+streak+'日——好可能係業績/新聞跳空，唔係真正旗形整固，唔好當手法A入場 ｜ '):'';
+          return{text:'🕒 '+brokeWarn+'未夠5日整固（現'+streak+'日）— 續 watch，未到評估門檻'+h1txt,color:'amber'};
+        }
         if(broke)return{text:'🔥 突破 H1 + 放量！突破入場（手法A）'+h1txt+' ｜ TradingView 畫旗形確認',color:'green'};
-        // 跟 checklist Step1：Scanner 要連續 5日🔥以上先算開始評估
-        if(streak<5)return{text:'🕒 未夠5日整固（現'+streak+'日）— 續 watch，未到評估門檻'+h1txt,color:'amber'};
         const streakTxt=' ｜ 連續'+streak+'日'+(streak>15?'⚠️過長，可能唔係旗形':'');
         // 跟 checklist updateQuality() 一致嘅評級：req≥4 already 通過，睇 b1/b5/bonus
         if(b1&&b5)return{text:'🔥 頂級 Setup — b1+b5 通過，被震走風險最低'+streakTxt+h1txt+' ｜ TradingView 確認',color:'green'};
