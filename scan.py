@@ -282,7 +282,7 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
     }
 
 
-def detect_s5_confluence(idx, highs, lows, closes):
+def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
     """
     S5 支持阻力會被尊重（Playbook）：
     搵一段「直線向上」嘅 LTF 升浪(A底→B頂，中間唔可以有太多內部反覆)，
@@ -295,6 +295,10 @@ def detect_s5_confluence(idx, highs, lows, closes):
     T2     = LTF升浪頂部(B)
 
     搵唔到合理confluence就回傳 None（唔會扮識，寧願話"未搵到"）。
+
+    diag_out（optional）：如果傳一個dict入嚟，會畀呢個function喺內部逐步寫低行到邊一步、
+    嗰步嘅實際數值係咩，等你搵唔到confluence嗰陣可以知道係邊一關卡住，唔係淨係得一個None。
+    唔傳（default）就完全冧有額外開銷，行為同之前一模一樣——股票版嗰個call site冧使郁。
     """
     win = 60
     start = max(0, idx - win)
@@ -303,12 +307,14 @@ def detect_s5_confluence(idx, highs, lows, closes):
     seg_c = closes[start:idx + 1]
     n = len(seg_c)
     if n < 20:
+        if diag_out is not None: diag_out['failedAt'] = 'history_too_short'
         return None
 
     zz = zigzag_pivots(seg_h, seg_l, min_pct=4.0)
     h_piv = [(i, p) for i, p, t in zz if t == 'H']
     l_piv = [(i, p) for i, p, t in zz if t == 'L']
     if not h_piv or not l_piv:
+        if diag_out is not None: diag_out['failedAt'] = 'no_pivots'
         return None
 
     # B：最近一個 H pivot（LTF升浪頂），要有足夠時間先算真正回調完成（唔可以係呢兩日先啱啱破頂）
@@ -317,46 +323,71 @@ def detect_s5_confluence(idx, highs, lows, closes):
         if len(h_piv) >= 2:
             b_idx, b_price = h_piv[-2]
         else:
+            if diag_out is not None: diag_out['failedAt'] = 'b_too_recent_no_alt'
             return None
+    if diag_out is not None:
+        diag_out['bFound'] = True
+        diag_out['bPrice'] = round(b_price, 5)
 
     # A：B之前嘅 L pivot（LTF升浪起點）
     cands_a = [(i, p) for i, p in l_piv if i < b_idx]
     if not cands_a:
+        if diag_out is not None: diag_out['failedAt'] = 'no_a_before_b'
         return None
     a_idx, a_price = cands_a[-1]
     impulse_h = b_price - a_price
+    if diag_out is not None:
+        diag_out['aFound'] = True
+        diag_out['aPrice'] = round(a_price, 5)
     if impulse_h <= 0 or a_price <= 0:
+        if diag_out is not None: diag_out['failedAt'] = 'invalid_impulse'
         return None
-    if impulse_h / a_price * 100 < 6:
+    leg_pct = impulse_h / a_price * 100
+    if diag_out is not None: diag_out['legPct'] = round(leg_pct, 2)
+    if leg_pct < 6:
+        if diag_out is not None: diag_out['failedAt'] = 'leg_too_small'
         return None  # 升浪太細，唔算數（避免噪音）
     if (b_idx - a_idx) < 5:
+        if diag_out is not None: diag_out['failedAt'] = 'leg_too_short'
         return None  # A到B少過5日就成形，太急太短，好可能係插針式短炒，唔係健康嘅持續買盤
 
     # 「直線向上」檢查：A到B之間，唔可以有太多內部反覆pivot（超過1個轉勢就唔算直線）
     mid_piv = [x for x in zz if a_idx < x[0] < b_idx]
     if len(mid_piv) > 2:
+        if diag_out is not None: diag_out['failedAt'] = 'not_straight_line'
         return None
 
     # Congestion Area：A點之前 5-12 日嘅窄幅波動區
     cwin = seg_h[max(0, a_idx - 12):a_idx + 1], seg_l[max(0, a_idx - 12):a_idx + 1]
     conges_h, conges_l = cwin
     if len(conges_h) < 4:
+        if diag_out is not None: diag_out['failedAt'] = 'congestion_too_short'
         return None
     conges_top, conges_bottom = max(conges_h), min(conges_l)
     if conges_bottom <= 0:
+        if diag_out is not None: diag_out['failedAt'] = 'invalid_congestion'
         return None
     conges_range_pct = (conges_top - conges_bottom) / conges_bottom * 100
+    if diag_out is not None: diag_out['congesRangePct'] = round(conges_range_pct, 2)
     if conges_range_pct > 9:
+        if diag_out is not None: diag_out['failedAt'] = 'congestion_too_wide'
         return None  # 太闊，唔算「窄幅」整理區
 
     # 現價回調 0.786
     fib786 = b_price - impulse_h * 0.786
     today_c = seg_c[-1]
+    if diag_out is not None:
+        diag_out['fib786'] = round(fib786, 5)
+        diag_out['congesTopRaw'] = round(conges_top, 5)
+        diag_out['congesBottomRaw'] = round(conges_bottom, 5)
 
     # Confluence 檢查：fib786 要落喺 Congestion Area 範圍（留少少彈性）
     overlap = (conges_bottom * 0.99) <= fib786 <= (conges_top * 1.01)
     if not overlap:
+        if diag_out is not None: diag_out['failedAt'] = 'no_overlap'
         return None
+
+    if diag_out is not None: diag_out['failedAt'] = None  # 全部check都過晒
 
     # 已經跌穿 A 底 = 結構失敗
     failed = today_c < a_price
@@ -1415,7 +1446,8 @@ def get_forex_s5_data():
                 continue
             fc, fh, fl = fxh["close"], fxh["high"], fxh["low"]
             fidx = len(fc) - 1
-            conf = detect_s5_confluence(fidx, fh, fl, fc)
+            diag = {}
+            conf = detect_s5_confluence(fidx, fh, fl, fc, diag_out=diag)
             out[fx] = {
                 "display": FOREX_DISPLAY_NAMES.get(fx, fx),
                 "close": round(fc[fidx], 5),
@@ -1426,6 +1458,7 @@ def get_forex_s5_data():
                 "t1": conf["t1"] if conf else None, "t2": conf["t2"] if conf else None,
                 "touched": conf["touched"] if conf else None, "confFailed": conf["failed"] if conf else None,
                 "daysSinceB": conf["daysSinceB"] if conf else None,
+                "diag": diag,
             }
         except Exception:
             continue
