@@ -865,6 +865,34 @@
       document.getElementById('forexTableS1').style.display=(s==='S1')?'':'none';
       document.getElementById('forexTableS5').style.display=(s==='S5')?'':'none';
     }
+    const S5_FAILED_AT_LABELS={
+      history_too_short:'歷史數據唔夠',
+      no_pivots:'搵唔到明顯轉勢結構',
+      b_too_recent_no_alt:'B點啱啱破頂，仲未夠時間回調',
+      no_a_before_b:'B之前搵唔到A(低位)',
+      invalid_impulse:'升浪結構無效',
+      leg_too_small:'升浪太細',
+      leg_too_short:'升浪成形太快(<5日)',
+      not_straight_line:'升浪唔夠直線(內部反覆太多)',
+      congestion_too_short:'整理區數據唔夠',
+      invalid_congestion:'整理區結構無效',
+      congestion_too_wide:'整理區太闊',
+      no_overlap:'0.786回調未貼住整理區',
+    };
+    function s5DiagText(d){
+      const diag=d.diag;
+      if(!diag||diag.failedAt==null)return '未搵到confluence結構';
+      const label=S5_FAILED_AT_LABELS[diag.failedAt]||diag.failedAt;
+      // 加返個具體數值，等你唔使自己再計
+      if(diag.failedAt==='leg_too_small')return label+`（${diag.legPct}% < 6%）`;
+      if(diag.failedAt==='leg_too_short')return label;
+      if(diag.failedAt==='congestion_too_wide')return label+`（${diag.congesRangePct}% > 9%）`;
+      if(diag.failedAt==='no_overlap')return label+`（0.786=${diag.fib786}，整理區${diag.congesBottomRaw}-${diag.congesTopRaw}）`;
+      if(diag.failedAt==='not_straight_line')return label;
+      if(diag.bFound&&diag.legPct!=null)return label+`（B=${diag.bPrice}，升浪${diag.legPct}%）`;
+      if(diag.bFound)return label+`（B=${diag.bPrice}）`;
+      return label;
+    }
     function renderForexS5(fd){
       const fx=(fd&&fd.forex&&fd.forex.S5)||{};
       const tb=document.getElementById('forexTbodyS5');
@@ -872,7 +900,7 @@
       if(!rows.length){tb.innerHTML='<tr><td colspan="7" class="empty">冇外匯S5資料</td></tr>';return;}
       tb.innerHTML=rows.map(([sym,d])=>{
         let stat;
-        if(!d.confluenceFound)stat='<span style="color:var(--faint)">未搵到confluence結構</span>';
+        if(!d.confluenceFound)stat=`<span style="color:var(--faint)" title="${s5DiagText(d)}">${s5DiagText(d)}</span>`;
         else if(d.confFailed)stat='<span class="v-red">❌結構已失敗</span>';
         else if(d.touched)stat='<span class="v-green">🔥已到入場位</span>';
         else stat='<span style="color:var(--dim)">👀等入場位</span>';
@@ -882,7 +910,7 @@
           <td style="text-align:center" class="mono">${d.confA??'—'}</td>
           <td style="text-align:center" class="mono">${d.confB??'—'}</td>
           <td style="text-align:center;font-size:10.5px" class="mono">${d.congesTop!=null?d.congesBottom+'-'+d.congesTop:'—'}</td>
-          <td style="text-align:center">${stat}</td>
+          <td style="text-align:center;font-size:10.5px">${stat}</td>
           <td style="text-align:right;font-size:10.5px" class="mono">${d.entry!=null?'入'+d.entry+' 止'+d.stop+' T1'+d.t1+' T2'+d.t2:'—'}</td>
         </tr>`;
       }).join('');
