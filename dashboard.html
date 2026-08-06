@@ -596,6 +596,16 @@
         let vcpTxt='整固'+(cd||'?')+'日 + 波動收窄';
         const mkTxt=(mk===false)?' ｜ ⚠️大盤弱(留意)':'';
         return{text:'🔥 J Law VCP：'+vcpTxt+' ｜ '+rsTxt+' — TradingView 等突破入場'+mkTxt,color:'green'};}
+      if(tab==='S4'){
+        if(req<reqMax)return{text:'👀 未搵到完整假突破結構（升浪+橫行區+假突破+返回）',color:'amber'};
+        const rt=strat.rangeTop, rl=strat.rangeLow, entry=strat.entry, stop=strat.stop,
+              t1=strat.t1, t2=strat.t2, t3=strat.t3, dur=strat.breakoutDuration, dsr=strat.daysSinceReturn;
+        const structTxt=' ｜ 橫行區$'+rl+'-$'+rt+' ｜ 假突破高$'+stop+' ｜ T1$'+t1+' T2$'+t2+' T3$'+t3;
+        const freshTxt=' ｜ 假突破'+dur+'日內返落嚟（第'+dsr+'日）';
+        if(dsr>1)return{text:'⚠️ 已返落橫行區但唔夠新鮮（第'+dsr+'日先返落嚟）'+structTxt,color:'amber'};
+        if(bonus>=3)return{text:'🔻 高質淡倉：現價貼近橫行區頂$'+entry+structTxt+freshTxt+' ｜ 止蝕擺假突破高位',color:'green'};
+        return{text:'🔻 淡倉入場：現價貼近橫行區頂$'+entry+structTxt+freshTxt+' ｜ 止蝕擺假突破高位',color:'cyan'};
+      }
       if(req>=reqMax||strat.ready)return{text:'（未實戰）Bonus '+bonus,color:'amber'};
       return{text:'—',color:'red'};
     }
@@ -627,7 +637,7 @@
         document.getElementById('dataFreshness').innerHTML='📅 數據更新於 '+toHKT(globalData.updated)+'（<span style="color:'+warnColor+'">'+diffTxt+'</span>）· 外匯24小時交易，即市價位可能已經唔同，落單前一定要去TradingView肉眼confirm';
       }catch(e){}
       if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
-        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S5')?'green':'';
+        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S4'||activeTab==='S5')?'green':'';
       }
       if(bootR.status==='fulfilled'){
         const bd=bootR.value;
@@ -837,7 +847,7 @@
       document.getElementById('searchTicker').value='';
       document.getElementById('filterScore').value='';
       document.getElementById('filterStreak').value='';
-      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S5')?'green':'';
+      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S4'||t==='S5')?'green':'';
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     let appMode='stock';
