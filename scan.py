@@ -903,7 +903,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         risk = s4_fb["stop"] - s4_fb["entry"]
         rr_t2 = ((s4_fb["entry"] - s4_fb["t2"]) / risk) if risk > 0 else 0
         c = [
-            (s4_fb["daysSinceReturn"] <= 1),                                    # R1 訊號夠新鮮（今日/琴日先返落嚟）
+            (s4_fb["daysSinceReturn"] <= 3),                                    # R1 訊號夠新鮮（3日內都算，太窄冧夠嘢睇）
             (s4_fb["breakoutDuration"] <= 3),                                   # R2 假突破時間夠短（原文條件五）
             (rr_t2 >= 1.5),                                                     # R3 風險回報基本合理
             (s4_fb["rangeTop"] > 0 and (s4_fb["rangeTop"]-s4_fb["rangeLow"])/s4_fb["rangeLow"]*100 <= 8),  # R4 橫行區夠窄
@@ -912,7 +912,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
             (s4_fb["polePct"] is not None and s4_fb["polePct"] >= 15),          # B1 升浪夠急夠延伸（原文條件一/二）
             (s4_fb["wickRatio"] is not None and s4_fb["wickRatio"] >= 0.5),     # B2 假突破有明顯上影線（原文條件四/六）
             (s4_fb["brkRvol"] is not None and s4_fb["brkRvol"] < 1.0),          # B3 假突破冇帶量（原文條件七）
-            (rr_t2 >= 2.5),                                                     # B4 風險回報夠靚
+            (s4_fb["daysSinceReturn"] <= 1),                                    # B4 特別新鮮（今日/琴日），入場窗口最好
         ]
         res["S4"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
                      "keyvals": {"橫行區": f"{s4_fb['rangeLow']}-{s4_fb['rangeTop']}", "假突破高位": s4_fb["stop"]},
