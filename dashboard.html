@@ -601,8 +601,7 @@
         const rt=strat.rangeTop, rl=strat.rangeLow, entry=strat.entry, stop=strat.stop,
               t1=strat.t1, t2=strat.t2, t3=strat.t3, dur=strat.breakoutDuration, dsr=strat.daysSinceReturn;
         const structTxt=' ｜ 橫行區$'+rl+'-$'+rt+' ｜ 假突破高$'+stop+' ｜ T1$'+t1+' T2$'+t2+' T3$'+t3;
-        const freshTxt=' ｜ 假突破'+dur+'日內返落嚟（第'+dsr+'日）';
-        if(dsr>1)return{text:'⚠️ 已返落橫行區但唔夠新鮮（第'+dsr+'日先返落嚟）'+structTxt,color:'amber'};
+        const freshTxt=' ｜ 假突破'+dur+'日內返落嚟（第'+dsr+'日，'+(dsr<=1?'最新鮮':dsr<=3?'仲可以':'')+'）';
         if(bonus>=3)return{text:'🔻 高質淡倉：現價貼近橫行區頂$'+entry+structTxt+freshTxt+' ｜ 止蝕擺假突破高位',color:'green'};
         return{text:'🔻 淡倉入場：現價貼近橫行區頂$'+entry+structTxt+freshTxt+' ｜ 止蝕擺假突破高位',color:'cyan'};
       }
