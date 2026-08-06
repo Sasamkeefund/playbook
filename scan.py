@@ -294,6 +294,11 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
     T3   = 假設橫行區跌穿，用返橫行區前嘅升浪（pole）的0.618
 
     搵唔到就回傳 None。diag_out（optional）記低行到邊一步、實際數值係咩。
+
+    重要：pole頂一定要係一個「真正、有意義嘅」近期高位（用35日lookback搵），
+    唔可以淨係「最近10日rolling window嘅高位」——試過真實case（NTRS）證明咗，
+    如果唔搵闊啲，會將「仲喺度跌緊/未跌完」錯認做「橫行區」，
+    因為真正阻力（例如12日前嘅高位）可能啱啱好喺rolling window之外。
     """
     win = 60
     start = max(0, idx - win)
@@ -302,33 +307,52 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
     seg_c = closes[start:idx + 1]
     seg_v = (volumes[start:idx + 1] if volumes else [None] * len(seg_c))
     n = len(seg_c)
-    range_window = 10   # range本身嘅lookback日數
-    fresh_days = 6       # breakout要喺最近幾日之內先算新鮮
-    revert_window = 6    # breakout之後最多畀幾多日等佢返落嚟
+    pole_lookback = 35   # 搵真正pole頂嘅lookback（要闊過range本身，先唔會漏咗更早、更relevant嘅高位）
+    min_range_days = 5   # pole頂之後最少要幾多日先算形成到range（唔可以啱啱破頂就話突破）
+    fresh_days = 6        # breakout要喺最近幾日之內先算新鮮
+    revert_window = 6     # breakout之後最多畀幾多日等佢返落嚟
 
-    if n < range_window + 20:
+    if n < pole_lookback + min_range_days:
         if diag_out is not None: diag_out['failedAt'] = 'history_too_short'
         return None
 
-    # Step 1：由今日開始向前搵breakout day —— high > 之前range_window日嘅最高high
+    # Step 1a：搵真正嘅pole頂 —— pole_lookback日之內嘅最高high，
+    # 但要排除最近fresh_days日（留返呢段畀breakout檢查用，唔可以啱啱先破嘅頂都當自己pole頂）
+    search_start = max(0, n - 1 - pole_lookback)
+    search_end = n - fresh_days
+    if search_end - search_start < min_range_days:
+        if diag_out is not None: diag_out['failedAt'] = 'history_too_short'
+        return None
+    pole_idx, pole_top = None, -1
+    for j in range(search_start, search_end):
+        if seg_h[j] > pole_top:
+            pole_top = seg_h[j]
+            pole_idx = j
+    if pole_idx is None:
+        if diag_out is not None: diag_out['failedAt'] = 'no_pole_peak'
+        return None
+    if (search_end - pole_idx) < min_range_days:
+        if diag_out is not None: diag_out['failedAt'] = 'pole_too_recent'
+        return None
+    if diag_out is not None:
+        diag_out['poleTopFound'] = True
+        diag_out['poleTop'] = round(pole_top, 2)
+
+    # Step 1b：由search_end開始向前搵breakout day —— high > pole_top（真正嘅頂，唔係rolling window）
     brk_idx = None
-    earliest_check = max(range_window, n - fresh_days)
-    for j in range(n - 1, earliest_check - 1, -1):
-        if j - range_window < 0:
-            continue
-        window_high = max(seg_h[j - range_window:j])
-        if seg_h[j] > window_high:
+    for j in range(search_end, n):
+        if seg_h[j] > pole_top:
             brk_idx = j
             break
     if brk_idx is None:
         if diag_out is not None: diag_out['failedAt'] = 'no_recent_breakout'
         return None
 
-    range_h_seg = seg_h[brk_idx - range_window:brk_idx]
-    range_l_seg = seg_l[brk_idx - range_window:brk_idx]
-    range_top = max(range_h_seg)
-    range_low = min(range_l_seg)
-    if range_low <= 0:
+    range_h_seg = seg_h[pole_idx + 1:brk_idx]
+    range_l_seg = seg_l[pole_idx + 1:brk_idx]
+    range_top = pole_top
+    range_low = min(range_l_seg) if range_l_seg else None
+    if not range_l_seg or range_low <= 0:
         if diag_out is not None: diag_out['failedAt'] = 'invalid_range'
         return None
     range_pct = (range_top - range_low) / range_low * 100
@@ -336,15 +360,16 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
         diag_out['brkIdxFound'] = True
         diag_out['rangeTop'] = round(range_top, 2)
         diag_out['rangeLow'] = round(range_low, 2)
+        diag_out['rangeDays'] = brk_idx - (pole_idx + 1)
         diag_out['rangePct'] = round(range_pct, 2)
     if range_pct > 12:
         if diag_out is not None: diag_out['failedAt'] = 'range_too_wide'
         return None
 
-    # 窄幅唔等於橫行——平緩但持續嘅升勢，10日高低幅度都可以好窄。
+    # 窄幅唔等於橫行——平緩但持續嘅升勢，高低幅度都可以好窄。
     # 要額外check個range係咪真係「嚟嚟去去」（橫行），唔係淨係「慢慢咁繼續升」：
     # 攞range窗口頭尾嘅close，佢哋嘅淨移動（drift）如果佔咗成個range高低差好大部分，即係其實仲喺度trend緊，唔係休息緊
-    range_c_seg = seg_c[brk_idx - range_window:brk_idx]
+    range_c_seg = seg_c[pole_idx + 1:brk_idx]
     net_drift = range_c_seg[-1] - range_c_seg[0]
     drift_ratio = (abs(net_drift) / (range_top - range_low)) if (range_top - range_low) > 0 else 1
     if diag_out is not None: diag_out['driftRatio'] = round(drift_ratio, 2)
@@ -353,8 +378,6 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
         return None
 
     # 真正嘅派貨區要兩邊（頂+底）都俾人試過唔止一次，唔係淨係「跌落底一次，之後一路升去頂」
-    # （真實個案：JPM嘅所謂10日"range"，底部337.30淨係第一日試過，之後就一路爬升，高位反而試咗5次——
-    # 呢種單邊爬升唔係橫行，drift_ratio單靠首尾兩點會漏咗呢種case，要逐日check先夠穩陣）
     touch_tol = 1.5  # 貼近邊界嘅容忍度（%）
     low_touches = sum(1 for x in range_l_seg if (x - range_low) / range_low * 100 <= touch_tol)
     high_touches = sum(1 for x in range_h_seg if (range_top - x) / range_top * 100 <= touch_tol)
@@ -390,11 +413,10 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
         if diag_out is not None: diag_out['failedAt'] = 'return_too_old'
         return None
 
-    # Step 3：搵pole（畀T3/steepness bonus用，範圍寬鬆啲——搵唔到都唔會令個signal完全fail，
-    # 淨係冧到bonus分、T3會fallback用返range_low）
-    pole_lookback = 40
-    pole_start = max(0, (brk_idx - range_window) - pole_lookback)
-    pole_seg_l = seg_l[pole_start:brk_idx - range_window + 1]
+    # Step 3：搵A（pole起點，畀T3/steepness bonus用）—— pole_idx之前嘅最低位
+    a_lookback = 30
+    a_start = max(0, pole_idx - a_lookback)
+    pole_seg_l = seg_l[a_start:pole_idx + 1]
     a_price = min(pole_seg_l) if pole_seg_l else None
     pole_pct = ((range_top - a_price) / a_price * 100) if (a_price and a_price > 0) else None
     if diag_out is not None:
