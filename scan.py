@@ -46,7 +46,7 @@ STRATEGY_META = {
     "S1V1": {"name": "順勢交易(原版·前頂)", "dir": "Long", "live": True, "reqMax": 4, "bonusMax": 3},
     "S2": {"name": "趨勢終結",  "dir": "Short",      "live": False, "reqMax": 5, "bonusMax": 5},
     "S3": {"name": "突破交易",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
-    "S4": {"name": "假突破",    "dir": "Long/Short", "live": False, "reqMax": 4, "bonusMax": 4},
+    "S4": {"name": "假突破",    "dir": "Short",      "live": True,  "reqMax": 4, "bonusMax": 4},
     "S5": {"name": "支持阻力",  "dir": "Long",       "live": True,  "reqMax": 4, "bonusMax": 4},
     "S6": {"name": "圖表形態",  "dir": "Long",       "live": True,  "reqMax": 5, "bonusMax": 5},
     "S7": {"name": "52週新高動能", "dir": "Long",    "live": True,  "reqMax": 5, "bonusMax": 5},
@@ -282,8 +282,145 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
     }
 
 
-def detect_s5_confluence(idx, highs, lows, closes, diag_out=None,
-                          min_pct=4.0, leg_min_pct=6.0, conges_max_pct=9.0, price_round=2):
+def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
+    """
+    S4 假突破（淡倉）Playbook（原文：My Play Book - 橫行區假突破策略）：
+    急速/過度延伸嘅升勢（pole）之後，喺高位形成一段橫行派貨區（range）；
+    價格向上假突破呢個區，但好快返回派貨區之內 —— 返回嗰一刻就係淡倉入場位。
+
+    止蝕 = 假突破期間嘅最高位
+    T1   = 橫行區中間點（原文：可代替「假突破升浪的0.618」，兩者數值非常接近）
+    T2   = 橫行區底部
+    T3   = 假設橫行區跌穿，用返橫行區前嘅升浪（pole）的0.618
+
+    搵唔到就回傳 None。diag_out（optional）記低行到邊一步、實際數值係咩。
+    """
+    win = 60
+    start = max(0, idx - win)
+    seg_h = highs[start:idx + 1]
+    seg_l = lows[start:idx + 1]
+    seg_c = closes[start:idx + 1]
+    seg_v = (volumes[start:idx + 1] if volumes else [None] * len(seg_c))
+    n = len(seg_c)
+    range_window = 10   # range本身嘅lookback日數
+    fresh_days = 6       # breakout要喺最近幾日之內先算新鮮
+    revert_window = 6    # breakout之後最多畀幾多日等佢返落嚟
+
+    if n < range_window + 20:
+        if diag_out is not None: diag_out['failedAt'] = 'history_too_short'
+        return None
+
+    # Step 1：由今日開始向前搵breakout day —— high > 之前range_window日嘅最高high
+    brk_idx = None
+    earliest_check = max(range_window, n - fresh_days)
+    for j in range(n - 1, earliest_check - 1, -1):
+        if j - range_window < 0:
+            continue
+        window_high = max(seg_h[j - range_window:j])
+        if seg_h[j] > window_high:
+            brk_idx = j
+            break
+    if brk_idx is None:
+        if diag_out is not None: diag_out['failedAt'] = 'no_recent_breakout'
+        return None
+
+    range_h_seg = seg_h[brk_idx - range_window:brk_idx]
+    range_l_seg = seg_l[brk_idx - range_window:brk_idx]
+    range_top = max(range_h_seg)
+    range_low = min(range_l_seg)
+    if range_low <= 0:
+        if diag_out is not None: diag_out['failedAt'] = 'invalid_range'
+        return None
+    range_pct = (range_top - range_low) / range_low * 100
+    if diag_out is not None:
+        diag_out['brkIdxFound'] = True
+        diag_out['rangeTop'] = round(range_top, 2)
+        diag_out['rangeLow'] = round(range_low, 2)
+        diag_out['rangePct'] = round(range_pct, 2)
+    if range_pct > 12:
+        if diag_out is not None: diag_out['failedAt'] = 'range_too_wide'
+        return None
+
+    # 窄幅唔等於橫行——平緩但持續嘅升勢，10日高低幅度都可以好窄。
+    # 要額外check個range係咪真係「嚟嚟去去」（橫行），唔係淨係「慢慢咁繼續升」：
+    # 攞range窗口頭尾嘅close，佢哋嘅淨移動（drift）如果佔咗成個range高低差好大部分，即係其實仲喺度trend緊，唔係休息緊
+    range_c_seg = seg_c[brk_idx - range_window:brk_idx]
+    net_drift = range_c_seg[-1] - range_c_seg[0]
+    drift_ratio = (abs(net_drift) / (range_top - range_low)) if (range_top - range_low) > 0 else 1
+    if diag_out is not None: diag_out['driftRatio'] = round(drift_ratio, 2)
+    if drift_ratio > 0.5:
+        if diag_out is not None: diag_out['failedAt'] = 'range_not_flat'
+        return None
+
+    # Step 2：假突破期間嘅最高（可能唔止一日）+ 搵return day（close返落range_top之下）
+    brk_high = seg_h[brk_idx]
+    return_idx = None
+    for j in range(brk_idx, min(brk_idx + revert_window, n)):
+        if seg_h[j] > brk_high:
+            brk_high = seg_h[j]
+        if seg_c[j] < range_top:
+            return_idx = j
+            break
+    if return_idx is None:
+        if diag_out is not None:
+            diag_out['failedAt'] = 'not_reverted_yet'
+            diag_out['brkHigh'] = round(brk_high, 2)
+        return None
+
+    breakout_duration = return_idx - brk_idx + 1
+    days_since_return = (n - 1) - return_idx
+    if diag_out is not None:
+        diag_out['brkHigh'] = round(brk_high, 2)
+        diag_out['breakoutDuration'] = breakout_duration
+        diag_out['daysSinceReturn'] = days_since_return
+    if days_since_return > 5:
+        if diag_out is not None: diag_out['failedAt'] = 'return_too_old'
+        return None
+
+    # Step 3：搵pole（畀T3/steepness bonus用，範圍寬鬆啲——搵唔到都唔會令個signal完全fail，
+    # 淨係冧到bonus分、T3會fallback用返range_low）
+    pole_lookback = 40
+    pole_start = max(0, (brk_idx - range_window) - pole_lookback)
+    pole_seg_l = seg_l[pole_start:brk_idx - range_window + 1]
+    a_price = min(pole_seg_l) if pole_seg_l else None
+    pole_pct = ((range_top - a_price) / a_price * 100) if (a_price and a_price > 0) else None
+    if diag_out is not None:
+        diag_out['poleA'] = round(a_price, 2) if a_price is not None else None
+        diag_out['polePct'] = round(pole_pct, 2) if pole_pct is not None else None
+
+    entry = range_top
+    stop = brk_high
+    t1 = (range_top + range_low) / 2
+    t2 = range_low
+    t3 = (range_top - (range_top - a_price) * 0.618) if a_price else range_low
+
+    wick_ratio = None
+    if (brk_high - seg_l[brk_idx]) > 0:
+        wick_ratio = (brk_high - seg_c[brk_idx]) / (brk_high - seg_l[brk_idx])
+
+    brk_vol = seg_v[brk_idx]
+    vol_slice = [v for v in seg_v[max(0, brk_idx - 20):brk_idx] if v]
+    avg_vol20 = (sum(vol_slice) / len(vol_slice)) if vol_slice else None
+    brk_rvol = (brk_vol / avg_vol20) if (brk_vol and avg_vol20) else None
+
+    if diag_out is not None:
+        diag_out['wickRatio'] = round(wick_ratio, 2) if wick_ratio is not None else None
+        diag_out['brkRvol'] = round(brk_rvol, 2) if brk_rvol is not None else None
+        diag_out['failedAt'] = None
+
+    return {
+        "poleA": round(a_price, 2) if a_price else None, "poleTop": round(range_top, 2),
+        "rangeTop": round(range_top, 2), "rangeLow": round(range_low, 2),
+        "entry": round(entry, 2), "stop": round(stop, 2),
+        "t1": round(t1, 2), "t2": round(t2, 2), "t3": round(t3, 2),
+        "breakoutDuration": breakout_duration, "daysSinceReturn": days_since_return,
+        "polePct": round(pole_pct, 2) if pole_pct is not None else None,
+        "wickRatio": round(wick_ratio, 2) if wick_ratio is not None else None,
+        "brkRvol": round(brk_rvol, 2) if brk_rvol is not None else None,
+    }
+
+
+def detect_s5_confluence(idx, highs, lows, closes, diag_out=None):
     """
     S5 支持阻力會被尊重（Playbook）：
     搵一段「直線向上」嘅 LTF 升浪(A底→B頂，中間唔可以有太多內部反覆)，
@@ -300,14 +437,6 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None,
     diag_out（optional）：如果傳一個dict入嚟，會畀呢個function喺內部逐步寫低行到邊一步、
     嗰步嘅實際數值係咩，等你搵唔到confluence嗰陣可以知道係邊一關卡住，唔係淨係得一個None。
     唔傳（default）就完全冧有額外開銷，行為同之前一模一樣——股票版嗰個call site冧使郁。
-
-    min_pct/leg_min_pct/conges_max_pct（optional，default=股票版原本嘅硬編碼值4.0/6.0/9.0）：
-    2026-08-05debug發現，forex call site一直用緊呢組股票校準嘅硬門檻，
-    但forex major pair嘅日常波幅細好多（8對pair嘅ATR%由0.35%到0.99%不等，
-    差成接近3倍），單一個4%門檻套落所有pair度，結果係60日窗口入面
-    幾乎搵唔到一個pivot（EURUSD/GBPUSD/USDCAD/USDCHF/EURGBP全部0個confluence，
-    連續6日61次hourly scan全數落空）。而家開返呢3個門檻做參數，
-    等forex call site可以按自己pair嘅ATR%動態校準，股票call site唔傳就同原本行為一致。
     """
     win = 60
     start = max(0, idx - win)
@@ -319,7 +448,7 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None,
         if diag_out is not None: diag_out['failedAt'] = 'history_too_short'
         return None
 
-    zz = zigzag_pivots(seg_h, seg_l, min_pct=min_pct)
+    zz = zigzag_pivots(seg_h, seg_l, min_pct=4.0)
     h_piv = [(i, p) for i, p, t in zz if t == 'H']
     l_piv = [(i, p) for i, p, t in zz if t == 'L']
     if not h_piv or not l_piv:
@@ -353,7 +482,7 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None,
         return None
     leg_pct = impulse_h / a_price * 100
     if diag_out is not None: diag_out['legPct'] = round(leg_pct, 2)
-    if leg_pct < leg_min_pct:
+    if leg_pct < 6:
         if diag_out is not None: diag_out['failedAt'] = 'leg_too_small'
         return None  # 升浪太細，唔算數（避免噪音）
     if (b_idx - a_idx) < 5:
@@ -378,7 +507,7 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None,
         return None
     conges_range_pct = (conges_top - conges_bottom) / conges_bottom * 100
     if diag_out is not None: diag_out['congesRangePct'] = round(conges_range_pct, 2)
-    if conges_range_pct > conges_max_pct:
+    if conges_range_pct > 9:
         if diag_out is not None: diag_out['failedAt'] = 'congestion_too_wide'
         return None  # 太闊，唔算「窄幅」整理區
 
@@ -401,18 +530,18 @@ def detect_s5_confluence(idx, highs, lows, closes, diag_out=None,
     # 已經跌穿 A 底 = 結構失敗
     failed = today_c < a_price
 
-    entry = round(fib786, price_round)
-    stop = round(a_price, price_round)
+    entry = round(fib786, 2)
+    stop = round(a_price, 2)
     post_b_low = min(seg_l[b_idx + 1:n]) if n > b_idx + 1 else today_c
-    t1 = round(post_b_low + (b_price - post_b_low) * 0.618, price_round)
-    t2 = round(b_price, price_round)
+    t1 = round(post_b_low + (b_price - post_b_low) * 0.618, 2)
+    t2 = round(b_price, 2)
 
     days_since_b = (n - 1) - b_idx
     touched = today_c <= entry * 1.01  # 現價已經貼近/跌到入場位
 
     return {
-        "a": round(a_price, price_round), "b": round(b_price, price_round),
-        "congesTop": round(conges_top, price_round), "congesBottom": round(conges_bottom, price_round),
+        "a": round(a_price, 2), "b": round(b_price, 2),
+        "congesTop": round(conges_top, 2), "congesBottom": round(conges_bottom, 2),
         "fib786": entry, "entry": entry, "stop": stop, "t1": t1, "t2": t2,
         "failed": failed, "touched": touched, "daysSinceB": days_since_b,
     }
@@ -725,16 +854,36 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                      "brokeToday": None, "rvolToday": None, "methodAOk": None, "daysSinceB": None,
                      "entry": None, "stop": None, "t1": None, "t2": None}
 
-    # ── S4 假突破（Required 3/4, Bonus 4/4）──
-    c = [
-        (pct_from_high is not None and pct_from_high <= 8),
-        (45 <= r <= 65),
-        (perf1w is not None and -4 <= perf1w <= 2),
-        (perf1m is not None and abs(perf1m) < 8),
-    ]
-    b = []  # Cowork 冇定義 S4 bonus（未實戰）
-    res["S4"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": 0, "ready": sum(c) >= 3,
-                 "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
+    # ── S4 假突破（淡倉，Required 4/4, Bonus 4/4）── 跟原文Playbook：橫行區假突破策略
+    s4_fb = detect_s4_false_breakout(idx, highs, lows, closes, volumes)
+    if s4_fb:
+        risk = s4_fb["stop"] - s4_fb["entry"]
+        rr_t2 = ((s4_fb["entry"] - s4_fb["t2"]) / risk) if risk > 0 else 0
+        c = [
+            (s4_fb["daysSinceReturn"] <= 1),                                    # R1 訊號夠新鮮（今日/琴日先返落嚟）
+            (s4_fb["breakoutDuration"] <= 3),                                   # R2 假突破時間夠短（原文條件五）
+            (rr_t2 >= 1.5),                                                     # R3 風險回報基本合理
+            (s4_fb["rangeTop"] > 0 and (s4_fb["rangeTop"]-s4_fb["rangeLow"])/s4_fb["rangeLow"]*100 <= 8),  # R4 橫行區夠窄
+        ]
+        b = [
+            (s4_fb["polePct"] is not None and s4_fb["polePct"] >= 15),          # B1 升浪夠急夠延伸（原文條件一/二）
+            (s4_fb["wickRatio"] is not None and s4_fb["wickRatio"] >= 0.5),     # B2 假突破有明顯上影線（原文條件四/六）
+            (s4_fb["brkRvol"] is not None and s4_fb["brkRvol"] < 1.0),          # B3 假突破冇帶量（原文條件七）
+            (rr_t2 >= 2.5),                                                     # B4 風險回報夠靚
+        ]
+        res["S4"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+                     "keyvals": {"橫行區": f"{s4_fb['rangeLow']}-{s4_fb['rangeTop']}", "假突破高位": s4_fb["stop"]},
+                     "poleA": s4_fb["poleA"], "rangeTop": s4_fb["rangeTop"], "rangeLow": s4_fb["rangeLow"],
+                     "entry": s4_fb["entry"], "stop": s4_fb["stop"],
+                     "t1": s4_fb["t1"], "t2": s4_fb["t2"], "t3": s4_fb["t3"],
+                     "breakoutDuration": s4_fb["breakoutDuration"], "daysSinceReturn": s4_fb["daysSinceReturn"],
+                     "polePct": s4_fb["polePct"], "wickRatio": s4_fb["wickRatio"], "brkRvol": s4_fb["brkRvol"]}
+    else:
+        res["S4"] = {"conds": [False]*4, "bonus": [False]*4, "score": 0, "bonusScore": 0, "ready": False,
+                     "keyvals": {}, "poleA": None, "rangeTop": None, "rangeLow": None,
+                     "entry": None, "stop": None, "t1": None, "t2": None, "t3": None,
+                     "breakoutDuration": None, "daysSinceReturn": None,
+                     "polePct": None, "wickRatio": None, "brkRvol": None}
 
     # ── S5 支持阻力（Required 4/4, Bonus 4/4）──
     c = [
@@ -1444,19 +1593,8 @@ def get_forex_s5_data():
     S5(支持阻力被尊重)套用落8隻major貨幣對。呢個策略唔需要「持續單邊動能」——
     淨係需要一段直線向上嘅LTF升浪 + 之前有窄幅Congestion Area，現價回調到0.786同佢重疊。
     外匯係全世界機構參與最深嘅市場，「支持位受尊重」呢個邏輯（大戶以期望值思考，
-    响高期望值進場點同時進場，形成支持）可能仲穩過股票。
-
-    2026-08-05 debug：之前直接冧校準，call detect_s5_confluence()冇傳任何門檻，
-    即係一直用緊股票版嘅硬門檻(zigzag 4%/leg 6%/congestion 9%)。實測連續6日、
-    61次hourly scan、8對pair全部confluenceFound=False——因為major forex pair嘅
-    日常波幅（14期ATR%）由0.35%(EURGBP)到0.99%(NZDUSD)不等，遠低於股票，
-    60日窗口入面幾乎搵唔到一個夠格嘅zigzag pivot。而家改用「每對pair自己嘅
-    ATR% × 1.5」做動態門檻，等每對貨幣按自己嘅波幅自我校準（呢個k=1.5係
-    根據forex_charts.json歷史數據backtest嘅起始值，令8對pair都有合理、
-    分佈平均嘅confluenceFound命中率，唔再淨係得一兩隻高波幅pair先有反應——
-    但呢個只係第一版校準，要睇住實際touched=true嘅trigger質素再微調）。
-    price_round改用5位（forex pip精度），唔再好似股票咁淨係影2位小數
-    （會令entry/stop/t1/t2全部變成冇意義嘅"1.15"）。
+    响高期望值進場點同時進場，形成支持）可能仲穩過股票。公式完全跟返detect_s5_confluence，
+    冧使額外校準（因為呢個策略本身就係relative嘅位置關係，唔靠絕對百分比門檻）。
     """
     out = {}
     for fx in FOREX_PAIRS:
@@ -1466,17 +1604,8 @@ def get_forex_s5_data():
                 continue
             fc, fh, fl = fxh["close"], fxh["high"], fxh["low"]
             fidx = len(fc) - 1
-            f_atr14 = atr(fh, fl, fc, 14)
-            atr_val = f_atr14[fidx] if fidx < len(f_atr14) else None
-            atr_pct = (atr_val / fc[fidx] * 100) if (atr_val and fc[fidx]) else 1.5  # fallback 1.5% 若ATR未算到
-            dyn_min_pct = max(0.5, atr_pct * 1.5)   # 每對pair自己ATR%×1.5，設0.5%地板避免極端窄幅pair門檻歸零
-            dyn_leg_pct = dyn_min_pct * 1.5
             diag = {}
-            conf = detect_s5_confluence(fidx, fh, fl, fc, diag_out=diag,
-                                         min_pct=dyn_min_pct, leg_min_pct=dyn_leg_pct,
-                                         conges_max_pct=9.0, price_round=5)
-            if diag is not None:
-                diag['dynMinPct'] = round(dyn_min_pct, 3)
+            conf = detect_s5_confluence(fidx, fh, fl, fc, diag_out=diag)
             out[fx] = {
                 "display": FOREX_DISPLAY_NAMES.get(fx, fx),
                 "close": round(fc[fidx], 5),
