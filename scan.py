@@ -352,6 +352,19 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
         if diag_out is not None: diag_out['failedAt'] = 'range_not_flat'
         return None
 
+    # 真正嘅派貨區要兩邊（頂+底）都俾人試過唔止一次，唔係淨係「跌落底一次，之後一路升去頂」
+    # （真實個案：JPM嘅所謂10日"range"，底部337.30淨係第一日試過，之後就一路爬升，高位反而試咗5次——
+    # 呢種單邊爬升唔係橫行，drift_ratio單靠首尾兩點會漏咗呢種case，要逐日check先夠穩陣）
+    touch_tol = 1.5  # 貼近邊界嘅容忍度（%）
+    low_touches = sum(1 for x in range_l_seg if (x - range_low) / range_low * 100 <= touch_tol)
+    high_touches = sum(1 for x in range_h_seg if (range_top - x) / range_top * 100 <= touch_tol)
+    if diag_out is not None:
+        diag_out['lowTouches'] = low_touches
+        diag_out['highTouches'] = high_touches
+    if low_touches < 2 or high_touches < 2:
+        if diag_out is not None: diag_out['failedAt'] = 'range_not_two_sided'
+        return None
+
     # Step 2：假突破期間嘅最高（可能唔止一日）+ 搵return day（close返落range_top之下）
     brk_high = seg_h[brk_idx]
     return_idx = None
