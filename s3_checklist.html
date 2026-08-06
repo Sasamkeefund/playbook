@@ -297,12 +297,12 @@
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <div>
             <div style="font-size:11px;color:#555;margin-bottom:4px">A點（推進浪起點）</div>
-            <input class="val-input" id="v_a" type="number" step="0.01" placeholder="11.33" style="width:100px" oninput="calcFib()">
+            <input class="val-input" id="v_a" type="number" step="0.01" placeholder="11.33" style="width:100px" oninput="calcFib();updateDaily();calcEntry()">
           </div>
           <div style="font-size:18px;color:#555;margin-top:16px">→</div>
           <div>
             <div style="font-size:11px;color:#555;margin-bottom:4px">B點（52W高位）</div>
-            <input class="val-input" id="v_b" type="number" step="0.01" placeholder="50.23" style="width:100px" oninput="calcFib()">
+            <input class="val-input" id="v_b" type="number" step="0.01" placeholder="50.23" style="width:100px" oninput="calcFib();updateDaily();calcEntry()">
           </div>
           <div style="font-size:18px;color:#555;margin-top:16px">=</div>
           <div>
@@ -325,17 +325,10 @@
     <div class="card">
       <div style="font-size:13px;color:#aaa;margin-bottom:14px">每日收市後填入，即時知道今日應該點做</div>
 
-      <!-- Buildup關鍵位（一次填，Step 5/6共用） -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e2130">
-        <div>
-          <div style="font-size:11px;color:#555;margin-bottom:4px">A點（推進浪起點）</div>
-          <input class="val-input" id="s5_a" type="number" step="0.01" placeholder="205.65" style="width:100%" oninput="updateDaily();calcEntry()">
-        </div>
-        <div>
-          <div style="font-size:11px;color:#555;margin-bottom:4px">B點（突破線/52W高）</div>
-          <input class="val-input" id="s5_b" type="number" step="0.01" placeholder="327.97" style="width:100%" oninput="updateDaily();calcEntry()">
-        </div>
-        <div>
+      <!-- Buildup底部（A點/B點已經喺Step 4填咗，呢度共用，唔使再填） -->
+      <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e2130">
+        <div style="font-size:11px;color:#444;margin-bottom:8px">A點/B點已經用返 Step 4 填嘅數值，呢度只係補一個新field：</div>
+        <div style="max-width:220px">
           <div style="font-size:11px;color:#555;margin-bottom:4px">Buildup底部</div>
           <input class="val-input" id="s5_bottom" type="number" step="0.01" placeholder="319.00" style="width:100%" oninput="updateDaily();calcEntry()">
         </div>
@@ -469,8 +462,8 @@
   }
 
   function calcEntry() {
-    var a = parseFloat(document.getElementById('s5_a').value);
-    var b = parseFloat(document.getElementById('s5_b').value);
+    var a = parseFloat(document.getElementById('v_a').value);
+    var b = parseFloat(document.getElementById('v_b').value);
     var bottom = parseFloat(document.getElementById('s5_bottom').value);
     var entry = parseFloat(document.getElementById('calc_entry').value);
     var res = document.getElementById('calcResult');
@@ -633,8 +626,8 @@
   }
 
   function computeRR(entry) {
-    var a = parseFloat(document.getElementById('s5_a').value);
-    var b = parseFloat(document.getElementById('s5_b').value);
+    var a = parseFloat(document.getElementById('v_a').value);
+    var b = parseFloat(document.getElementById('v_b').value);
     var bottom = parseFloat(document.getElementById('s5_bottom').value);
     if (isNaN(a) || isNaN(b) || isNaN(bottom) || b <= a || isNaN(entry)) return null;
     var stopLoss = bottom * 0.98;
