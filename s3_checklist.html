@@ -325,6 +325,22 @@
     <div class="card">
       <div style="font-size:13px;color:#aaa;margin-bottom:14px">每日收市後填入，即時知道今日應該點做</div>
 
+      <!-- Buildup關鍵位（一次填，Step 5/6共用） -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1e2130">
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">A點（推進浪起點）</div>
+          <input class="val-input" id="s5_a" type="number" step="0.01" placeholder="205.65" style="width:100%" oninput="updateDaily();calcEntry()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">B點（突破線/52W高）</div>
+          <input class="val-input" id="s5_b" type="number" step="0.01" placeholder="327.97" style="width:100%" oninput="updateDaily();calcEntry()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">Buildup底部</div>
+          <input class="val-input" id="s5_bottom" type="number" step="0.01" placeholder="319.00" style="width:100%" oninput="updateDaily();calcEntry()">
+        </div>
+      </div>
+
       <!-- 今日Close vs 突破線 -->
       <div class="decision-phase">
         <div class="phase-title">① 今日 Close 係突破線以上定以下？</div>
@@ -333,6 +349,14 @@
           <button class="dec-btn" id="d1below" onclick="setDay1('below')">📉 以下（跌穿）</button>
         </div>
         <div style="font-size:11px;color:#555;margin-top:4px">突破第一日：Close &gt; 突破線 → 選「以上」，填 RelVol 判斷係手法A定等待</div>
+      </div>
+
+      <!-- 今日Close數值（above/below都要填，above用嚟計R:R參考，below用嚟記假突破低位） -->
+      <div class="decision-phase" id="d0wrap" style="display:none">
+        <div class="phase-title">今日 Close 實際數值</div>
+        <div style="margin:10px 0">
+          <input class="val-input" id="v_daily_close" type="number" step="0.01" placeholder="330.00" style="width:120px" oninput="updateDaily()">
+        </div>
       </div>
 
       <!-- 今日RelVol -->
@@ -347,10 +371,7 @@
       <!-- 跌穿後額外資訊 -->
       <div class="decision-phase" id="d3wrap" style="display:none">
         <div class="phase-title">③ 記低今日 Close（假突破最低候選）</div>
-        <div style="margin:10px 0">
-          <input class="val-input" id="v_daily_close" type="number" step="0.01" placeholder="324.60" style="width:120px" oninput="updateDaily()">
-          <div style="font-size:11px;color:#555;margin-top:4px">之後等再次突破，用呢個計手法B止損</div>
-        </div>
+        <div style="font-size:11px;color:#555;margin-top:4px">已經用返上面填嘅今日Close，之後等再次突破，用呢個計手法B止損</div>
       </div>
 
       <!-- 每日結果 -->
@@ -376,21 +397,8 @@
         — 先完成 Step 5 —
       </div>
 
-      <!-- 固定輸入：A點、B點、Buildup底部 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
-        <div>
-          <div style="font-size:11px;color:#555;margin-bottom:4px">A點（推進浪起點）</div>
-          <input class="val-input" id="calc_a" type="number" step="0.01" placeholder="205.65" style="width:100%" oninput="calcEntry()">
-        </div>
-        <div>
-          <div style="font-size:11px;color:#555;margin-bottom:4px">B點（52W高位）</div>
-          <input class="val-input" id="calc_b" type="number" step="0.01" placeholder="327.97" style="width:100%" oninput="calcEntry()">
-        </div>
-        <div>
-          <div style="font-size:11px;color:#555;margin-bottom:4px">Buildup底部</div>
-          <input class="val-input" id="calc_bottom" type="number" step="0.01" placeholder="319.00" style="width:100%" oninput="calcEntry()">
-        </div>
-      </div>
+      <!-- A點/B點/Buildup底部已經喺 Step 5 填咗，呢度共用同一組數值 -->
+      <div style="font-size:11px;color:#444;margin-bottom:14px">A點/B點/Buildup底部已經喺 Step 5 填咗，呢度自動共用，唔使再填一次</div>
 
       <!-- 入場價：根據手法顯示不同提示 -->
       <div id="entryWrap" style="margin-bottom:14px;display:none">
@@ -461,14 +469,14 @@
   }
 
   function calcEntry() {
-    var a = parseFloat(document.getElementById('calc_a').value);
-    var b = parseFloat(document.getElementById('calc_b').value);
-    var bottom = parseFloat(document.getElementById('calc_bottom').value);
+    var a = parseFloat(document.getElementById('s5_a').value);
+    var b = parseFloat(document.getElementById('s5_b').value);
+    var bottom = parseFloat(document.getElementById('s5_bottom').value);
     var entry = parseFloat(document.getElementById('calc_entry').value);
     var res = document.getElementById('calcResult');
 
     if (isNaN(a) || isNaN(b) || isNaN(bottom) || b <= a) {
-      res.style.borderColor = '#2a2d3a'; res.innerHTML = '— 填入 A點、B點、Buildup底部 —'; res.style.color = '#555';
+      res.style.borderColor = '#2a2d3a'; res.innerHTML = '— 先喺 Step 5 填 A點、B點、Buildup底部 —'; res.style.color = '#555';
       return;
     }
 
@@ -618,9 +626,37 @@
     day1Choice = choice;
     document.getElementById('d1above').className = 'dec-btn' + (choice==='above' ? ' active-yes' : '');
     document.getElementById('d1below').className = 'dec-btn' + (choice==='below' ? ' active-yes' : '');
+    document.getElementById('d0wrap').style.display = 'block';
     document.getElementById('d2wrap').style.display = 'block';
     document.getElementById('d3wrap').style.display = choice==='below' ? 'block' : 'none';
     updateDaily();
+  }
+
+  function computeRR(entry) {
+    var a = parseFloat(document.getElementById('s5_a').value);
+    var b = parseFloat(document.getElementById('s5_b').value);
+    var bottom = parseFloat(document.getElementById('s5_bottom').value);
+    if (isNaN(a) || isNaN(b) || isNaN(bottom) || b <= a || isNaN(entry)) return null;
+    var stopLoss = bottom * 0.98;
+    var risk = entry - stopLoss;
+    if (risk <= 0) return null;
+    var buildupHeight = b - bottom;
+    var impulseHeight = b - a;
+    var t1 = b + buildupHeight * 1.5;
+    var t2 = b + impulseHeight * 0.618;
+    return { stopLoss: stopLoss, t1: t1, t2: t2, rr1: (t1 - entry) / risk, rr2: (t2 - entry) / risk };
+  }
+
+  // R:R 純粹參考，唔係入場門檻（你自己嘅判斷：好多時T1唔到但T2會到，唔應該因為T1 R:R唔夠就唔入）
+  function rrRefHtml(entry) {
+    var rr = computeRR(entry);
+    if (!rr) return '<div style="font-size:11px;color:#444;margin-top:8px">（填埋上面 A點/B點/Buildup底部，呢度會顯示 R:R 參考）</div>';
+    var rr1c = rr.rr1 >= 2 ? '#00c896' : rr.rr1 >= 1 ? '#e8a840' : '#f07070';
+    var rr2c = rr.rr2 >= 2 ? '#00c896' : rr.rr2 >= 1 ? '#e8a840' : '#f07070';
+    return '<div style="font-size:11px;color:#777;margin-top:8px;padding-top:8px;border-top:1px solid #2a2d3a">' +
+      'R:R參考（唔係門檻——T1唔到T2都可以到）：止損 $' + rr.stopLoss.toFixed(2) +
+      ' ｜ T1 $' + rr.t1.toFixed(2) + ' <span style="color:' + rr1c + ';font-weight:700">' + rr.rr1.toFixed(2) + 'x</span>' +
+      ' ｜ T2 $' + rr.t2.toFixed(2) + ' <span style="color:' + rr2c + ';font-weight:700">' + rr.rr2.toFixed(2) + 'x</span></div>';
   }
 
   function updateDaily() {
@@ -631,10 +667,12 @@
       return;
     }
 
+    var todayClose = parseFloat(document.getElementById('v_daily_close').value);
+
     var vol = parseFloat(document.getElementById('v_daily_vol').value);
     if (isNaN(vol) || document.getElementById('v_daily_vol').value==='') {
       res.style.background='#12141d'; res.style.borderColor='#2a2d3a'; res.style.color='#555';
-      res.innerHTML = '— 填入今日 RelVol —';
+      res.innerHTML = '— 填入今日 Close 同 RelVol —';
       return;
     }
 
@@ -648,7 +686,8 @@
           'RelVol ' + vol.toFixed(2) + 'x ✅<br>' +
           '→ 突破第一日：手法A，今日 Close 即係入場價<br>' +
           '→ 之後日子守住：手法C，今日 Close 即係入場價<br>' +
-          '→ 落 Step 6 填入今日 Close 作入場價</div>';
+          '→ 落 Step 6 填入今日 Close 作入場價</div>' +
+          rrRefHtml(todayClose);
         updateStep6('A', null, null, null);
       } else if (vol >= 1.0) {
         res.style.background='#2a1e00'; res.style.borderColor='#e8a840'; res.style.color='#e8a840';
@@ -657,7 +696,8 @@
           '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
           'RelVol ' + vol.toFixed(2) + 'x，守住突破線但量唔夠。<br>' +
           '→ 明日繼續填 Step 5<br>' +
-          '→ 記低今日 Close 做止損參考</div>';
+          '→ 記低今日 Close 做止損參考</div>' +
+          rrRefHtml(todayClose);
       } else {
         res.style.background='#1a2540'; res.style.borderColor='#6aabf0'; res.style.color='#6aabf0';
         res.innerHTML =
@@ -665,13 +705,13 @@
           '<div style="font-size:12px;color:#aaa;line-height:1.8">' +
           'RelVol ' + vol.toFixed(2) + 'x，縮量守住係健康整固。<br>' +
           '→ 明日繼續填 Step 5<br>' +
-          '→ 記低今日 Close 做止損參考</div>';
+          '→ 記低今日 Close 做止損參考</div>' +
+          rrRefHtml(todayClose);
       }
     }
 
     // 情況2：跌穿突破線（假突破）
     if (day1Choice === 'below') {
-      var todayClose = parseFloat(document.getElementById('v_daily_close').value);
       if (vol >= 1.5) {
         res.style.background='#2a1010'; res.style.borderColor='#f07070'; res.style.color='#f07070';
         res.innerHTML =
