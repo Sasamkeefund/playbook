@@ -157,6 +157,9 @@
     <div class="sect">⭐ Watchlist 提醒（S6 旗形）</div>
     <div id="s6Alerts" class="loading">讀緊…</div>
 
+    <div class="sect">⭐ Watchlist 提醒（S3 突破）</div>
+    <div id="s3Alerts" class="loading">讀緊…</div>
+
     <div class="footer">
       <p id="marketTime">大市數據：…</p>
       <p id="scanTime">掃描數據：…</p>
@@ -223,19 +226,22 @@
     async function load(){
       const now=new Date();
       const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
-      const [marketR, scanR, paperR, fibR] = await Promise.allSettled([
+      const [marketR, scanR, paperR, fibR, wlR] = await Promise.allSettled([
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t='+Date.now()).then(r=>r.json()),
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
         fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json()),
-        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json())
+        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json()),
+        fetch(WL_API+'?t='+Date.now()).then(r=>r.json())
       ]);
       const market = marketR.status==='fulfilled'? marketR.value : null;
       const scan = scanR.status==='fulfilled'? scanR.value : null;
       const paperData = paperR.status==='fulfilled'? paperR.value : null;
       const fibMap = fibR.status==='fulfilled'? (fibR.value||{}) : {};
+      const watchlist = wlR.status==='fulfilled'? (wlR.value.watchlist||[]) : [];
       renderMarket(market);renderMacroBanner(market);renderStrategies(scan);
       renderPaperAlerts(paperData,scan);
       renderS6Alerts(fibMap,scan);
+      renderS3Alerts(watchlist,scan);
       document.getElementById('updated').textContent='開市前大市檢查 · Limit Order 影響';
       document.getElementById('marketTime').textContent='大市數據：'+(market?toHKT(market.updated):'攞唔到');
       document.getElementById('scanTime').textContent='掃描數據：'+(scan?toHKT(scan.updated):'攞唔到');
@@ -360,6 +366,41 @@
         }
       });
       if(!cards.length){box.innerHTML='<div class="empty-note">🔕 未有任何 S6 頸線觸發（好似 TradingView alarm 咁，未response就係未response，唔使睇）</div>';return;}
+      box.innerHTML=cards.map(c=>`<div class="alert-card ${c.color}"><div class="ic">${c.ic}</div><div class="body">`
+        +`<div class="tk"><a href="watchlist.html">${c.ticker}</a></div>`
+        +`<div class="msg">${c.msg}</div><div class="sub2">${c.sub}</div></div></div>`).join('');
+    }
+    function renderS3Alerts(watchlist,scan){
+      const box=document.getElementById('s3Alerts');
+      const s3Items=(watchlist||[]).filter(w=>(w.strategy||'').toUpperCase()==='S3');
+      if(!s3Items.length){box.innerHTML='<div class="empty-note">Watchlist 暫時冇 S3 股票</div>';return;}
+      const stockMap={};
+      if(scan&&scan.stocks)scan.stocks.forEach(x=>{stockMap[x.ticker.toUpperCase()]=x;});
+      const cards=[];
+      // 跟返S6同一套「純粹alarm模式」：淨係真係有嘢郁先出card，仲喺形成中就唔顯示
+      s3Items.forEach(w=>{
+        const tk=w.ticker.toUpperCase();
+        const s=stockMap[tk];
+        if(!s)return;
+        const s3=s.strategies&&s.strategies.S3;
+        if(!s3||s3.buildupB==null)return;
+        const b=s3.buildupB;
+        const closeTxt=(s.close!=null?'$'+s.close.toFixed(2):'—');
+        if(s3.methodAOk){
+          cards.push({color:'green',ic:'🔥',ticker:tk,
+            msg:'今日放量突破 Buildup頂 $'+b+'，手法A confirmed',
+            sub:'RVOL '+s3.rvolToday+'x ｜ 現價 '+closeTxt});
+        }else if(s3.crossCount>=2){
+          cards.push({color:'amber',ic:'🔁',ticker:tk,
+            msg:'已經穿咗 '+s3.crossCount+' 次 $'+b+'——似手法B（已有假突破，而家再次突破）',
+            sub:'現價 '+closeTxt+' ｜ 落 Checklist Step 5/6 confirm入場價'});
+        }else if(s3.brokeToday){
+          cards.push({color:'amber',ic:'⚠️',ticker:tk,
+            msg:'今日Close過咗 $'+b+'，但RVOL '+s3.rvolToday+'x 未夠1.5x，未算手法A',
+            sub:'留意會唔會發展成手法C（回測守住後再上）'});
+        }
+      });
+      if(!cards.length){box.innerHTML='<div class="empty-note">🔕 未有任何 S3 突破線觸發</div>';return;}
       box.innerHTML=cards.map(c=>`<div class="alert-card ${c.color}"><div class="ic">${c.ic}</div><div class="body">`
         +`<div class="tk"><a href="watchlist.html">${c.ticker}</a></div>`
         +`<div class="msg">${c.msg}</div><div class="sub2">${c.sub}</div></div></div>`).join('');
