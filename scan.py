@@ -272,11 +272,22 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
 
     days_since_b = (n - 1) - best["b_idx"]
 
+    # 「穿咗幾多次」——由B之後到今日，逐日行一次，數幾多次由 close<=B 變做 close>B。
+    # 每一次轉變都係一次獨立嘅突破嘗試：第1次=手法A情境；第2次或以上=已經有假突破，而家係手法B「再次突破」。
+    post_c_all = seg_c[best["b_idx"] + 1:n]
+    cross_count = 0
+    was_above = False
+    for pc in post_c_all:
+        is_above = pc > b_price
+        if is_above and not was_above:
+            cross_count += 1
+        was_above = is_above
+
     return {
         "a": round(a_price, 2), "b": round(b_price, 2), "buildupLow": round(buildup_low, 2),
         "buildupHeight": round(buildup_h, 2), "impulseHeight": round(impulse_h, 2),
         "brokeToday": broke_today, "rvolToday": round(rvol_today, 2) if rvol_today is not None else None,
-        "methodAOk": method_a_ok, "failed": failed, "daysSinceB": days_since_b,
+        "methodAOk": method_a_ok, "failed": failed, "daysSinceB": days_since_b, "crossCount": cross_count,
         "stop": round(stop, 2), "t1": round(t1, 2), "t2": round(t2, 2),
         "entry": round(today_c, 2) if method_a_ok else None,
     }
@@ -883,18 +894,21 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         keyvals = {
             "A(推進浪底)": s3_buildup["a"], "B(突破線)": s3_buildup["b"],
             "Buildup底": s3_buildup["buildupLow"], "距B幾多日": s3_buildup["daysSinceB"],
+            "穿咗幾多次": s3_buildup["crossCount"],
         }
         res["S3"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
                      "keyvals": keyvals,
                      "buildupA": s3_buildup["a"], "buildupB": s3_buildup["b"], "buildupLow": s3_buildup["buildupLow"],
                      "brokeToday": s3_buildup["brokeToday"], "rvolToday": s3_buildup["rvolToday"],
                      "methodAOk": s3_buildup["methodAOk"], "daysSinceB": s3_buildup["daysSinceB"],
+                     "crossCount": s3_buildup["crossCount"],
                      "entry": s3_buildup["entry"], "stop": s3_buildup["stop"],
                      "t1": s3_buildup["t1"], "t2": s3_buildup["t2"]}
     else:
         res["S3"] = {"conds": [False]*5, "bonus": [False]*5, "score": 0, "bonusScore": 0, "ready": False,
                      "keyvals": {}, "buildupA": None, "buildupB": None, "buildupLow": None,
                      "brokeToday": None, "rvolToday": None, "methodAOk": None, "daysSinceB": None,
+                     "crossCount": None,
                      "entry": None, "stop": None, "t1": None, "t2": None}
 
     # ── S4 假突破（淡倉，Required 4/4, Bonus 4/4）── 跟原文Playbook：橫行區假突破策略
@@ -1553,7 +1567,7 @@ def build_record(ticker, hist):
         # S3 突破交易（Buildup）：pass-through 結構價位 + entry/stop/T1/T2
         if s == "S3":
             for k in ("buildupA", "buildupB", "buildupLow", "brokeToday", "rvolToday",
-                      "methodAOk", "daysSinceB", "entry", "stop", "t1", "t2"):
+                      "methodAOk", "daysSinceB", "crossCount", "entry", "stop", "t1", "t2"):
                 strategies[s][k] = today[s].get(k)
         # S4 假突破（淡倉）：pass-through 橫行區/假突破/entry/stop/T1-T3
         if s == "S4":
