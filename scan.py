@@ -403,6 +403,14 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
             diag_out['brkHigh'] = round(brk_high, 2)
         return None
 
+    # 原文明確提過：「假突破的幅度不能太多也不能太少」「太少嘅話...橫行狀態不會因此被改變...
+    # 太細嘅假突破機會會建議放棄」。淨係 high > pole_top 唔夠，要有夠意義嘅幅度先算「真.假突破」。
+    breakout_excess_pct = (brk_high - pole_top) / pole_top * 100
+    if diag_out is not None: diag_out['breakoutExcessPct'] = round(breakout_excess_pct, 3)
+    if breakout_excess_pct < 0.3:
+        if diag_out is not None: diag_out['failedAt'] = 'breakout_too_small'
+        return None
+
     breakout_duration = return_idx - brk_idx + 1
     days_since_return = (n - 1) - return_idx
     if diag_out is not None:
