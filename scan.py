@@ -906,7 +906,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
             (s4_fb["daysSinceReturn"] <= 3),                                    # R1 訊號夠新鮮（3日內都算，太窄冧夠嘢睇）
             (s4_fb["breakoutDuration"] <= 3),                                   # R2 假突破時間夠短（原文條件五）
             (rr_t2 >= 1.5),                                                     # R3 風險回報基本合理
-            (s4_fb["rangeTop"] > 0 and (s4_fb["rangeTop"]-s4_fb["rangeLow"])/s4_fb["rangeLow"]*100 <= 8),  # R4 橫行區夠窄
+            (s4_fb["rangeTop"] > 0 and (s4_fb["rangeTop"]-s4_fb["rangeLow"])/s4_fb["rangeLow"]*100 <= 10),  # R4 橫行區夠窄
         ]
         b = [
             (s4_fb["polePct"] is not None and s4_fb["polePct"] >= 15),          # B1 升浪夠急夠延伸（原文條件一/二）
