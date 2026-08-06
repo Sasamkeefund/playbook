@@ -367,18 +367,22 @@ const _MODES=['trader','work','mobile'];
           const t1=(bB!=null&&buildupH!=null)?bB+buildupH*1.5:null;
           const t2=(bB!=null&&impulseH!=null)?bB+impulseH*0.618:null;
           let stat='—';
+          const crossCount=s3.crossCount;
+          const crossTxt=(crossCount!=null&&crossCount>=1)
+            ?('<br><span style="font-size:10.5px;color:'+(crossCount>=2?'#c77dff':'var(--faint)')+'">穿咗'+crossCount+'次'+(crossCount>=2?' — 已有假突破，似手法B':'')+'</span>')
+            :'';
           if(!s3.ready&&!isOverridden){
             stat='<span style="color:var(--faint)">未搵到合理Buildup</span>';
           }else if(methodOk){
-            stat='<span style="color:#2ee6a6;font-weight:700">🔥今日放量突破</span><br><span style="font-size:10.5px;color:var(--faint)">RVOL '+rvol+'x</span>';
+            stat='<span style="color:#2ee6a6;font-weight:700">🔥今日放量突破</span><br><span style="font-size:10.5px;color:var(--faint)">RVOL '+rvol+'x</span>'+crossTxt;
           }else if(!broke){
             const away=(bB!=null&&s.close)?((bB-s.close)/s.close*100).toFixed(1):null;
             stat='<span style="color:var(--dim)">👀形成中</span>'+(away!=null?'<br><span style="font-size:10.5px;color:var(--faint)">差'+away+'%到突破線</span>':'');
           }else{
             const drift=(bB!=null&&s.close)?((s.close-bB)/bB*100):null;
             stat=(drift!=null&&drift>5)
-              ?'<span style="color:#ff9838">⚠️已飛('+drift.toFixed(1)+'%)</span>'
-              :'<span style="color:#ff9838">⚠️已突破，留意</span>';
+              ?'<span style="color:#ff9838">⚠️已飛('+drift.toFixed(1)+'%)</span>'+crossTxt
+              :'<span style="color:#ff9838">⚠️已突破，留意</span>'+crossTxt;
           }
           const ovBadge=isOverridden?' <span style="font-size:9.5px;color:#c77dff">✏️</span>':'';
           return '<tr>'+linkCell(it)+dateCell(it)
