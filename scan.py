@@ -1512,6 +1512,11 @@ def build_record(ticker, hist):
             for k in ("buildupA", "buildupB", "buildupLow", "brokeToday", "rvolToday",
                       "methodAOk", "daysSinceB", "entry", "stop", "t1", "t2"):
                 strategies[s][k] = today[s].get(k)
+        # S4 假突破（淡倉）：pass-through 橫行區/假突破/entry/stop/T1-T3
+        if s == "S4":
+            for k in ("poleA", "rangeTop", "rangeLow", "entry", "stop", "t1", "t2", "t3",
+                      "breakoutDuration", "daysSinceReturn", "polePct", "wickRatio", "brkRvol"):
+                strategies[s][k] = today[s].get(k)
         # S5 支持阻力（Playbook confluence）：pass-through 結構價位 + entry/stop/T1/T2
         if s == "S5":
             for k in ("confluenceFound", "confA", "confB", "congesTop", "congesBottom",
