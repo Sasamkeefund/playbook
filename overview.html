@@ -194,9 +194,10 @@
       }
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{color:'red'};
-        const broke=strat.brokeH1, streak=strat.streak||0;
-        if(broke)return{color:'green'};
+        const broke=strat.brokeH1, streak=strat.streak||0, fr=strat.flagRetrace;
+        if(fr!=null&&fr>0.236)return{color:'red'};
         if(streak<5)return{color:'amber'};
+        if(broke)return{color:'green'};
         if(b1&&b5)return{color:'green'};
         if(b1||b5)return{color:'green'};
         if(bonus>=3)return{color:'amber'};
