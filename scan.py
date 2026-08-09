@@ -1049,7 +1049,11 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         round(hiLo10, 2) if hiLo10 is not None else None,
         round(perf3m, 1) if perf3m is not None else None,
     ]
-    res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+    res["S6"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b),
+                 # b6 veto：整固期間回調深度一旦超過 0.236（Patreon原文門檻），即刻唔算 ready，冇例外。
+                 # 之前 valid_flag_depth 用緊 0.88 淨係一個好鬆嘅sanity check（防止回調到跌穿返旗杆起點），
+                 # 唔係原文真正要求嘅0.236，兩者混埋一齊導致好多深回調嘅假旗形都當有效——而家分返開。
+                 "ready": (sum(c) >= 4) and (flag_retrace is None or flag_retrace <= 0.236),
                  "condVals": c_vals, "bonusVals": b_vals,
                  "keyvals": {"1M%": round(perf1m, 1) if perf1m is not None else None, "1W%": round(perf1w, 1) if perf1w is not None else None}}
     res["S6"]["h1"] = round(h1, 2) if h1 else None
