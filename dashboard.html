@@ -542,6 +542,11 @@
         const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1, fr=strat.flagRetrace, streak=strat.streak||0;
         const frTxt=(fr!==null&&fr!==undefined)?' ｜ 回調 '+(fr*100).toFixed(0)+'%'+(fr<=0.236?' ✓淺':fr<=0.382?' ⚠️':' 🔻深'):'';
         const h1txt=(h1?(' ｜ H1≈$'+h1+(pth!==null?'('+(pth>0?'+':'')+pth+'%)':'')):'')+frTxt;
+        // b6 veto：回調深度超過0.236（原文門檻），冇recovery exceptions，唔理score/streak/bonus幾靚都直接reject。
+        // 之前呢個位淨係得informational text（frTxt），冧真正阻止到深回調嘅假旗形顯示做綠色。
+        if(fr!==null&&fr!==undefined&&fr>0.236){
+          return{text:'🛑 唔入 — 回調'+(fr*100).toFixed(0)+'%，超過0.236 veto門檻（原文：呢個位一breach就係veto，冇recovery exceptions）'+h1txt,color:'red'};
+        }
         // 跟 checklist Step1：Scanner 要連續 5日🔥以上先算開始評估——要行喺broke之前check，
         // 唔係嘅話，今日先第一日撞到5/5就即刻突破（例如業績/新聞跳空），都會被誤判做「🔥突破」，
         // 但呢種情況streak=1，根本未有過真正嘅縮量整固歷史，唔算原文定義嘅旗形
