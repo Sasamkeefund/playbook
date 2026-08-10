@@ -384,7 +384,7 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
     net_drift = range_c_seg[-1] - range_c_seg[0]
     drift_ratio = (abs(net_drift) / (range_top - range_low)) if (range_top - range_low) > 0 else 1
     if diag_out is not None: diag_out['driftRatio'] = round(drift_ratio, 2)
-    if drift_ratio > 0.5:
+    if drift_ratio > 0.35:
         if diag_out is not None: diag_out['failedAt'] = 'range_not_flat'
         return None
 
