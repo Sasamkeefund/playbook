@@ -329,7 +329,6 @@
             <th class="sortable s1col" id="s1colTh1" style="text-align:center" onclick="sortBy('recentMaxStreak')" title="呢次跌穿EMA20之前，連續幾多日5/5 ready（冇偵測到跌穿就 fallback 用近20日內最高連續日數）">趨勢 <span class="sarr" data-k="recentMaxStreak"></span></th>
             <th class="sortable s1col" id="s1colTh2" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次收市 close 跌穿 EMA20 係幾多日前">跌穿 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
             <th class="s1col" id="s1colTh3" style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
-            <th style="text-align:center" title="綠=頂級/良好，青=已成立但質素較低">質素</th>
             <th>入場建議</th>
           </tr>
           <tr class="colfilter">
@@ -372,7 +371,7 @@
               <option value="2">≤2日</option>
               <option value="3">≤3日</option>
             </select></th>
-            <th class="s1col"></th><th></th><th></th>
+            <th class="s1col"></th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -819,7 +818,7 @@
           <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（7日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
           <td style="text-align:center"><input type="checkbox" ${tvOpenSet.has(s.ticker.toUpperCase())?'checked':''} onchange="toggleTVTrack('${s.ticker}',this)" style="width:16px;height:16px;cursor:pointer"></td>
           <td>${st.isNew?'<span class="new-badge">NEW</span>':''}</td>
-          <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a>${earningsBadge(s)}</td>
+          <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${v.color==='green'?'🟢':v.color==='cyan'?'🔵':v.color==='amber'?'🟡':'🔴'} ${s.ticker} 📈</a>${earningsBadge(s)}</td>
           <td class="mono" style="text-align:right">$${s.close.toFixed(2)}</td>
           <td class="mono ${ch}" style="text-align:right">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</td>
           <td class="mono emacell" style="text-align:right">${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}<br><span style="font-size:10px;color:${Math.abs((s.close-s.ema20)/s.ema20*100)<=1.5?'#f5b945':'var(--faint)'}">EMA20 ${((s.close-s.ema20)/s.ema20*100)>0?'+':''}${((s.close-s.ema20)/s.ema20*100).toFixed(1)}%</span></td>
@@ -849,7 +848,6 @@
               +'<td class="s1col mono" style="text-align:center;color:'+recCol+'">'+recTxt+'</td>'
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():''}
-          <td style="text-align:center">${v.color==='green'?'🟢':v.color==='cyan'?'🔵':v.color==='amber'?'🟡':'🔴'}</td>
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
         </tr>`;
       }).join('');
