@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S4 假突破 · 互動檢查表</title>
+  <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px; background: #0f1117; color: #e8e8e8;
+    padding: 20px; line-height: 1.5;
+  }
+  h1 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
+  .sheet { display: flex; flex-direction: column; gap: 16px; max-width: 680px; margin: 0 auto; }
+  .section-title {
+    font-size: 11px; font-weight: 600; color: #888;
+    text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px;
+  }
+  .card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 14px 16px; }
+
+  .cond-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid #1e2130;
+  }
+  .cond-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .cond-row:first-child { padding-top: 0; }
+  .cb-wrap { flex-shrink: 0; }
+  .cb-wrap input[type="checkbox"] { display: none; }
+  .cb-wrap label {
+    display: flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 2px solid #3a3d4a; background: #12141d;
+    cursor: pointer; transition: all .15s;
+    font-size: 13px; color: transparent;
+  }
+  .cb-wrap input:checked + label { background: #00c896; border-color: #00c896; color: #fff; }
+  .cond-info { flex: 1; }
+  .cond-name { font-size: 13px; font-weight: 600; color: #e8e8e8; }
+  .cond-rule { font-size: 11px; color: #666; margin-top: 1px; }
+  .val-input {
+    width: 110px; padding: 6px 8px;
+    background: #12141d; border: 1px solid #2a2d3a; border-radius: 6px;
+    color: #e8e8e8; font-size: 13px; font-family: monospace;
+    text-align: center; outline: none; flex-shrink: 0;
+  }
+  .val-input:focus { border-color: #6aabf0; }
+
+  .score-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .score-label { font-size: 13px; color: #888; }
+  .score-num { font-size: 14px; font-weight: 700; }
+
+  .decision-phase { border-left: 3px solid #2a2d3a; padding-left: 12px; margin-bottom: 12px; }
+  .phase-title { font-size: 13px; font-weight: 600; color: #e8e8e8; margin-bottom: 6px; }
+  .dec-btn {
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    border: 1px solid #2a2d3a; background: #12141d; color: #888;
+    cursor: pointer; transition: all .15s;
+  }
+  .dec-btn.active-yes { background: #0d2a1e; border-color: #00c896; color: #00c896; }
+
+  .result-box {
+    border-radius: 10px; padding: 14px 16px; margin-top: 4px;
+    background: #12141d; border: 1px solid #2a2d3a; font-size: 13px; color: #555;
+  }
+  .result-box.green  { background: #0d2a1e; border-color: #00c896; color: #00c896; }
+  .result-box.amber  { background: #2a1e00; border-color: #e8a840; color: #e8a840; }
+  .result-box.red    { background: #2a1010; border-color: #f07070; color: #f07070; }
+  .result-box.blue   { background: #1a2540; border-color: #6aabf0; color: #6aabf0; }
+
+  .calc-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 10px; font-size: 13px;
+  }
+  .calc-cell {
+    background: #12141d; border: 1px solid #2a2d3a; border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .calc-cell .lbl { font-size: 11px; color: #666; margin-bottom: 3px; }
+  .calc-cell .num { font-size: 16px; font-weight: 700; font-family: monospace; color: #e8e8e8; }
+  .calc-cell.entry .num { color: #6aabf0; }
+  .calc-cell.stop .num  { color: #f07070; }
+  .calc-cell .rr { font-size: 11px; color: #555; margin-top: 2px; }
+
+  .daily-entry {
+    display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .daily-log-item {
+    padding: 10px 12px; border-radius: 8px; margin-bottom: 8px;
+    border: 1px solid #2a2d3a; font-size: 12px;
+  }
+  .daily-log-item.green { background: #0d2a1e; border-color: #00c896; }
+  .daily-log-item.amber { background: #2a1e00; border-color: #e8a840; }
+  .daily-log-item.red   { background: #2a1010; border-color: #f07070; }
+  .btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2d3a;
+    background: #12141d; color: #6aabf0; font-size: 13px; cursor: pointer;
+    transition: all .15s; font-weight: 600;
+  }
+  .btn:hover { border-color: #6aabf0; }
+  .reset-btn {
+    padding: 8px 20px; border-radius: 8px; border: 1px solid #2a2d3a;
+    background: #12141d; color: #666; font-size: 13px; cursor: pointer;
+    transition: all .15s; align-self: flex-start;
+  }
+  .reset-btn:hover { border-color: #f07070; color: #f07070; }
+  .note { font-size: 11px; color: #555; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>S4 假突破（淡倉）· 互動檢查表</h1>
+  <div class="subtitle">跟原文《My Play Book - 橫行區假突破策略》：升勢尾段出現橫行派貨區 → 向上假突破 → 短時間內返回派貨區之內 = 淡倉進場</div>
+
+  <div class="sheet">
+
+    <!-- ══ Step 1 · 市況條件（原文，肉眼睇） ══ -->
+    <div class="section-title">Step 1 · 適用市況（原文條件，肉眼核對）</div>
+    <div class="card">
+      <div class="score-wrap">
+        <span class="score-label">出現條件愈多，成功率愈高——唔使全部條件同時出現先可以交易</span>
+      </div>
+      <div id="mktConds"></div>
+    </div>
+
+    <!-- ══ Step 2 · 填結構數值 ══ -->
+    <div class="section-title">Step 2 · 填 Pole / 橫行區 / 假突破 關鍵位</div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">Pole 起點 A（升浪前低位）</div>
+          <input class="val-input" id="s4_poleA" type="number" step="0.01" placeholder="112.06" style="width:100%" oninput="calc()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">橫行區頂（Pole 頂）</div>
+          <input class="val-input" id="s4_rangeTop" type="number" step="0.01" placeholder="135.44" style="width:100%" oninput="calc()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">橫行區底</div>
+          <input class="val-input" id="s4_rangeLow" type="number" step="0.01" placeholder="125.72" style="width:100%" oninput="calc()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">假突破最高位</div>
+          <input class="val-input" id="s4_brkHigh" type="number" step="0.01" placeholder="139.87" style="width:100%" oninput="calc()">
+        </div>
+      </div>
+      <div class="note">橫行區頂/底：喺 Pole 頂之後，等到出現假突破之前，嗰段嚟嚟去去嘅高低位。用返你 TradingView 圖入面肉眼揾嘅，唔使跟返 scanner 個 10 日窗口死板咁計。</div>
+    </div>
+
+    <!-- ══ Step 3 · 自動計算 ══ -->
+    <div class="section-title">Step 3 · 入場 / 止蝕 / 目標（自動計算）</div>
+    <div class="card">
+      <div id="s4_calcResult" class="result-box">— 填晒 Step 2 嘅 4 個數值 —</div>
+      <div class="calc-grid" id="s4_calcGrid" style="display:none">
+        <div class="calc-cell entry"><div class="lbl">入場（橫行區頂）</div><div class="num" id="c_entry">–</div></div>
+        <div class="calc-cell stop"><div class="lbl">止蝕（假突破高位）</div><div class="num" id="c_stop">–</div></div>
+        <div class="calc-cell"><div class="lbl">T1（橫行區中間點）</div><div class="num" id="c_t1">–</div><div class="rr" id="c_rr1"></div></div>
+        <div class="calc-cell"><div class="lbl">T2（橫行區底）</div><div class="num" id="c_t2">–</div><div class="rr" id="c_rr2"></div></div>
+        <div class="calc-cell" style="grid-column:1/3"><div class="lbl">T3（Pole 0.618 回調，假設橫行區跌穿）</div><div class="num" id="c_t3">–</div><div class="rr" id="c_rr3"></div></div>
+      </div>
+      <div class="note">R:R 純粹參考，唔係入場門檻（跟返你哋 S3 個判斷：T1 唔到 T2 都可以到）。</div>
+    </div>
+
+    <!-- ══ Step 4 · 假突破質素（肉眼） ══ -->
+    <div class="section-title">Step 4 · 假突破質素確認（肉眼睇嗰枝燭）</div>
+    <div class="card" id="qualityConds"></div>
+
+    <!-- ══ Step 5 · 每日追蹤（返回之後） ══ -->
+    <div class="section-title">Step 5 · 返回之後，每日追蹤（收市後填一次）</div>
+    <div class="card">
+      <div style="font-size:12px;color:#888;margin-bottom:10px">
+        原文明確警告：「太細嘅假突破...短時間內會再出現一次更大嘅假突破，呢次假突破會將先前較微細嘅假突破止損觸發」。
+        即係話「返回」一日唔代表數完，之後每日都要check：有冇再次升穿返個止蝕位。
+      </div>
+      <div class="daily-entry">
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">今日 High</div>
+          <input class="val-input" id="s4_todayHigh" type="number" step="0.01" placeholder="141.71">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px">今日 Close</div>
+          <input class="val-input" id="s4_todayClose" type="number" step="0.01" placeholder="141.66">
+        </div>
+        <button class="btn" onclick="addDailyCheck()">記錄今日</button>
+      </div>
+      <div id="s4_dailyLog"></div>
+      <div class="note">如果任何一日 High 升穿返止蝕位 → 個 setup 報廢，止蝕生效，唔理之前幾多日守得幾好。</div>
+    </div>
+
+    <button class="reset-btn" onclick="resetAll()">重置全部</button>
+
+  </div>
+
+<script>
+  const MARKET_CONDS = [
+    ['條件一', '前面嘅綠色升勢係咪明顯急速'],
+    ['條件二', '前面嘅綠色升勢係咪過份延伸(Overextended)'],
+    ['條件三', '假突破伴隨陰陽燭反轉型態'],
+    ['條件四', '假突破時，陰陽燭收上影線，收市價位於先前阻力之下'],
+    ['條件五', '假突破時間極短（即僅僅為了觸發Stop Order）'],
+    ['條件六', '假突破時有很多上影線，反映有機構的訂單'],
+    ['條件七', '假突破時沒有強動能/成交量/幅度'],
+    ['條件八', '阻力位（橫行區頂）過份明顯'],
+    ['條件九', '突破前的升浪直線向上並導致超買'],
+    ['條件十', '突破前沒有Setup'],
+    ['條件十一', '突破前沒有波幅收窄'],
+  ];
+  const QUALITY_CONDS = [
+    ['Q1', '假突破幅度唔太多都唔太少（太多變真突破；太少可能只係日內清空掛單）'],
+    ['Q2', '假突破前沒有buildup或其他真突破嘅特徵'],
+    ['Q3', '假突破嗰枝燭有明顯上影線／細身，唔係實牙實齒嘅大陰燭'],
+    ['Q4', '假突破嗰日RVOL冇爆量（冇強勁動能跟買）'],
+  ];
+
+  function buildConds(list, containerId) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = list.map((c,i) => `
+      <div class="cond-row">
+        <div class="cb-wrap">
+          <input type="checkbox" id="${containerId}_${i}">
+          <label for="${containerId}_${i}">✓</label>
+        </div>
+        <div class="cond-info">
+          <div class="cond-name">${c[0]}</div>
+          <div class="cond-rule">${c[1]}</div>
+        </div>
+      </div>`).join('');
+  }
+  buildConds(MARKET_CONDS, 'mktConds');
+  buildConds(QUALITY_CONDS, 'qualityConds');
+
+  let s4state = null;
+
+  function calc() {
+    const poleA = parseFloat(document.getElementById('s4_poleA').value);
+    const rangeTop = parseFloat(document.getElementById('s4_rangeTop').value);
+    const rangeLow = parseFloat(document.getElementById('s4_rangeLow').value);
+    const brkHigh = parseFloat(document.getElementById('s4_brkHigh').value);
+    const res = document.getElementById('s4_calcResult');
+    const grid = document.getElementById('s4_calcGrid');
+
+    if (isNaN(poleA) || isNaN(rangeTop) || isNaN(rangeLow) || isNaN(brkHigh)) {
+      res.className = 'result-box'; res.textContent = '— 填晒 Step 2 嘅 4 個數值 —';
+      grid.style.display = 'none'; s4state = null;
+      return;
+    }
+    if (rangeTop <= rangeLow) {
+      res.className = 'result-box red'; res.textContent = '⚠️ 橫行區頂應該大過橫行區底，check清楚兩個數';
+      grid.style.display = 'none'; s4state = null;
+      return;
+    }
+    if (brkHigh <= rangeTop) {
+      res.className = 'result-box red'; res.textContent = '⚠️ 假突破高位應該大過橫行區頂（要先升穿先算突破）';
+      grid.style.display = 'none'; s4state = null;
+      return;
+    }
+    if (poleA >= rangeTop) {
+      res.className = 'result-box red'; res.textContent = '⚠️ Pole起點A應該細過橫行區頂（A係升浪起點，喺下面）';
+      grid.style.display = 'none'; s4state = null;
+      return;
+    }
+
+    const entry = rangeTop, stop = brkHigh;
+    const t1 = (rangeTop + rangeLow) / 2;
+    const t2 = rangeLow;
+    const t3 = rangeTop - (rangeTop - poleA) * 0.618;
+    const risk = stop - entry;
+    const rr1 = (entry - t1) / risk, rr2 = (entry - t2) / risk, rr3 = (entry - t3) / risk;
+
+    s4state = {entry, stop, t1, t2, t3};
+
+    res.className = 'result-box green';
+    res.textContent = '✓ 計算完成，跟落去 Step 4／5';
+    grid.style.display = 'grid';
+    document.getElementById('c_entry').textContent = '$' + entry.toFixed(2);
+    document.getElementById('c_stop').textContent = '$' + stop.toFixed(2);
+    document.getElementById('c_t1').textContent = '$' + t1.toFixed(2);
+    document.getElementById('c_t2').textContent = '$' + t2.toFixed(2);
+    document.getElementById('c_t3').textContent = '$' + t3.toFixed(2);
+    document.getElementById('c_rr1').textContent = 'R:R ' + rr1.toFixed(2) + 'x';
+    document.getElementById('c_rr2').textContent = 'R:R ' + rr2.toFixed(2) + 'x';
+    document.getElementById('c_rr3').textContent = 'R:R ' + rr3.toFixed(2) + 'x';
+  }
+
+  let dailyLog = [];
+  function addDailyCheck() {
+    const high = parseFloat(document.getElementById('s4_todayHigh').value);
+    const close = parseFloat(document.getElementById('s4_todayClose').value);
+    if (isNaN(high) || isNaN(close)) return;
+    if (!s4state) { alert('先完成 Step 2／3 嘅計算'); return; }
+
+    let color, msg;
+    if (high > s4state.stop) {
+      color = 'red';
+      msg = '🛑 今日 High 已經升穿止蝕位 $' + s4state.stop.toFixed(2) + '——原文警告嘅「更大嘅假突破」出現咗，個 setup 報廢，止蝕生效';
+    } else if (close > s4state.entry) {
+      color = 'amber';
+      msg = '⚠️ 今日 Close 返咗上橫行區頂之上——「返回」未算企得住，繼續留意，未到止蝕位但要小心';
+    } else {
+      color = 'green';
+      msg = '✓ 今日仍然企穩喺橫行區之下，設定持續有效';
+    }
+    dailyLog.unshift({high, close, color, msg, day: dailyLog.length + 1});
+    renderDailyLog();
+    document.getElementById('s4_todayHigh').value = '';
+    document.getElementById('s4_todayClose').value = '';
+  }
+
+  function renderDailyLog() {
+    const el = document.getElementById('s4_dailyLog');
+    el.innerHTML = dailyLog.map(d => `
+      <div class="daily-log-item ${d.color}">
+        <div style="font-weight:700;margin-bottom:3px">第${dailyLog.length - dailyLog.indexOf(d)}日記錄　High $${d.high.toFixed(2)}　Close $${d.close.toFixed(2)}</div>
+        <div>${d.msg}</div>
+      </div>`).join('');
+  }
+
+  function resetAll() {
+    if (!confirm('確定要重置成張表？')) return;
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.val-input').forEach(inp => inp.value = '');
+    dailyLog = [];
+    renderDailyLog();
+    calc();
+  }
+</script>
+</body>
+</html>
