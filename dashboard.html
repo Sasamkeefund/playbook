@@ -285,7 +285,8 @@
       </select>
       <select id="filterVerdict">
         <option value="">入場建議 不限</option>
-        <option value="green">🟢 可考慮（頂級/良好/突破/setup）</option>
+        <option value="actionable">🟢🔵 可考慮（綠+青）</option>
+        <option value="green">🟢 頂級/良好/突破/setup</option>
         <option value="cyan">🔵 已成立但質素較低（細倉）</option>
         <option value="amber">🟡 未成立/等緊（續watch）</option>
         <option value="red">🔴 未夠班/跳過</option>
@@ -328,6 +329,7 @@
             <th class="sortable s1col" id="s1colTh1" style="text-align:center" onclick="sortBy('recentMaxStreak')" title="呢次跌穿EMA20之前，連續幾多日5/5 ready（冇偵測到跌穿就 fallback 用近20日內最高連續日數）">趨勢 <span class="sarr" data-k="recentMaxStreak"></span></th>
             <th class="sortable s1col" id="s1colTh2" style="text-align:center" onclick="sortBy('pullbackDaysAgo')" title="最近一次收市 close 跌穿 EMA20 係幾多日前">跌穿 <span class="sarr" data-k="pullbackDaysAgo"></span></th>
             <th class="s1col" id="s1colTh3" style="text-align:center" title="今日 close 是否企返 EMA20 上">企返</th>
+            <th style="text-align:center" title="綠=頂級/良好，青=已成立但質素較低">質素</th>
             <th>入場建議</th>
           </tr>
           <tr class="colfilter">
@@ -370,7 +372,7 @@
               <option value="2">≤2日</option>
               <option value="3">≤3日</option>
             </select></th>
-            <th class="s1col"></th><th></th>
+            <th class="s1col"></th><th></th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -644,7 +646,7 @@
         document.getElementById('dataFreshness').innerHTML='📅 數據更新於 '+toHKT(globalData.updated)+'（<span style="color:'+warnColor+'">'+diffTxt+'</span>）· 外匯24小時交易，即市價位可能已經唔同，落單前一定要去TradingView肉眼confirm';
       }catch(e){}
       if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
-        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S4'||activeTab==='S5')?'green':'';
+        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S4'||activeTab==='S5')?'actionable':'';
       }
       if(bootR.status==='fulfilled'){
         const bd=bootR.value;
@@ -737,7 +739,8 @@
         else if(ff==='below')s=s.filter(x=>x.strategies.S1.pullbackTouch&&!x.strategies.S1.aboveNow);
       }
       const vf=document.getElementById('filterVerdict')?document.getElementById('filterVerdict').value:'';
-      if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close).color===vf);
+      if(vf==='actionable')s=s.filter(x=>{const vc=getVerdict(activeTab,x.strategies[activeTab],x.close).color;return vc==='green'||vc==='cyan';});
+      else if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close).color===vf);
       // 排序
       if(sortKey){
         const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo'];
@@ -846,6 +849,7 @@
               +'<td class="s1col mono" style="text-align:center;color:'+recCol+'">'+recTxt+'</td>'
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():''}
+          <td style="text-align:center">${v.color==='green'?'🟢':v.color==='cyan'?'🔵':v.color==='amber'?'🟡':'🔴'}</td>
           <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
         </tr>`;
       }).join('');
@@ -854,7 +858,7 @@
       document.getElementById('searchTicker').value='';
       document.getElementById('filterScore').value='';
       document.getElementById('filterStreak').value='';
-      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S4'||t==='S5')?'green':'';
+      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S4'||t==='S5')?'actionable':'';
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     let appMode='stock';
