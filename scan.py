@@ -432,6 +432,16 @@ def detect_s4_false_breakout(idx, highs, lows, closes, volumes, diag_out=None):
         if diag_out is not None: diag_out['failedAt'] = 'return_too_old'
         return None
 
+    # 原文明確警告：「太細嘅假突破...短時間內會再出現一次更大嘅假突破，呢次假突破會將先前
+    # 較微細嘅假突破止損觸發」。即係話「返回」一日唔代表數，之後直到今日，如果價格再次
+    # 升穿返個止蝕位（brk_high），即係呢個「假突破」已經失敗、變咗做真突破，成個setup要報廢。
+    for j in range(return_idx + 1, n):
+        if seg_h[j] > brk_high:
+            if diag_out is not None:
+                diag_out['failedAt'] = 'stop_retriggered'
+                diag_out['retriggerHigh'] = round(seg_h[j], 2)
+            return None
+
     # Step 3：搵A（pole起點，畀T3/steepness bonus用）—— pole_idx之前嘅最低位
     a_lookback = 30
     a_start = max(0, pole_idx - a_lookback)
