@@ -285,8 +285,7 @@
       </select>
       <select id="filterVerdict">
         <option value="">入場建議 不限</option>
-        <option value="actionable">🟢🔵 可考慮（綠+青）</option>
-        <option value="green">🟢 頂級/良好/突破/setup</option>
+        <option value="green">🟢 可考慮（頂級/良好/突破/setup）</option>
         <option value="cyan">🔵 已成立但質素較低（細倉）</option>
         <option value="amber">🟡 未成立/等緊（續watch）</option>
         <option value="red">🔴 未夠班/跳過</option>
@@ -645,7 +644,7 @@
         document.getElementById('dataFreshness').innerHTML='📅 數據更新於 '+toHKT(globalData.updated)+'（<span style="color:'+warnColor+'">'+diffTxt+'</span>）· 外匯24小時交易，即市價位可能已經唔同，落單前一定要去TradingView肉眼confirm';
       }catch(e){}
       if(document.getElementById('filterVerdict')&&!document.getElementById('filterVerdict').dataset.touched){
-        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S4'||activeTab==='S5')?'actionable':'';
+        document.getElementById('filterVerdict').value=(activeTab==='S6'||activeTab==='S1'||activeTab==='S1V1'||activeTab==='S3'||activeTab==='S4'||activeTab==='S5')?'green':'';
       }
       if(bootR.status==='fulfilled'){
         const bd=bootR.value;
@@ -738,8 +737,7 @@
         else if(ff==='below')s=s.filter(x=>x.strategies.S1.pullbackTouch&&!x.strategies.S1.aboveNow);
       }
       const vf=document.getElementById('filterVerdict')?document.getElementById('filterVerdict').value:'';
-      if(vf==='actionable')s=s.filter(x=>{const vc=getVerdict(activeTab,x.strategies[activeTab],x.close).color;return vc==='green'||vc==='cyan';});
-      else if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close).color===vf);
+      if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close).color===vf);
       // 排序
       if(sortKey){
         const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo'];
@@ -818,7 +816,7 @@
           <td style="text-align:center;white-space:nowrap"><button onclick="toggleStar('${s.ticker}',this)" style="padding:2px 6px;font-size:16px;border:none;background:none;cursor:pointer;color:${wlSet.has(s.ticker.toUpperCase())?'#f5b945':'var(--dim)'}">${wlSet.has(s.ticker.toUpperCase())?'⭐':'☆'}</button>${(activeTab==='S6'||activeTab==='S7')?'<button onclick="toggleSkip(\''+s.ticker+'\',event)" title="check 完 fail，skip 唔再睇（7日）" style="padding:2px 6px;font-size:13px;border:none;background:none;cursor:pointer;color:'+(isSkipped(s.ticker)?'#ff5d6c':'var(--faint)')+'">'+(isSkipped(s.ticker)?'↩️':'🚫')+'</button>':''}</td>
           <td style="text-align:center"><input type="checkbox" ${tvOpenSet.has(s.ticker.toUpperCase())?'checked':''} onchange="toggleTVTrack('${s.ticker}',this)" style="width:16px;height:16px;cursor:pointer"></td>
           <td>${st.isNew?'<span class="new-badge">NEW</span>':''}</td>
-          <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${v.color==='green'?'🟢':v.color==='cyan'?'🔵':v.color==='amber'?'🟡':'🔴'} ${s.ticker} 📈</a>${earningsBadge(s)}</td>
+          <td class="tk"><a href="#" onclick="openChart('${s.ticker}');return false;">${s.ticker} 📈</a>${earningsBadge(s)}</td>
           <td class="mono" style="text-align:right">$${s.close.toFixed(2)}</td>
           <td class="mono ${ch}" style="text-align:right">${s.chgPct>0?'+':''}${s.chgPct.toFixed(2)}%</td>
           <td class="mono emacell" style="text-align:right">${s.ema20.toFixed(0)}/${s.ema50.toFixed(0)}/${s.ema200.toFixed(0)}<br><span style="font-size:10px;color:${Math.abs((s.close-s.ema20)/s.ema20*100)<=1.5?'#f5b945':'var(--faint)'}">EMA20 ${((s.close-s.ema20)/s.ema20*100)>0?'+':''}${((s.close-s.ema20)/s.ema20*100).toFixed(1)}%</span></td>
@@ -856,7 +854,7 @@
       document.getElementById('searchTicker').value='';
       document.getElementById('filterScore').value='';
       document.getElementById('filterStreak').value='';
-      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S4'||t==='S5')?'actionable':'';
+      document.getElementById('filterVerdict').value=(t==='S6'||t==='S1'||t==='S1V1'||t==='S3'||t==='S4'||t==='S5')?'green':'';
       render();}
     function render(){renderTabs();renderSummary();renderTable();if(typeof applyColVisibility==='function')applyColVisibility();}
     let appMode='stock';
