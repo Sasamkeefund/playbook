@@ -1739,6 +1739,21 @@ def get_forex_s1_data(forex_charts):
                 (fperf3m is not None and fperf3m > 4),
             ]
             stop_ref = round(fclose - 1.5 * f_atr, 5) if f_atr else None
+
+            # 跟返股票版S1同一套邏輯：track「幾多日前先跌穿返EMA20」——forex之前完全冇呢個dimension，
+            # 淨係check緊「而家係咪健康」，令一個一個星期前已經返咗嚟嘅setup同今日先返嚟嘅冧分得開。
+            f_pullback_touch = False
+            f_pullback_days_ago = -1
+            for back in range(0, 6):
+                k = fidx - back
+                if k < 0: break
+                ek = fe20[k]
+                if ek is not None and fc[k] < ek * 0.997:
+                    f_pullback_touch = True
+                    if f_pullback_days_ago < 0:
+                        f_pullback_days_ago = back
+            f_above_now = (f_e20v is not None and fclose >= f_e20v)
+
             out[fx] = {
                 "display": FOREX_DISPLAY_NAMES.get(fx, fx),
                 "close": round(fclose, 5), "score": sum(c), "bonusScore": sum(b),
@@ -1750,6 +1765,9 @@ def get_forex_s1_data(forex_charts):
                 "ema20": round(f_e20v, 5) if f_e20v else None,
                 "atr14": round(f_atr, 5) if f_atr else None,
                 "stopRef": stop_ref,
+                "pullbackTouch": f_pullback_touch,
+                "pullbackDaysAgo": f_pullback_days_ago,
+                "aboveNow": f_above_now,
             }
             win = 120
             fstart = max(0, fidx - win)
