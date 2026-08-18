@@ -227,18 +227,17 @@
     async function load(){
       const now=new Date();
       const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
-      const [marketR, scanR, paperR, fibR, wlR] = await Promise.allSettled([
+      const [marketR, scanR, bootR] = await Promise.allSettled([
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/market.json?t='+Date.now()).then(r=>r.json()),
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
-        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json()),
-        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json()),
-        fetch(WL_API+'?t='+Date.now()).then(r=>r.json())
+        fetch(WL_API+'?action=bootstrap&t='+Date.now()).then(r=>r.json())
       ]);
       const market = marketR.status==='fulfilled'? marketR.value : null;
       const scan = scanR.status==='fulfilled'? scanR.value : null;
-      const paperData = paperR.status==='fulfilled'? paperR.value : null;
-      const fibMap = fibR.status==='fulfilled'? (fibR.value||{}) : {};
-      const watchlist = wlR.status==='fulfilled'? (wlR.value.watchlist||[]) : [];
+      const bd = bootR.status==='fulfilled'? bootR.value : null;
+      const paperData = bd? {open:bd.paperOpen||[], closed:bd.paperClosed||[]} : null;
+      const fibMap = bd? (bd.fibAll||{}) : {};
+      const watchlist = bd? (bd.watchlist||[]) : [];
       renderMarket(market);renderMacroBanner(market);renderStrategies(scan);
       renderPaperAlerts(paperData,scan);
       renderS6Alerts(fibMap,scan);
