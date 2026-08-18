@@ -143,27 +143,25 @@ const _MODES=['trader','work','mobile'];
       document.getElementById('status').innerHTML='<span class="dot"></span> 讀緊…';
       const now=new Date();
       const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
-      const [scanR, wlR, fibR, paperR, ovR] = await Promise.allSettled([
+      const [scanR, bootR, ovR] = await Promise.allSettled([
         fetch('https://raw.githubusercontent.com/Sasamkeefund/playbook/main/data.json?t='+hourKey).then(r=>r.json()),
-        fetch(WL_API).then(r=>r.json()),
-        fetch(WL_API+'?action=fib_all&t='+Date.now()).then(r=>r.json()),
-        fetch(WL_API+'?action=paper_list&t='+Date.now()).then(r=>r.json()),
+        fetch(WL_API+'?action=bootstrap&t='+Date.now()).then(r=>r.json()),
         fetch(WL_API+'?action=override_all&t='+Date.now()).then(r=>r.json())
       ]);
       if(scanR.status==='fulfilled'){
         (scanR.value.stocks||[]).forEach(s=>{dataMap[s.ticker.toUpperCase()]=s;});
       }
-      if(wlR.status==='fulfilled'){
-        list=wlR.value.watchlist||[];
+      if(bootR.status==='fulfilled'){
+        const bd=bootR.value;
+        list=bd.watchlist||[];
         document.getElementById('status').textContent='共 '+list.length+' 隻';
+        fibMap=bd.fibAll||{};
+        tvOpenSet=new Set((bd.paperOpen||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()));
       }else{
         document.getElementById('status').textContent='❌ 讀取失敗';
+        fibMap={};tvOpenSet=new Set();
       }
-      fibMap = (fibR.status==='fulfilled')? (fibR.value||{}) : {};
       overrideMap = (ovR.status==='fulfilled')? (ovR.value||{}) : {};
-      tvOpenSet = (paperR.status==='fulfilled')
-        ? new Set((paperR.value.open||[]).filter(p=>p.group==='TV').map(p=>p.ticker.toUpperCase()))
-        : new Set();
       render();
     }
     async function toggleTVTrack(ticker,checkbox){
