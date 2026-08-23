@@ -990,26 +990,24 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     flag_retrace = None   # 旗形回調佔上升推進浪幾多（Patreon: 要 ≤ 0.236）
     days_since_pole = None
     try:
-        # 旗杆頂 = 近 20 日內最高 high 嘅位置（approximate impulse top）
+        # 原文：「所有判斷用 Close，唔用日內 High/Low」——B點=急升最高Close，A點=急升前最低Close，
+        # 旗形最低都係close嚟講，唔係intraday嘅high/low。之前呢度用緊seg_h/seg_l係錯嘅，而家改用seg_c。
         win = 20
         seg_c = closes[max(0, idx-win):idx+1]
-        seg_h = highs[max(0, idx-win):idx+1]
-        seg_l = lows[max(0, idx-win):idx+1]
         base = max(0, idx-win)
         if len(seg_c) >= 8:
-            pole_top = max(seg_h[:-1])               # 旗杆頂（唔計今日）
-            pole_idx = seg_h.index(pole_top)         # 喺 segment 內位置
+            pole_top = max(seg_c[:-1])               # B點：旗杆頂（急升最高Close，唔計今日）
+            pole_idx = seg_c.index(pole_top)         # 喺 segment 內位置
             days_since_pole = (len(seg_c) - 1) - pole_idx
-            # 旗杆底 = 旗杆頂之前嘅最低 low（上升推進浪起點）
-            pole_low = min(seg_l[:pole_idx+1]) if pole_idx >= 1 else seg_l[0]
+            # A點：旗杆頂之前嘅最低 Close（上升推進浪起點）
+            pole_low = min(seg_c[:pole_idx+1]) if pole_idx >= 1 else seg_c[0]
             # 整固區 = 旗杆頂之後嘅 bars（旗形喺旗杆後形成）
-            consol_h = seg_h[pole_idx:]
-            consol_l = seg_l[pole_idx:]
-            if len(consol_h) >= 2:
-                h1 = max(consol_h[:-1]) if len(consol_h) > 1 else pole_top
-                flag_low = min(consol_l) if consol_l else None
+            consol_c = seg_c[pole_idx:]
+            if len(consol_c) >= 2:
+                h1 = max(consol_c[:-1]) if len(consol_c) > 1 else pole_top
+                flag_low = min(consol_c) if consol_c else None
                 pct_to_h1 = (close - h1) / h1 * 100
-                # 回調比例 = (旗杆頂 - 旗形低) / (旗杆頂 - 旗杆底)
+                # 回調比例 = (旗杆頂 - 旗形最低Close) / (旗杆頂 - 旗杆底)
                 pole_height = pole_top - pole_low
                 if pole_height > 0 and flag_low is not None:
                     flag_retrace = (pole_top - flag_low) / pole_height
