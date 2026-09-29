@@ -453,6 +453,7 @@
 
     function earningsBadge(s){
       let out='';
+      if(s.universe==='NDX')out+=' <span title="擴大股票池：Nasdaq 100（唔喺 S&P 500）" style="color:#4cc9f0;font-size:10.5px;border:1px solid #4cc9f0;padding:0 5px;border-radius:8px">NDX</span>';
       if(s.sector)out+=' <span title="GICS Sector" style="color:var(--faint);font-size:10.5px;background:var(--surface-2);padding:1px 6px;border-radius:8px">'+s.sector+'</span>';
       const se=s.sectorEvent;
       if(se&&se.days!=null&&Math.abs(se.days)<=2){
@@ -701,8 +702,8 @@
       }
       if(starOnly)s=s.filter(x=>wlSet.has(x.ticker.toUpperCase()));
       if(!showSkipped)s=s.filter(x=>!isSkipped(x.ticker));
-      // S1-S6 只睇 S&P 500；S7 用 Russell 1000（捉中型爆發股）
-      if(activeTab!=='S7')s=s.filter(x=>x.inSP500!==false);
+      // S1-S6 睇 S&P 500 + NDX 擴大池（inScope）；S7 用 Russell 1000（捉中型爆發股）
+      if(activeTab!=='S7')s=s.filter(x=>x.inScope!==undefined?x.inScope:x.inSP500!==false);
       // S6 回調深度 filter（Patreon 0.236 過濾）
       if(activeTab==='S6'){
         const rf=document.getElementById('filterRetrace')?document.getElementById('filterRetrace').value:'';

@@ -1308,6 +1308,37 @@ def get_russell1000_tickers():
     return get_sp500_tickers()
 
 
+def get_ndx_tickers():
+    """Nasdaq 100 成份股 —— 用嚟擴大 S1-S6 股票池（S&P500 以外嘅 NDX 股）。
+    1) Wikipedia constituents 表；2) repo 入面 ndx_tickers.txt 後備清單。"""
+    try:
+        import re
+        url = "https://en.wikipedia.org/wiki/Nasdaq-100"
+        resp = requests.get(url, headers={"User-Agent": YF_HEADERS["User-Agent"]}, timeout=20)
+        if resp.status_code == 200:
+            m = re.search(r'<table[^>]*id="constituents"[^>]*>(.*?)</table>', resp.text, re.S)
+            if m:
+                rows = re.findall(r'<tr>\s*<td>(?:<a[^>]*>)?([A-Z][A-Z.\-]{0,6})(?:</a>)?\s*</td>', m.group(1))
+                seen = set()
+                out = [t.replace(".", "-") for t in rows if not (t in seen or seen.add(t))]
+                if 90 <= len(out) <= 110:
+                    return out
+    except Exception:
+        pass
+    try:
+        with open("ndx_tickers.txt") as f:
+            out = [ln.strip().upper() for ln in f if ln.strip()]
+        print(f"⚠️ NDX live source 攞唔到，用返 repo 後備清單（{len(out)} 隻）")
+        return out
+    except FileNotFoundError:
+        return []
+
+
+# 擴大股票池（S&P500 以外）嘅流動性門檻
+EXT_MIN_PRICE = 20.0
+EXT_MIN_DOLLAR_VOL = 50e6   # 20日平均成交額 ≥ 5,000 萬美元
+
+
 def get_sp500_tickers():
     # 1) Wikipedia（有時俾 block / 結構變咗攞唔到）—— 試2次，畀網絡波動多個機會
     for attempt in range(2):
@@ -1786,6 +1817,8 @@ def get_forex_s1_data(forex_charts):
 
 def main():
     sp500 = set(get_sp500_tickers())
+    ndx = set(get_ndx_tickers())
+    print(f"NDX：{len(ndx)} 隻（S&P500 以外：{len(ndx - sp500)} 隻）")
     sector_map = get_sector_map()
 
     print(f"Sector 分類：{len(sector_map)} 隻（淨係 S&P500 成份股有）")
@@ -1794,7 +1827,7 @@ def main():
     # S7 想要中型爆發股 → 用 Russell 1000；S1-S6 喺 app 度 filter 返 S&P 500
     tickers = get_russell1000_tickers()
     # 確保 S&P 500 全部包到（萬一 IWB 攞唔齊）
-    for t in sp500:
+    for t in sp500 | ndx:
         if t not in tickers:
             tickers.append(t)
     print(f"掃描 {len(tickers)} 隻股（Russell 1000，S&P500={len(sp500)}）…")
@@ -1809,6 +1842,20 @@ def main():
             rec = build_record(t, hist)
             if rec:
                 rec["inSP500"] = (t in sp500)   # 標記，app 用嚟 filter S1-S6
+                rec["inNDX"] = (t in ndx)
+                # 20日平均成交額（百萬美元）
+                try:
+                    pv = [c * v for c, v in zip(hist["close"][-20:], hist["volume"][-20:]) if c and v]
+                    adv = sum(pv) / len(pv) if pv else 0
+                except Exception:
+                    adv = 0
+                rec["avgDollarVolM"] = round(adv / 1e6, 1)
+                last_close = hist["close"][-1] or 0
+                ext_ok = (t in ndx and t not in sp500
+                          and last_close >= EXT_MIN_PRICE and adv >= EXT_MIN_DOLLAR_VOL)
+                # 股票池標記：SP500 = 原本；NDX = 擴大（Nasdaq100 非重疊 + 過咗流動性）；None = 唔入 S1-S6
+                rec["universe"] = "SP500" if t in sp500 else ("NDX" if ext_ok else None)
+                rec["inScope"] = rec["universe"] is not None
                 rec["sector"] = sector_map.get(t)  # None = 唔喺S&P500入面／攞唔到
                 edate = earnings_map.get(t)
                 rec["earningsDate"] = edate
@@ -1848,7 +1895,7 @@ def main():
         if s == "S7":
             ready = [r["ticker"] for r in records if r["strategies"][s]["ready"]]
         else:
-            ready = [r["ticker"] for r in records if r["strategies"][s]["ready"] and r.get("inSP500")]
+            ready = [r["ticker"] for r in records if r["strategies"][s]["ready"] and r.get("inScope")]
         summary[s] = {"count": len(ready), "tickers": ready}
 
     # 標記每隻股每個策略係咪「新入」（上次唔 ready，今次 ready）
