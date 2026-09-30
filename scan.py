@@ -1261,6 +1261,43 @@ def load_spy():
     return m
 
 
+def build_market_regime(days=400):
+    """每日大市狀態（畀 Paper Trade 按開單日期對返）。
+    趨勢：強 = SPY > EMA50 且 EMA50 > EMA200；中 = SPY > EMA200（但唔夠強）；弱 = SPY < EMA200。
+    VIX 分級跟 market_scan.py：<20 平靜／20-25 中性偏高／25-30 偏高／≥30 恐慌。
+    返回 {"YYYY-MM-DD": {"spy","e50","e200","regime","vix","vixLevel"}}。"""
+    load_spy()
+    if not _SPY_TC:
+        return {}
+    times, closes = _SPY_TC
+    pairs = [(t, c) for t, c in zip(times, closes) if t and c]
+    if len(pairs) < 250:
+        return {}
+    ts = [p[0] for p in pairs]; cs = [p[1] for p in pairs]
+    e50 = ema(cs, 50); e200 = ema(cs, 200)
+    vix_by_day = {}
+    try:
+        vh = fetch_history("^VIX")
+        if vh:
+            for t, c in zip(vh["time"], vh["close"]):
+                if t and c:
+                    vix_by_day[datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d")] = c
+    except Exception:
+        pass
+    out = {}
+    for i in range(max(200, len(cs) - days), len(cs)):
+        d = datetime.fromtimestamp(ts[i], timezone.utc).strftime("%Y-%m-%d")
+        c, a, b = cs[i], e50[i], e200[i]
+        regime = "強" if (c > a and a > b) else ("中" if c > b else "弱")
+        v = vix_by_day.get(d)
+        vl = None
+        if v is not None:
+            vl = "平靜" if v < 20 else ("中性偏高" if v < 25 else ("偏高" if v < 30 else "恐慌"))
+        out[d] = {"spy": round(c, 2), "e50": round(a, 2), "e200": round(b, 2),
+                  "regime": regime, "vix": round(v, 2) if v is not None else None, "vixLevel": vl}
+    return out
+
+
 def build_rs_line(times, closes):
     """RS 線 = 股價 / 同日 SPY 收市。返回同 closes 等長嘅 list（None=冇對應SPY）。"""
     spy = load_spy()
@@ -1918,6 +1955,13 @@ def main():
         "summary": summary,
         "stocks": records,
     }
+    try:
+        output["marketRegime"] = build_market_regime()
+        last = max(output["marketRegime"]) if output["marketRegime"] else None
+        print(f"大市狀態：{len(output['marketRegime'])} 日" + (f"，最新 {last} = {output['marketRegime'][last]}" if last else ""))
+    except Exception as e:
+        print("大市狀態計唔到（唔影響其他數據）:", e)
+        output["marketRegime"] = {}
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))

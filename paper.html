@@ -171,7 +171,7 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
   document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
 }});
 
-let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null;
+let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null, _regime={};
 async function load(){
   const now=new Date();
   const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
@@ -189,6 +189,7 @@ async function load(){
   _liveData={};
   if(dataResult.status==='fulfilled'){
     (dataResult.value.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
+    _regime=dataResult.value.marketRegime||{};
   }
   _macroData=(marketResult.status==='fulfilled')?marketResult.value:null;
   renderCurrent();
@@ -353,7 +354,7 @@ function renderS1(openP, closed){
   h+='<div><div class="sub">每單期望</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR/cl.length>=0?'+':'')+(tR/cl.length).toFixed(2)+'R':'—')+'</div></div>';
   h+='<div><div class="sub">累計R</div><div style="font-size:24px;font-weight:700" class="'+(tR>=0?'green':'red')+'">'+(cl.length?(tR>=0?'+':'')+tR.toFixed(1)+'R':'—')+'</div></div>';
   h+='<div><div class="sub">掂咗T1</div><div style="font-size:24px;font-weight:700" class="green">'+t1hits+'</div></div>';
-  h+='</div></div>';
+  h+='</div>'+regimeStatsHtml(cl)+'</div>';
 
   h+='<div class="why">📖 <b>S1 人手揀股（假突破回測）</b>　你喺 Screener 睇圖 → 一睇就知買唔買 → 圖度撳「加入 S1 Paper」填價位。<br><b>止損：</b>1.5ATR 或 前面最底（你揀）　<b>止賺：</b>T1 推進浪頂（掂咗通知，唔平）→ T2 = 前頂+(T1−止損)×1.618<br><span style="color:var(--faint)">※ 每日 workflow 用當日 High/Low check：Low≤止損→止損；High≥T1→通知；High≥T2→止賺平。</span></div>';
 
@@ -361,7 +362,7 @@ function renderS1(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>圖</th><th>操作</th>'
+      +'<th>股</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>T2</th><th>R:R→T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>大市</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const t1hitBool=(p.t1hit==='Y'||p.t1hit==='y');
@@ -393,6 +394,7 @@ function renderS1(openP, closed){
         +'<td class="mono">'+(p.rsi||'—')+'</td>'
         +'<td class="mono" style="text-align:center">'+(p.bonus||'—')+'/5</td>'
         +'<td class="mono" style="text-align:center">'+(p.trend||'—')+'</td>'
+        +regimeCell(p.entryDate)
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td>'
         +'<td style="white-space:nowrap"><button class="linkbtn" style="color:#2ee6a6" onclick="manualCloseS1(\''+p.ticker+'\','+p.entry+')">平倉</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeS1(\''+p.ticker+'\','+p.entry+')">刪除</button></td>'
         +'</tr>';
@@ -406,7 +408,7 @@ function renderS1(openP, closed){
   if(cl.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
       +'<th>股</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th><th>%</th>'
-      +'<th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>跌穿</th><th>操作</th>'
+      +'<th>止損</th><th>止損法</th><th>T1</th><th>T2</th><th>掂T1</th><th>RSI</th><th>Bonus</th><th>趨勢</th><th>跌穿</th><th>大市</th><th>操作</th>'
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
@@ -429,6 +431,7 @@ function renderS1(openP, closed){
         +'<td class="mono" style="text-align:center">'+(t.bonus||'—')+'/5</td>'
         +'<td class="mono" style="text-align:center">'+(t.trend||'—')+'</td>'
         +'<td class="mono" style="text-align:center">'+(t.pullback!==''&&t.pullback!==undefined?t.pullback+'日':'—')+'</td>'
+        +regimeCell(t.entryDate)
         +'<td><button class="linkbtn" style="color:#ff5d6c" onclick="removeS1Closed(\''+t.ticker+'\','+t.entry+')">刪除</button></td>'
         +'</tr>';
     });
@@ -515,6 +518,7 @@ function renderTV(openP, closed){
     });
     h+='</tbody></table></div>';
   }
+  h+=regimeStatsHtml(cl);
   h+='</div>';
 
   h+='<div class="why">📝 <b>我的記錄</b>　你自己喺 TradingView 開圖判斷、真係落咗 paper trade order，喺呢度記低。想儲低邊隻策略(S1/S1V1/S6/S7…)、entry/stop/T1/T2、同你入場嘅原因，之後可以自己覆盤。</div>';
@@ -543,7 +547,7 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>掂T1</th><th>T2</th><th>R:R→T2</th><th>突破RVOL</th><th>筆記</th><th>連結</th><th>圖</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>買入</th><th>現價</th><th>止損</th><th>止損法</th><th>T1</th><th>R:R→T1</th><th>掂T1</th><th>T2</th><th>R:R→T2</th><th>突破RVOL</th><th>大市</th><th>筆記</th><th>連結</th><th>圖</th><th>操作</th>'
       +'</tr></thead><tbody>';
     openP.forEach(p=>{
       const pending = (p.entry===''||p.entry==null||p.stop===''||p.stop==null);
@@ -595,6 +599,7 @@ function renderTV(openP, closed){
         +'<td class="mono green">'+(p.t2?'$'+p.t2:'—')+'</td>'
         +'<td class="mono" style="font-size:11px">'+rr2+'</td>'
         +rvolCell
+        +regimeCell(p.entryDate)
         +'<td style="font-size:11px;max-width:160px;white-space:pre-wrap">'+(p.notes||'—')+'</td>'
         +'<td>'+(p.tvLink?'<a href="'+p.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> ':'<span style="color:var(--faint)">—</span> ')+'<a href="https://www.google.com/search?q='+p.ticker+'+stock+news&tbm=nws" target="_blank" class="linkbtn" title="check最新新聞">📰</a></td>'
         +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+(p.entry||0)+','+(p.stop||0)+')">📈</button></td>'
@@ -609,7 +614,7 @@ function renderTV(openP, closed){
   h+='<div class="panel"><h2>📋 已平倉（'+cl.length+'）</h2>';
   if(cl.length){
     h+='<div style="overflow-x:auto"><table><thead><tr>'
-      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>總$</th><th>突破RVOL</th><th>筆記</th><th>連結</th><th>操作</th>'
+      +'<th>股</th><th>策略</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>R</th><th>%</th><th>總$</th><th>突破RVOL</th><th>大市</th><th>筆記</th><th>連結</th><th>操作</th>'
       +'</tr></thead><tbody>';
     cl.slice().reverse().forEach(t=>{
       const rcol=Number(t.r)>=0?'green':'red';
@@ -627,6 +632,7 @@ function renderTV(openP, closed){
         +'<td class="mono '+rcol+'">'+(Number(t.pct)>=0?'+':'')+t.pct+'%</td>'
         +'<td class="mono '+rcol+'">'+(t.totalDollarPnL!=null&&t.totalDollarPnL!==''?'$'+(Number(t.totalDollarPnL)>=0?'+':'')+t.totalDollarPnL:'<span style="color:var(--faint)">—</span>')+'</td>'
         +'<td style="text-align:center;font-size:11px">'+(isS6c?methodTxtC:'<span style="color:var(--faint)">—</span>')+'</td>'
+        +regimeCell(t.entryDate)
         +'<td style="font-size:11px;max-width:200px;white-space:pre-wrap">'+(t.notes||'—')+'</td>'
         +'<td>'+(t.tvLink?('<a href="'+t.tvLink+'" target="_blank" class="linkbtn">🔗TV</a> '):'')+'<button class="linkbtn" onclick="addLinkClosed(\''+t.ticker+'\','+t.entry+')">'+(t.tvLink?'✏️':'➕連結')+'</button></td>'
         +'<td><button class="linkbtn" onclick="editCloseTV(\''+t.ticker+'\','+t.entry+')">✏️編輯</button> <button class="linkbtn" style="color:#6aabf0" onclick="reopenTV(\''+t.ticker+'\','+t.entry+')">↩️打開返</button> <button class="linkbtn" style="color:#ff5d6c" onclick="removeTV(\''+t.ticker+'\','+t.entry+',\'closed\')">刪除</button></td>'
@@ -939,6 +945,49 @@ async function removeTV(ticker, entry, status){
   }catch(e){alert('刪除失敗，再試');}
 }
 
+// ── 大市狀態（scanner 每晚寫入 data.json 嘅 marketRegime，按開單日期對返）──
+function isoDate(s){
+  if(!s)return null; s=String(s);
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+  const d=new Date(s); if(isNaN(d))return null;
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// 開單日期（或之前最近一個交易日，最多退 5 日；香港時間記錄可能早美國一日）
+function regimeOf(entryDate){
+  const iso=isoDate(entryDate); if(!iso)return null;
+  const d=new Date(iso+'T00:00:00Z');
+  for(let k=0;k<=5;k++){
+    const key=new Date(d.getTime()-k*86400000).toISOString().slice(0,10);
+    if(_regime[key])return _regime[key];
+  }
+  return null;
+}
+function regimeCell(entryDate){
+  const r=regimeOf(entryDate);
+  if(!r)return '<td style="text-align:center;color:var(--faint)">—</td>';
+  const col=r.regime==='強'?'#2ee6a6':r.regime==='中'?'#f5b945':'#ff5d6c';
+  const dot=r.regime==='強'?'🟢':r.regime==='中'?'🟡':'🔴';
+  const tip='SPY '+r.spy+' ｜ EMA50 '+r.e50+' ｜ EMA200 '+r.e200+(r.vix!=null?' ｜ VIX '+r.vix+'（'+r.vixLevel+'）':'');
+  return '<td style="text-align:center;white-space:nowrap" title="'+tip+'"><span style="color:'+col+';font-weight:700">'+dot+r.regime+'</span>'
+    +(r.vix!=null?'<br><span style="font-size:10px;color:var(--dim)">VIX '+Math.round(r.vix)+'</span>':'')+'</td>';
+}
+// 按大市分組嘅勝率（已平倉）
+function regimeStatsHtml(cl){
+  if(!cl.length)return '';
+  const groups=[['強','🟢 強（SPY>EMA50>EMA200）'],['中','🟡 中（SPY>EMA200）'],['弱','🔴 弱（SPY&lt;EMA200）'],[null,'— 未有大市數據']];
+  let h='<div style="overflow-x:auto;margin-top:14px"><div class="sub" style="margin-bottom:6px">📈 按開單當日大市分組</div><table><thead><tr>'
+    +'<th>大市</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
+  groups.forEach(([g,label])=>{
+    const sc=cl.filter(t=>{const r=regimeOf(t.entryDate);return g===null?!r:(r&&r.regime===g);});
+    if(!sc.length)return;
+    const w=sc.filter(t=>Number(t.r)>0).length, R=sc.reduce((a,t)=>a+(Number(t.r)||0),0), col=R>=0?'green':'red';
+    h+='<tr><td>'+label+'</td><td class="mono" style="text-align:center">'+sc.length+'</td>'
+      +'<td class="mono" style="text-align:center">'+Math.round(w/sc.length*100)+'%</td>'
+      +'<td class="mono '+col+'" style="text-align:center">'+(R/sc.length>=0?'+':'')+(R/sc.length).toFixed(2)+'R</td>'
+      +'<td class="mono '+col+'" style="text-align:center">'+(R>=0?'+':'')+R.toFixed(1)+'R</td></tr>';
+  });
+  return h+'</tbody></table></div>';
+}
 function fmtDate(s){
   if(!s)return '—';
   s=String(s);
