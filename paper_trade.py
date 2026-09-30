@@ -72,6 +72,11 @@ def _num(x):
 # 未升到就淨係用硬止損睇住，唔會一有正常回調篤穿 MA 就篤走（未賺過錢）
 S7_BUFFER_MULT = 0.5  # buffer = entry + 0.5 × ATR(估算)
 
+# 2026-09-30 停止 S7 開新單：4,402 單已平倉，四組全部負期望（-0.28R 至 -0.48R）。
+# 原因：入場只 check S7 ready（VCP 整固中），冇等突破就買，唔係 J Law 原本做法。
+# 現有持倉照舊按規則平倉。修好入場邏輯（等突破）之後先改返 True。
+S7_OPEN_NEW = False
+
 def max_close_since(charts, ticker, entry_date_str):
     """揾返 ticker 喺 charts.json 入面，entryDate 至今嘅最高 close。
     冇歷史數據就 return None（外面會 fallback 用當日 close）。"""
@@ -222,6 +227,10 @@ def main():
     #    C = 全部 ready + 10MA止賺    D = Bonus5/5 + 10MA止賺
     closed_today = {(c["ticker"], c.get("group", "A")) for c in closed
                     if _same_day(str(c.get("exitDate", "")), today)}
+    if not S7_OPEN_NEW:
+        print("S7 開新單已暫停（S7_OPEN_NEW=False），只管理現有持倉")
+        print("Paper trade 完成")
+        return
     for tk, st in stocks.items():
         s7 = st["strategies"].get("S7", {})
         if not s7.get("ready"):
