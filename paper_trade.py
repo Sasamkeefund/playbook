@@ -97,13 +97,166 @@ def max_close_since(charts, ticker, entry_date_str):
             mx = c if mx is None else max(mx, c)
     return mx
 
-def main():
-    # 0. 周末唔好跑（美股冇開市，數據冇更新會搞亂平倉）
-    wd = datetime.datetime.utcnow().weekday()  # 0=Mon ... 5=Sat 6=Sun
-    if wd >= 5:
-        print(f"周末（weekday={wd}）— 美股休市，skip paper trade")
-        return
+# ════════════════════════════════════════════════════════════════
+# S1 自動記錄（跟 Sasa 平時 S1 做法，2026-09-30 確認）
+#   入場：S1 ready + dashboard 🟢/🔵（跌穿 EMA20 後 3 日內企返上），入場價 = 當日收市
+#   止蝕：跌穿期間最低位；兩組對比 —— S1A0 冇緩衝、S1A1 再低 1%
+#   T1  ：跌穿日之前 20 個交易日最高位（前頂）
+#   R:R→T1 ≥ 2 → 到 T1 全平；< 2 → T2 = T1 + (T1−止蝕)×1.618，到 T1 平一半、T2 平另一半
+#   連 T2 都 R:R < 2 → 唔入
+#   到 T1 後餘下一半止蝕移去入場同 T1 中間；止蝕用當日 Low 觸發（同 S1 人手組一樣）
+#   同一隻股同一組 15 日內只入一次（同一個 setup 唔重複入）
+# ════════════════════════════════════════════════════════════════
+S1_AUTO_GROUPS = [("S1A0", 1.00, "0%緩衝"), ("S1A1", 0.99, "1%緩衝")]
+S1_AUTO_COOLDOWN_DAYS = 15
+S1_T1_LOOKBACK = 20
 
+def s1_verdict(s):
+    """照抄 dashboard.html getVerdict('S1')：返回 'green' / 'cyan' / None。"""
+    touch, ago, above = s.get("pullbackTouch"), s.get("pullbackDaysAgo"), s.get("aboveNow")
+    rms = s.get("streakBefore")
+    if rms is None:
+        rms = s.get("recentMaxStreak") or 0
+    if not touch or not above or rms < 3 or ago is None or ago >= 3:
+        return None
+    if ago == 2 or rms < 7 or s.get("dipBreachEma50") or (s.get("bonusScore") or 0) <= 1:
+        return "cyan"
+    return "green"
+
+def s1_levels(ch):
+    """由 charts.json（最後一條 bar = 訊號日）計入場、前底、前頂、跌穿日 index。"""
+    c, h, l, e = ch.get("c") or [], ch.get("h") or [], ch.get("l") or [], ch.get("e20") or []
+    i = len(c) - 1
+    if i < 30 or len(e) != len(c):
+        return None
+    br = [k for k in range(i - 5, i + 1) if e[k] and c[k] is not None and c[k] < e[k] * 0.997]
+    if not br:
+        return None
+    ds = br[0]
+    while ds - 1 >= 0 and e[ds - 1] and c[ds - 1] is not None and c[ds - 1] < e[ds - 1]:
+        ds -= 1
+    lows = [x for x in l[ds:i + 1] if x is not None]
+    highs = [x for x in h[max(0, ds - S1_T1_LOOKBACK):ds] if x is not None]
+    if not lows or not highs:
+        return None
+    return {"entry": c[i], "low": min(lows), "t1": max(highs), "dipTs": ch["t"][ds]}
+
+def s1_plan(entry, stop, t1):
+    """返回 (t2 或 None, 計劃文字) ；唔入就返回 None。"""
+    risk = entry - stop
+    if risk <= 0 or t1 <= entry:
+        return None
+    rr1 = (t1 - entry) / risk
+    if rr1 >= 2:
+        return (None, "T1全平", rr1, None)
+    t2 = t1 + (t1 - stop) * 1.618
+    rr2 = (t2 - entry) / risk
+    if rr2 < 2:
+        return None
+    return (t2, "T1半+T2半", rr1, rr2)
+
+def session_date(charts):
+    """charts.json 最後一條 bar 嘅日期（美股交易日），取最多隻股一致嗰個。"""
+    from collections import Counter
+    cnt = Counter()
+    for i, ch in enumerate(charts.values()):
+        t = ch.get("t") or []
+        if t:
+            cnt[datetime.datetime.utcfromtimestamp(t[-1]).strftime("%Y-%m-%d")] += 1
+        if i >= 200:
+            break
+    return cnt.most_common(1)[0][0] if cnt else None
+
+def _days_between(a, b):
+    na, nb = _norm_date(a), _norm_date(b)
+    if not na or not nb:
+        return None
+    return abs((datetime.date(*na) - datetime.date(*nb)).days)
+
+def manage_s1_auto(p, st, charts, today):
+    """管理一單 S1 自動記錄。返回 True = 已處理（平倉或冇嘢做）。"""
+    tk, grp = p["ticker"], p["group"]
+    entry, stop = _num(p.get("entry")), _num(p.get("stop"))
+    t1, t2 = _num(p.get("t1")), _num(p.get("t2"))
+    if entry is None or stop is None or t1 is None or entry <= stop:
+        return
+    close = st["close"]; high = st.get("high", close); low = st.get("low", close)
+    if abs(close - entry) < 0.001 and abs(high - entry) < 0.001:
+        return  # 數據未更新
+    ch = charts.get(tk) or {}
+    opn = (ch.get("o") or [None])[-1]
+    risk = entry - stop
+    R = lambda px: (px - entry) / risk
+    t1hit = str(p.get("t1hit", "")).upper() == "Y"
+    eff_stop = entry + (t1 - entry) * 0.5 if t1hit else stop
+    reason = exit_px = r_mult = None
+    if low <= eff_stop:
+        exit_px = min(eff_stop, opn) if opn else eff_stop   # 裂口低開：用開市價（保守）
+        if t1hit:
+            reason = "止蝕(餘下一半，止蝕已移去入場/T1中間)"
+            r_mult = 0.5 * R(t1) + 0.5 * R(exit_px)
+        else:
+            reason = "止蝕(跌穿前底)"
+            r_mult = R(exit_px)
+    elif t2 is None and high >= t1:
+        exit_px = t1; reason = "止賺(到T1全平)"; r_mult = R(t1)
+    elif t2 is not None and high >= t2:
+        exit_px = t2; reason = "止賺(T1平一半+T2平一半)"; r_mult = 0.5 * R(t1) + 0.5 * R(t2)
+    elif t2 is not None and high >= t1 and not t1hit:
+        gv_post({"action": "paper_t1hit", "ticker": tk, "group": grp, "t1hit": "Y"})
+        print(f"📍 [{grp}] {tk}: 到T1 ${t1}（平一半，餘下止蝕移去 ${entry + (t1 - entry) * 0.5:.2f}）")
+        return
+    if reason:
+        pct = r_mult * risk / entry * 100
+        gv_post({"action": "paper_close", "ticker": tk, "group": grp,
+                 "exitDate": today, "exitPx": round(exit_px, 2),
+                 "reason": reason, "r": round(r_mult, 2), "pct": round(pct, 1)})
+        print(f"平倉 [{grp}] {tk}: {reason} R={r_mult:.2f}")
+
+def open_s1_auto(stocks, charts, open_pos, closed, today):
+    recent = {}
+    for x in list(open_pos) + list(closed):
+        g = x.get("group")
+        if g in [a for a, _, _ in S1_AUTO_GROUPS]:
+            recent.setdefault((x["ticker"], g), []).append(str(x.get("entryDate", "")))
+    n = 0
+    for tk, st in stocks.items():
+        s = st.get("strategies", {}).get("S1", {})
+        if not s.get("ready") or not st.get("inScope", st.get("inSP500")):
+            continue
+        color = s1_verdict(s)
+        if not color:
+            continue
+        lv = s1_levels(charts.get(tk) or {})
+        if not lv or abs(lv["entry"] - st["close"]) > 0.01 * st["close"]:
+            print(f"  S1自動 skip {tk}：計唔到前底/前頂（或圖表數據唔啱日子）")
+            continue
+        for grp, buf, buf_txt in S1_AUTO_GROUPS:
+            gaps = [_days_between(d, today) for d in recent.get((tk, grp), [])]
+            if any(g is not None and g <= S1_AUTO_COOLDOWN_DAYS for g in gaps):
+                continue
+            entry = lv["entry"]; stop = lv["low"] * buf; t1 = lv["t1"]
+            plan = s1_plan(entry, stop, t1)
+            if not plan:
+                print(f"  S1自動 skip {tk} [{grp}]：R:R 唔夠 或 前頂低過入場價")
+                continue
+            t2, plan_txt, rr1, rr2 = plan
+            dot = "🟢" if color == "green" else "🔵"
+            uni = st.get("universe") or ("SP500" if st.get("inSP500") else "")
+            gv_post({"action": "paper_open", "ticker": tk, "group": grp,
+                     "state": f"S1自動 {dot} | {buf_txt} | {plan_txt} | {uni}",
+                     "entryDate": today, "entry": round(entry, 2), "stop": round(stop, 2),
+                     "t1": round(t1, 2), "t2": round(t2, 2) if t2 else "",
+                     "bonus": s.get("bonusScore"), "rsi": st.get("rsi"),
+                     "trend": s.get("streakBefore") if s.get("streakBefore") is not None else s.get("recentMaxStreak"),
+                     "pullback": s.get("pullbackDaysAgo"), "spy1m": "", "m1": ""})
+            recent.setdefault((tk, grp), []).append(today)
+            n += 1
+            print(f"開倉 [{grp}] {tk} {dot}: entry={entry:.2f} stop={stop:.2f} T1={t1:.2f}"
+                  + (f" T2={t2:.2f}" if t2 else "") + f" RR1={rr1:.2f} → {plan_txt}")
+    print(f"S1 自動記錄：今日開 {n} 單")
+
+def main():
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
     stocks = {s["ticker"]: s for s in data["stocks"]}
@@ -111,6 +264,17 @@ def main():
         charts = json.load(open("charts.json"))
     except (FileNotFoundError, json.JSONDecodeError):
         charts = {}
+
+    # 0. 周末 check：睇數據嘅交易日，唔睇時鐘。
+    #    （舊做法用 utcnow：nightly scan 延遲到 UTC 星期六先行，就會成日 skip 咗星期五嘅交易日）
+    session = session_date(charts)
+    if session is None:
+        wd = datetime.datetime.utcnow().weekday()
+        if wd >= 5:
+            print(f"周末（weekday={wd}）而且冇圖表數據 — skip paper trade")
+            return
+    else:
+        print(f"數據交易日：{session}")
 
     # 2. 攞現有 paper 持倉（Google Sheet "Paper" tab）
     pf = gv_get("paper_list")
@@ -138,6 +302,11 @@ def main():
             continue
         entry = float(p["entry"])
         stop = float(p["stop"])
+
+        if grp in [a for a, _, _ in S1_AUTO_GROUPS]:
+            if session and not _same_day(ed, session):
+                manage_s1_auto(p, st, charts, session)
+            continue
 
         # ── S1 / TV 組：人手揀股(或TradingView真實落單)，用當日 High/Low check T1/T2/止損 ──
         if grp == "S1":
@@ -227,6 +396,9 @@ def main():
     #    C = 全部 ready + 10MA止賺    D = Bonus5/5 + 10MA止賺
     closed_today = {(c["ticker"], c.get("group", "A")) for c in closed
                     if _same_day(str(c.get("exitDate", "")), today)}
+    if session:
+        open_s1_auto(stocks, charts, open_pos, closed, session)
+
     if not S7_OPEN_NEW:
         print("S7 開新單已暫停（S7_OPEN_NEW=False），只管理現有持倉")
         print("Paper trade 完成")
