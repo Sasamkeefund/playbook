@@ -373,7 +373,8 @@ function renderS1A(openP, closed){
     const live=_liveData[p.ticker.toUpperCase()],cur=live?live.close:null;
     const t1hit=(p.t1hit==='Y'||p.t1hit==='y');
     const rcol=Number(p.r)>=0?'green':'red';
-    return '<tr><td><b>'+p.ticker+'</b></td><td>'+part(p.state,0).replace('S1自動','').trim()+'</td>'
+    const tv='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(String(p.ticker).replace('-','.'));
+    return '<tr><td><a href="'+tv+'" target="_blank" rel="noopener" title="喺 TradingView 開圖" style="color:var(--accent);font-weight:700;text-decoration:none">'+p.ticker+' ↗</a></td><td>'+part(p.state,0).replace('S1自動','').trim()+'</td>'
       +'<td style="font-size:11px">'+(p.group==='S1A0'?'0%':'1%')+'</td>'
       +'<td class="mono">'+fmtDate(p.entryDate)+'</td>'+(isOpen?'':'<td class="mono">'+fmtDate(p.exitDate)+'</td>')
       +'<td class="mono">$'+p.entry+'</td>'
