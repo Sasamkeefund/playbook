@@ -202,7 +202,7 @@ function switchPT(m){
   document.getElementById('tabS1A').classList.toggle('active',m==='S1A');
   if(m==='S1A'){
     document.getElementById('ptTitle').textContent='📒 S1 自動記錄 — 跟你平時 S1 做法，每個 🟢🔵 訊號自動記錄';
-    document.getElementById('ptSub').textContent='入場：跌穿EMA20後3日內企返上（收市價） ｜ 止損：前底（0% vs 1%緩衝兩組） ｜ T1：前頂 ｜ R:R≥2 到T1全平，否則T1平一半+T2(1.618)平一半';
+    document.getElementById('ptSub').textContent='入場：跌穿EMA20後3日內企返上 → 即晚放 Limit（收市價），第二日跌到先成交 ｜ 止損：前底（0% vs 1%緩衝兩組） ｜ T1：前頂 ｜ R:R≥2 到T1全平，否則T1平一半+T2(1.618)平一半';
     renderCurrent(); return;
   }
   document.getElementById('ptTitle').textContent=m==='S7'?'📒 S7 Paper Trade — 機械模擬（跟 J Law）':m==='S1'?'📒 S1 Paper Trade — 人手揀股（假突破回測）':'📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade';
@@ -393,7 +393,7 @@ function renderS1A(openP, closed){
   if(closed.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>組</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>止損</th><th>T1</th><th>T2</th><th>計劃</th><th>原因</th><th>R</th><th>股票池</th><th>大市</th><th>圖</th></tr></thead><tbody>';
     closed.slice().reverse().forEach(p=>h+=row(p,false));h+='</tbody></table></div>';}
   else h+='<div class="sub">仲未有平倉記錄</div>';
-  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你講嘅 S1 做法；止蝕用當日 Low 觸發，裂口低開用開市價計。到 T1 平一半後，餘下止蝕移去入場同 T1 中間。</div>';
+  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你講嘅 S1 做法；訊號日收市後掛 Limit，第二個交易日成交先記錄（入場日 = 成交日），冇成交就取消；止蝕用當日 Low 觸發，裂口低開用開市價計。到 T1 平一半後，餘下止蝕移去入場同 T1 中間。</div>';
   document.getElementById('content').innerHTML=h;
 }
 function renderS1(openP, closed){

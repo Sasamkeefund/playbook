@@ -1709,6 +1709,89 @@ def build_record(ticker, hist):
     }
 
 
+# ════════════════════════════════════════════════════════════════
+# S1 自動記錄嘅「掛單」：訊號日收市確認 🟢🔵 → 即晚放 Limit（收市價），第二個交易日先成交
+# scanner 喺覆寫 data.json 之前，讀返上次嘅 data.json / charts.json 揾出上個交易日嘅訊號，
+# 寫入今次 data.json 嘅 s1Pending，畀 paper_trade.py 用今日 bar 判斷有冇成交。
+# ════════════════════════════════════════════════════════════════
+S1_T1_LOOKBACK = 20
+
+def s1_verdict(s):
+    """照抄 dashboard.html getVerdict('S1')：返回 'green' / 'cyan' / None。"""
+    touch, ago, above = s.get("pullbackTouch"), s.get("pullbackDaysAgo"), s.get("aboveNow")
+    rms = s.get("streakBefore")
+    if rms is None:
+        rms = s.get("recentMaxStreak") or 0
+    if not touch or not above or rms < 3 or ago is None or ago >= 3:
+        return None
+    if ago == 2 or rms < 7 or s.get("dipBreachEma50") or (s.get("bonusScore") or 0) <= 1:
+        return "cyan"
+    return "green"
+
+def s1_levels(ch):
+    """由圖表（最後一條 bar = 訊號日）計：收市、跌穿期間最低（前底）、跌穿前 20 日最高（前頂）。"""
+    c, h, l, e = ch.get("c") or [], ch.get("h") or [], ch.get("l") or [], ch.get("e20") or []
+    i = len(c) - 1
+    if i < 30 or len(e) != len(c):
+        return None
+    br = [k for k in range(i - 5, i + 1) if e[k] and c[k] is not None and c[k] < e[k] * 0.997]
+    if not br:
+        return None
+    ds = br[0]
+    while ds - 1 >= 0 and e[ds - 1] and c[ds - 1] is not None and c[ds - 1] < e[ds - 1]:
+        ds -= 1
+    lows = [x for x in l[ds:i + 1] if x is not None]
+    highs = [x for x in h[max(0, ds - S1_T1_LOOKBACK):ds] if x is not None]
+    if not lows or not highs:
+        return None
+    return {"close": c[i], "low": min(lows), "t1": max(highs),
+            "dipDate": datetime.fromtimestamp(ch["t"][ds], timezone.utc).strftime("%Y-%m-%d")}
+
+def charts_session(charts):
+    """圖表最後一條 bar 嘅日期（取最多隻股一致嗰個）。"""
+    from collections import Counter
+    cnt = Counter()
+    for i, ch in enumerate(charts.values()):
+        t = ch.get("t") or []
+        if t:
+            cnt[datetime.fromtimestamp(t[-1], timezone.utc).strftime("%Y-%m-%d")] += 1
+        if i >= 200:
+            break
+    return cnt.most_common(1)[0][0] if cnt else None
+
+def compute_s1_pending(new_session):
+    """喺覆寫之前讀上次 data.json/charts.json，搵上個交易日嘅 S1 🟢🔵 訊號做掛單。"""
+    try:
+        old = json.load(open(OUTPUT_FILE, encoding="utf-8"))
+        old_charts = json.load(open("charts.json", encoding="utf-8"))
+    except Exception:
+        return []
+    old_session = charts_session(old_charts)
+    if not old_session or not new_session:
+        return []
+    if old_session == new_session:
+        # 同一個交易日重跑（例如手動 run）→ 沿用上次計好嘅掛單
+        return old.get("s1Pending", [])
+    out = []
+    for st in old.get("stocks", []):
+        s = (st.get("strategies") or {}).get("S1") or {}
+        if not s.get("ready") or not st.get("inScope", st.get("inSP500")):
+            continue
+        color = s1_verdict(s)
+        if not color:
+            continue
+        lv = s1_levels(old_charts.get(st["ticker"]) or {})
+        if not lv or abs(lv["close"] - st["close"]) > 0.01 * st["close"]:
+            continue
+        out.append({"ticker": st["ticker"], "signalDate": old_session, "limit": round(lv["close"], 4),
+                    "low": lv["low"], "t1": lv["t1"], "dipDate": lv["dipDate"], "color": color,
+                    "universe": st.get("universe") or ("SP500" if st.get("inSP500") else ""),
+                    "bonus": s.get("bonusScore"), "rsi": st.get("rsi"),
+                    "trend": s.get("streakBefore") if s.get("streakBefore") is not None else s.get("recentMaxStreak"),
+                    "pullback": s.get("pullbackDaysAgo")})
+    return out
+
+
 def load_previous_ready():
     """讀返上次 data.json 入面每個策略 ready 嘅 list，用嚟比較邊隻係新入。"""
     prev = {s: set() for s in STRATEGY_META}
@@ -1955,6 +2038,12 @@ def main():
         "summary": summary,
         "stocks": records,
     }
+    try:
+        output["s1Pending"] = compute_s1_pending(charts_session(charts))
+        print(f"S1 掛單（上個交易日訊號，等今日成交）：{len(output['s1Pending'])} 張")
+    except Exception as e:
+        print("S1 掛單計唔到:", e)
+        output["s1Pending"] = []
     try:
         output["marketRegime"] = build_market_regime()
         last = max(output["marketRegime"]) if output["marketRegime"] else None

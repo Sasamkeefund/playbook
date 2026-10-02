@@ -99,7 +99,8 @@ def max_close_since(charts, ticker, entry_date_str):
 
 # ════════════════════════════════════════════════════════════════
 # S1 自動記錄（跟 Sasa 平時 S1 做法，2026-09-30 確認）
-#   入場：S1 ready + dashboard 🟢/🔵（跌穿 EMA20 後 3 日內企返上），入場價 = 當日收市
+#   入場：S1 ready + dashboard 🟢/🔵（跌穿 EMA20 後 3 日內企返上）→ 即晚放 Limit（訊號日收市價），
+#         第二個交易日 Low 跌到 Limit 先成交（裂口低開用開市價），入場日 = 成交日；冇成交就取消
 #   止蝕：跌穿期間最低位；兩組對比 —— S1A0 冇緩衝、S1A1 再低 1%
 #   T1  ：跌穿日之前 20 個交易日最高位（前頂）
 #   R:R→T1 ≥ 2 → 到 T1 全平；< 2 → T2 = T1 + (T1−止蝕)×1.618，到 T1 平一半、T2 平另一半
@@ -110,36 +111,6 @@ def max_close_since(charts, ticker, entry_date_str):
 S1_AUTO_GROUPS = [("S1A0", 1.00, "0%緩衝"), ("S1A1", 0.99, "1%緩衝")]
 S1_AUTO_COOLDOWN_DAYS = 15
 S1_T1_LOOKBACK = 20
-
-def s1_verdict(s):
-    """照抄 dashboard.html getVerdict('S1')：返回 'green' / 'cyan' / None。"""
-    touch, ago, above = s.get("pullbackTouch"), s.get("pullbackDaysAgo"), s.get("aboveNow")
-    rms = s.get("streakBefore")
-    if rms is None:
-        rms = s.get("recentMaxStreak") or 0
-    if not touch or not above or rms < 3 or ago is None or ago >= 3:
-        return None
-    if ago == 2 or rms < 7 or s.get("dipBreachEma50") or (s.get("bonusScore") or 0) <= 1:
-        return "cyan"
-    return "green"
-
-def s1_levels(ch):
-    """由 charts.json（最後一條 bar = 訊號日）計入場、前底、前頂、跌穿日 index。"""
-    c, h, l, e = ch.get("c") or [], ch.get("h") or [], ch.get("l") or [], ch.get("e20") or []
-    i = len(c) - 1
-    if i < 30 or len(e) != len(c):
-        return None
-    br = [k for k in range(i - 5, i + 1) if e[k] and c[k] is not None and c[k] < e[k] * 0.997]
-    if not br:
-        return None
-    ds = br[0]
-    while ds - 1 >= 0 and e[ds - 1] and c[ds - 1] is not None and c[ds - 1] < e[ds - 1]:
-        ds -= 1
-    lows = [x for x in l[ds:i + 1] if x is not None]
-    highs = [x for x in h[max(0, ds - S1_T1_LOOKBACK):ds] if x is not None]
-    if not lows or not highs:
-        return None
-    return {"entry": c[i], "low": min(lows), "t1": max(highs), "dipTs": ch["t"][ds]}
 
 def s1_plan(entry, stop, t1):
     """返回 (t2 或 None, 計劃文字) ；唔入就返回 None。"""
@@ -213,48 +184,74 @@ def manage_s1_auto(p, st, charts, today):
                  "reason": reason, "r": round(r_mult, 2), "pct": round(pct, 1)})
         print(f"平倉 [{grp}] {tk}: {reason} R={r_mult:.2f}")
 
-def open_s1_auto(stocks, charts, open_pos, closed, today):
+S1_ENTRY_MARK = "Limit成交"
+
+def cleanup_old_s1_auto(open_pos, closed):
+    """一次性：刪走舊做法（訊號日收市即入）嘅 S1 自動記錄，由 Limit 成交做法重新開始。"""
+    groups = [a for a, _, _ in S1_AUTO_GROUPS]
+    n = 0
+    for lst, status in ((open_pos, "open"), (closed, "closed")):
+        for x in list(lst):
+            if x.get("group") in groups and S1_ENTRY_MARK not in str(x.get("state", "")):
+                gv_post({"action": "paper_remove", "ticker": x["ticker"], "group": x["group"],
+                         "entry": x.get("entry"), "status": status})
+                lst.remove(x); n += 1
+    if n:
+        print(f"S1 自動：刪走 {n} 張舊做法記錄（訊號日即入），改用 Limit 成交做法")
+
+def open_s1_auto(data, stocks, charts, open_pos, closed, session):
+    """上個交易日嘅 🟢🔵 訊號（scan.py 寫嘅 s1Pending）→ 今日 Low 跌到 Limit 先成交。"""
     recent = {}
     for x in list(open_pos) + list(closed):
         g = x.get("group")
         if g in [a for a, _, _ in S1_AUTO_GROUPS]:
             recent.setdefault((x["ticker"], g), []).append(str(x.get("entryDate", "")))
-    n = 0
-    for tk, st in stocks.items():
-        s = st.get("strategies", {}).get("S1", {})
-        if not s.get("ready") or not st.get("inScope", st.get("inSP500")):
+    pend = data.get("s1Pending") or []
+    n = miss = 0
+    for pd in pend:
+        tk = pd["ticker"]
+        if not pd.get("signalDate") or pd["signalDate"] >= session:
             continue
-        color = s1_verdict(s)
-        if not color:
+        st = stocks.get(tk)
+        ch = charts.get(tk) or {}
+        if not st:
             continue
-        lv = s1_levels(charts.get(tk) or {})
-        if not lv or abs(lv["entry"] - st["close"]) > 0.01 * st["close"]:
-            print(f"  S1自動 skip {tk}：計唔到前底/前頂（或圖表數據唔啱日子）")
+        low = st.get("low", st["close"])
+        opn = (ch.get("o") or [None])[-1]
+        limit = pd["limit"]
+        if low > limit:
+            miss += 1
+            print(f"  S1 掛單冇成交 {tk}：Limit ${limit:.2f}，今日最低 ${low:.2f}")
             continue
+        fill = min(limit, opn) if opn else limit   # 裂口低開 → 用開市價成交
         for grp, buf, buf_txt in S1_AUTO_GROUPS:
-            gaps = [_days_between(d, today) for d in recent.get((tk, grp), [])]
+            gaps = [_days_between(d, session) for d in recent.get((tk, grp), [])]
             if any(g is not None and g <= S1_AUTO_COOLDOWN_DAYS for g in gaps):
                 continue
-            entry = lv["entry"]; stop = lv["low"] * buf; t1 = lv["t1"]
-            plan = s1_plan(entry, stop, t1)
+            stop = pd["low"] * buf; t1 = pd["t1"]
+            plan = s1_plan(fill, stop, t1)
             if not plan:
-                print(f"  S1自動 skip {tk} [{grp}]：R:R 唔夠 或 前頂低過入場價")
+                print(f"  S1自動 skip {tk} [{grp}]：成交價 ${fill:.2f} 計 R:R 唔夠 或 已經高過前頂")
                 continue
             t2, plan_txt, rr1, rr2 = plan
-            dot = "🟢" if color == "green" else "🔵"
-            uni = st.get("universe") or ("SP500" if st.get("inSP500") else "")
+            dot = "🟢" if pd.get("color") == "green" else "🔵"
             gv_post({"action": "paper_open", "ticker": tk, "group": grp,
-                     "state": f"S1自動 {dot} | {buf_txt} | {plan_txt} | {uni}",
-                     "entryDate": today, "entry": round(entry, 2), "stop": round(stop, 2),
+                     "state": f"S1自動 {dot} | {buf_txt} | {plan_txt} | {pd.get('universe', '')} | {S1_ENTRY_MARK}(訊號{pd['signalDate'][5:]})",
+                     "entryDate": session, "entry": round(fill, 2), "stop": round(stop, 2),
                      "t1": round(t1, 2), "t2": round(t2, 2) if t2 else "",
-                     "bonus": s.get("bonusScore"), "rsi": st.get("rsi"),
-                     "trend": s.get("streakBefore") if s.get("streakBefore") is not None else s.get("recentMaxStreak"),
-                     "pullback": s.get("pullbackDaysAgo"), "spy1m": "", "m1": ""})
-            recent.setdefault((tk, grp), []).append(today)
+                     "bonus": pd.get("bonus"), "rsi": pd.get("rsi"), "trend": pd.get("trend"),
+                     "pullback": pd.get("pullback"), "spy1m": "", "m1": ""})
+            recent.setdefault((tk, grp), []).append(session)
             n += 1
-            print(f"開倉 [{grp}] {tk} {dot}: entry={entry:.2f} stop={stop:.2f} T1={t1:.2f}"
-                  + (f" T2={t2:.2f}" if t2 else "") + f" RR1={rr1:.2f} → {plan_txt}")
-    print(f"S1 自動記錄：今日開 {n} 單")
+            print(f"成交 [{grp}] {tk} {dot}: 訊號{pd['signalDate']} Limit {limit:.2f} → 成交 {fill:.2f} "
+                  f"止蝕 {stop:.2f} T1 {t1:.2f}" + (f" T2 {t2:.2f}" if t2 else "") + f" → {plan_txt}")
+            if low <= stop:   # 成交當日已經跌穿止蝕（保守：當日止蝕）
+                r = (stop - fill) / (fill - stop)
+                gv_post({"action": "paper_close", "ticker": tk, "group": grp, "exitDate": session,
+                         "exitPx": round(stop, 2), "reason": "止蝕(成交當日跌穿前底)",
+                         "r": round(r, 2), "pct": round((stop - fill) / fill * 100, 1)})
+                print(f"平倉 [{grp}] {tk}: 成交當日已跌穿前底 R={r:.2f}")
+    print(f"S1 自動記錄：掛單 {len(pend)} 張，成交開 {n} 單，冇成交 {miss} 張")
 
 def main():
     # 1. 攞最新 scan data
@@ -280,6 +277,8 @@ def main():
     pf = gv_get("paper_list")
     open_pos = pf.get("open", [])      # [{ticker, entry, stop, entryDate, group}]
     closed = pf.get("closed", [])      # 已平倉
+
+    cleanup_old_s1_auto(open_pos, closed)
 
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}
@@ -397,7 +396,7 @@ def main():
     closed_today = {(c["ticker"], c.get("group", "A")) for c in closed
                     if _same_day(str(c.get("exitDate", "")), today)}
     if session:
-        open_s1_auto(stocks, charts, open_pos, closed, session)
+        open_s1_auto(data, stocks, charts, open_pos, closed, session)
 
     if not S7_OPEN_NEW:
         print("S7 開新單已暫停（S7_OPEN_NEW=False），只管理現有持倉")
