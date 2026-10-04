@@ -156,6 +156,34 @@ def pct_change(values, idx, lookback):
 # 相對強度線（股價 / SPY），逐隻股 eval 前由外部設定；None = 唔計 RS（自動過）
 _CUR_RS_LINE = None
 _CUR_TIMES = None  # 當前股票嘅 bar 時間，計大盤相對升幅用
+_CUR_OPENS = None  # 當前股票嘅開市價（S6 A 點用嚟認業績跳空）
+
+
+def s6_pole_low_idx(c, o, base, b, gap_pct=4.0, min_pause=2):
+    """S6 A 點（旗桿起點）。預設 = 20 日窗口開始到 B 之間最低收市（原有做法）。
+    業績跳空修正（2026-10-04，PYPL/DXCM/GEHC/TMO/AMP 驗證）：B 之前最近一次跳空高開 ≥4%，
+    而跳空之後有整固（連續 ≥2 日收市冇再創跳空後新高）→ 跳空前嘅舊低位唔再係旗桿起點，
+    A = 跳空日到 B 之間最低收市。跳空之後一路升冇停（跳空本身係旗桿一部分）就維持原有做法。
+    o = 開市價 list（冇就用收市對收市升幅代替）。"""
+    seg = c[base:b + 1]
+    a = base + seg.index(min(seg))
+    for g in range(b, base, -1):
+        if c[g - 1] is None or c[g - 1] <= 0:
+            continue
+        ref = o[g] if (o is not None and g < len(o) and o[g]) else c[g]
+        if (ref / c[g - 1] - 1) * 100 < gap_pct:
+            continue
+        hi, streak, longest = c[g], 0, 0
+        for j in range(g + 1, b):
+            if c[j] > hi:
+                hi, streak = c[j], 0
+            else:
+                streak += 1
+                longest = max(longest, streak)
+        if longest >= min_pause:
+            post = c[g:b + 1]
+            return g + post.index(min(post))
+    return a
 
 def rs_strong(idx, lookback=126, buf=0.97):
     """RS 線接近自己 lookback 期內高位 = 跑贏大盤（Minervini/J Law RS）。"""
@@ -990,6 +1018,7 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     broke_h1 = False
     flag_low = None
     flag_retrace = None   # 旗形回調佔上升推進浪幾多（Patreon: 要 ≤ 0.236）
+    s6_pole_a_idx = s6_pole_b_idx = None
     days_since_pole = None
     try:
         # 原文：「所有判斷用 Close，唔用日內 High/Low」——B點=急升最高Close，A點=急升前最低Close，
@@ -1001,8 +1030,14 @@ def eval_strategies(idx, closes, highs, lows, volumes,
             pole_top = max(seg_c[:-1])               # B點：旗杆頂（急升最高Close，唔計今日）
             pole_idx = seg_c.index(pole_top)         # 喺 segment 內位置
             days_since_pole = (len(seg_c) - 1) - pole_idx
-            # A點：旗杆頂之前嘅最低 Close（上升推進浪起點）
-            pole_low = min(seg_c[:pole_idx+1]) if pole_idx >= 1 else seg_c[0]
+            # A點：旗杆頂之前嘅最低 Close（上升推進浪起點）；業績跳空後有整固 → 用跳空後嘅最低 Close
+            if pole_idx >= 1:
+                a_abs = s6_pole_low_idx(closes, _CUR_OPENS if (_CUR_OPENS and len(_CUR_OPENS) == len(closes)) else None,
+                                        base, base + pole_idx)
+            else:
+                a_abs = base
+            pole_low = closes[a_abs]
+            s6_pole_a_idx, s6_pole_b_idx = a_abs, base + pole_idx
             # 整固區 = 旗杆頂之後嘅 bars（旗形喺旗杆後形成）
             consol_c = seg_c[pole_idx:]
             if len(consol_c) >= 2:
@@ -1072,6 +1107,12 @@ def eval_strategies(idx, closes, highs, lows, volumes,
     res["S6"]["brokeH1"] = broke_h1
     res["S6"]["flagRetrace"] = round(flag_retrace, 3) if flag_retrace is not None else None
     res["S6"]["daysSincePole"] = days_since_pole
+    _bar_day = lambda i: (datetime.fromtimestamp(_CUR_TIMES[i], timezone.utc).strftime("%Y-%m-%d")
+                          if (_CUR_TIMES is not None and i is not None and i < len(_CUR_TIMES) and _CUR_TIMES[i]) else None)
+    res["S6"]["poleA"] = round(closes[s6_pole_a_idx], 2) if s6_pole_a_idx is not None else None
+    res["S6"]["poleB"] = round(closes[s6_pole_b_idx], 2) if s6_pole_b_idx is not None else None
+    res["S6"]["poleADate"] = _bar_day(s6_pole_a_idx)
+    res["S6"]["poleBDate"] = _bar_day(s6_pole_b_idx)
 
     # ── S7 J Law / Minervini VCP 整固突破 ──
     # 強勢股（Stage 2 + 跑贏大盤）正喺度 VCP 整固（橫行收窄），等突破。
@@ -1609,7 +1650,7 @@ def get_sector_event(sector, today):
 # 主流程
 # ─────────────────────────────────────────────────────────────
 def build_record(ticker, hist):
-    global _CUR_RS_LINE, _CUR_TIMES
+    global _CUR_RS_LINE, _CUR_TIMES, _CUR_OPENS
     closes = hist["close"]
     highs = hist["high"]
     lows = hist["low"]
@@ -1624,6 +1665,7 @@ def build_record(ticker, hist):
 
     # 設定 RS 線 + bar 時間（相對 SPY），畀 S7 用
     _CUR_TIMES = hist.get("time", [])
+    _CUR_OPENS = hist.get("open") if len(hist.get("open") or []) == len(hist["close"]) else None
     _CUR_RS_LINE = build_rs_line(hist.get("time", []), closes) if ticker != "SPY" else None
 
     last = len(closes) - 1
@@ -1725,6 +1767,8 @@ def build_record(ticker, hist):
             strategies[s]["pctToH1"] = today[s].get("pctToH1")
             strategies[s]["brokeH1"] = today[s].get("brokeH1", False)
             strategies[s]["flagRetrace"] = today[s].get("flagRetrace")
+            for k in ("poleA", "poleB", "poleADate", "poleBDate", "daysSincePole"):
+                strategies[s][k] = today[s].get(k)
 
     # K 線 + EMA 圖數據（最近 120 根，畀 app 內畫圖）
     times = hist.get("time", [])
