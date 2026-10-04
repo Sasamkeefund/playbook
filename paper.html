@@ -77,7 +77,8 @@
     <div class="sub" id="ptSub">記低你自己喺 TradingView 落嘅 paper trade，留返個原因，儲返自己嘅trade record</div>
     <div style="display:flex;gap:8px;margin:14px 0">
       <button id="tabTV" class="ptab active" onclick="switchPT('TV')">📝 我的記錄(TradingView)</button>
-      <button id="tabS7" class="ptab" onclick="switchPT('S7')">🤖 S7 機械</button>
+      <button id="tabS7N" class="ptab" onclick="switchPT('S7N')">🚀 S7 突破</button>
+      <button id="tabS7" class="ptab" onclick="switchPT('S7')">🗄️ S7 舊版</button>
       <button id="tabS1" class="ptab" onclick="switchPT('S1')">✋ S1 人手揀</button>
       <button id="tabS1A" class="ptab" onclick="switchPT('S1A')">🤖 S1 自動</button>
     </div>
@@ -171,7 +172,7 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
   document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
 }});
 
-let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null, _regime={}, _s1Next=[];
+let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null, _regime={}, _s1Next=[], _s7Next=[];
 async function load(){
   const now=new Date();
   const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
@@ -191,6 +192,7 @@ async function load(){
     (dataResult.value.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
     _regime=dataResult.value.marketRegime||{};
     _s1Next=dataResult.value.s1Next||[];
+    _s7Next=dataResult.value.s7Next||[];
   }
   _macroData=(marketResult.status==='fulfilled')?marketResult.value:null;
   renderCurrent();
@@ -201,6 +203,12 @@ function switchPT(m){
   document.getElementById('tabS1').classList.toggle('active',m==='S1');
   document.getElementById('tabTV').classList.toggle('active',m==='TV');
   document.getElementById('tabS1A').classList.toggle('active',m==='S1A');
+  document.getElementById('tabS7N').classList.toggle('active',m==='S7N');
+  if(m==='S7N'){
+    document.getElementById('ptTitle').textContent='📒 S7 突破 — VCP 整固後放量突破先買（新版）';
+    document.getElementById('ptSub').textContent='訊號：VCP 整固（S7 ready）後第一次收市放量（RVOL≥1.5）升穿整固區頂，大市 SPY>EMA200 ｜ 入場：下個交易日開市（開市要喺突破位至+5%） ｜ 止蝕：整固低位（收市） ｜ 止賺：20MA vs 10MA 兩組';
+    renderCurrent(); return;
+  }
   if(m==='S1A'){
     document.getElementById('ptTitle').textContent='📒 S1 自動記錄 — 跟你平時 S1 做法，每個 🟢🔵 訊號自動記錄';
     document.getElementById('ptSub').textContent='入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%）收市確認 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半';
@@ -243,10 +251,12 @@ async function removeS1Closed(ticker, entry){
 }
 function renderCurrent(){
   const isS1A=g=>g==='S1A0'||g==='S1A1';
+  const isS7N=g=>g==='S7E20'||g==='S7S10';
+  if(_ptMode==='S7N'){renderS7N(_allOpen.filter(p=>isS7N(p.group)), _allClosed.filter(p=>isS7N(p.group)));return;}
   if(_ptMode==='S1A'){renderS1A(_allOpen.filter(p=>isS1A(p.group)), _allClosed.filter(p=>isS1A(p.group)));return;}
   if(_ptMode==='S1')renderS1(_allOpen.filter(p=>p.group==='S1'), _allClosed.filter(p=>p.group==='S1'));
   else if(_ptMode==='TV')renderTV(_allOpen.filter(p=>p.group==='TV'), _allClosed.filter(p=>p.group==='TV'));
-  else render(_allOpen.filter(p=>p.group!=='S1'&&p.group!=='TV'&&!isS1A(p.group)), _allClosed.filter(p=>p.group!=='S1'&&p.group!=='TV'&&!isS1A(p.group)));
+  else render(_allOpen.filter(p=>p.group!=='S1'&&p.group!=='TV'&&!isS1A(p.group)&&!isS7N(p.group)), _allClosed.filter(p=>p.group!=='S1'&&p.group!=='TV'&&!isS1A(p.group)&&!isS7N(p.group)));
 }
 
 function render(openP, closed){
@@ -270,6 +280,7 @@ function render(openP, closed){
   const n=closed.length;
   let h='';
 
+  h+='<div class="warn"><b>🗄️ 舊版 S7（2026-09-30 已停開新單）</b>：舊版冇等突破就買，4 組全部負期望。現有持倉會照舊規則平倉。新版請睇「🚀 S7 突破」。</div>';
   // A/B/C/D 對比（2×2：入場 × 止賺）
   h+='<div class="panel"><h2>🔬 4 組對比（入場 × 止賺）</h2>';
   h+='<div style="overflow-x:auto"><table><thead><tr><th>組別</th><th>入場</th><th>止賺</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
@@ -344,6 +355,50 @@ function render(openP, closed){
   document.getElementById('content').innerHTML=h;
 }
 
+function renderS7N(openP, closed){
+  closed=closed.filter(t=>t.r!==''&&t.r!=null&&!isNaN(Number(t.r)));
+  const part=(s,i)=>((s||'').split('|')[i]||'').trim();
+  const tvA=t=>'<a href="https://www.tradingview.com/chart/?symbol='+encodeURIComponent(String(t).replace('-','.'))+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">'+t+' ↗</a>';
+  const stat=cl=>{const w=cl.filter(t=>Number(t.r)>0).length,R=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
+    return {n:cl.length,wr:cl.length?Math.round(w/cl.length*100)+'%':'—',exp:cl.length?(R/cl.length>=0?'+':'')+(R/cl.length).toFixed(2)+'R':'—',tot:cl.length?(R>=0?'+':'')+R.toFixed(1)+'R':'—',col:R>=0?'green':'red'};};
+  let h='';
+  // 下個交易日開市買
+  const nx=_s7Next||[];
+  h+='<div class="panel"><h2>📋 下個交易日開市買（'+nx.length+'）</h2>';
+  if(nx.length){
+    h+='<div class="sub" style="margin-bottom:8px">最新交易日第一次放量突破整固區頂嘅股票。下個交易日開市價要喺「開市範圍」入面先買：低過突破位 = 突破失敗；上限係突破位 +5%（唔追高），或者令止蝕距離超過 8% 嘅價（邊個低用邊個）。</div>';
+    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>突破日</th><th>突破位</th><th>收市</th><th>RVOL</th><th>開市範圍（先買）</th><th>止蝕（收市）</th><th>狀態</th></tr></thead><tbody>';
+    nx.forEach(x=>{const held=openP.some(p=>p.ticker===x.ticker);
+      const lo=Number(x.pivot), hi=Math.min(x.pivot*1.05, x.stopRef/0.92), ok=hi>=lo;   // 上限：高過突破位 5% 或者止蝕距離 > 8%
+      h+='<tr><td>'+tvA(x.ticker)+'</td><td class="mono">'+String(x.signalDate).slice(5)+'</td><td class="mono">$'+lo.toFixed(2)+'</td><td class="mono">$'+Number(x.close).toFixed(2)+'</td><td class="mono">'+x.brkRvol+'x</td>'
+        +'<td class="mono" style="font-size:11px">'+(ok?'$'+lo.toFixed(2)+' – $'+hi.toFixed(2):'—')+'</td><td class="mono red">$'+Number(x.stopRef).toFixed(2)+'</td>'
+        +'<td style="font-size:11px">'+(held?'<span style="color:var(--faint)">已持倉</span>':(!ok?'<span style="color:#ff5d6c">止蝕太闊，唔入</span>':'⏳ 等開市'))+'</td></tr>';});
+    h+='</tbody></table></div>';
+  }else h+='<div class="sub">最新交易日冇放量突破。</div>';
+  h+='</div>';
+  // 兩組對比
+  h+='<div class="panel"><h2>🔬 兩組對比：用 20MA 定 10MA 止賺？</h2><div style="overflow-x:auto"><table><thead><tr><th>組</th><th>止賺</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
+  [['S7E20','收市跌穿 20MA'],['S7S10','收市跌穿 10MA']].forEach(([g,lab])=>{const s=stat(closed.filter(t=>t.group===g));
+    h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td><td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';});
+  h+='</tbody></table></div>'+regimeStatsHtml(closed)+'<div class="sub" style="margin-top:10px">每個訊號兩組各開一單，入場同止蝕一樣，只係止賺唔同。要升過 入場+0.5×ATR 先開始用均線止賺。</div></div>';
+  // 持倉
+  h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
+  if(openP.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>組</th><th>入場日</th><th>入場</th><th>現價</th><th>止蝕</th><th>突破位</th><th>RVOL</th><th>大市</th></tr></thead><tbody>';
+    openP.slice().sort((a,b)=>String(b.entryDate).localeCompare(String(a.entryDate))).forEach(p=>{const live=_liveData[p.ticker.toUpperCase()],cur=live?live.close:null,pc=cur!=null&&p.entry?(cur-p.entry)/p.entry*100:null;
+      h+='<tr><td>'+tvA(p.ticker)+'</td><td style="font-size:11px">'+part(p.state,1)+'</td><td class="mono">'+fmtDate(p.entryDate)+'</td><td class="mono">$'+p.entry+'</td>'
+        +'<td class="mono '+(pc==null?'':pc>=0?'green':'red')+'">'+(cur!=null?'$'+cur.toFixed(2)+'<br><span style="font-size:10px">'+(pc>=0?'+':'')+pc.toFixed(1)+'%</span>':'—')+'</td>'
+        +'<td class="mono red">$'+p.stop+'</td><td class="mono" style="font-size:11px">'+part(p.state,2).replace('突破位','').trim()+'</td><td class="mono" style="font-size:11px">'+part(p.state,3).replace('RVOL','').trim()+'x</td>'+regimeCell(p.entryDate)+'</tr>';});
+    h+='</tbody></table></div>';}
+  else h+='<div class="sub">未有持倉。每晚 scan 完會自動處理突破訊號。</div>';
+  h+='</div><div class="panel"><h2>📋 已平倉（'+closed.length+'）</h2>';
+  if(closed.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>組</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>原因</th><th>R</th></tr></thead><tbody>';
+    closed.slice().reverse().forEach(t=>{const rc=Number(t.r)>=0?'green':'red';
+      h+='<tr><td>'+tvA(t.ticker)+'</td><td style="font-size:11px">'+part(t.state,1)+'</td><td class="mono">'+fmtDate(t.entryDate)+'</td><td class="mono">'+fmtDate(t.exitDate)+'</td><td class="mono">$'+t.entry+'</td><td class="mono">$'+t.exitPx+'</td><td style="font-size:11px">'+(t.reason||'')+'</td><td class="mono '+rc+'">'+(Number(t.r)>=0?'+':'')+t.r+'R</td></tr>';});
+    h+='</tbody></table></div>';}
+  else h+='<div class="sub">仲未有平倉記錄</div>';
+  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>新版 S7 只喺 VCP 整固之後第一次放量突破先入場（舊版一見整固就買，已停）。樣本少過 20 單前唔好落結論。</div>';
+  document.getElementById('content').innerHTML=h;
+}
 function s1PlanTxt(entry, stop, t1){
   const risk=entry-stop;
   if(!(risk>0)||!(t1>entry))return {txt:'唔入（前頂唔高過入場價）',ok:false};

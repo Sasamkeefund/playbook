@@ -288,6 +288,133 @@ def open_s1_auto(data, stocks, charts, open_pos, closed, session):
             _post_s1_result(tk, grp, ch, entry, stop, simulate_s1(ch, k, entry, stop, t1, t2))
     print(f"S1 自動記錄：掛單 {len(pend)} 張，成交開 {n} 單，取消/冇成交 {cancel} 張")
 
+# ════════════════════════════════════════════════════════════════
+# S7 突破（2026-10-04 重做；舊版 A/B/C/D 冇等突破就買，已停）
+#   訊號：前一日 S7 ready（VCP 整固）→ 今日第一次收市升穿整固區最高收市（pivot）+ RelVol ≥ 1.5；
+#         大市 SPY > EMA200；ATR% ≥ 1%（排除優先股 / 等收購嘅股）
+#   入場：下一個交易日開市價買；開市 < pivot（突破失敗）或 > pivot × 1.05（追高）→ 取消
+#   止蝕：突破前最後 10 日最低收市，收市低過先算；風險 > 8% 唔入
+#   止賺：兩組對比 —— S7E20 收市跌穿 EMA20、S7S10 收市跌穿 10 日均線；
+#         要曾經升過 入場 + 0.5×ATR 先開始用均線止賺（未賺過錢就只睇止蝕）
+#   同一隻股同一組 30 日內只入一次；每次 run 由入場日逐日重算
+# ════════════════════════════════════════════════════════════════
+S7N_GROUPS = [("S7E20", "E20", "20MA止賺"), ("S7S10", "S10", "10MA止賺")]
+S7N_COOLDOWN_DAYS = 30
+S7N_MAX_RISK_PCT = 8.0
+S7N_MAX_CHASE_PCT = 5.0
+
+def _atr14_before(ch, k):
+    h, l, c = ch["h"], ch["l"], ch["c"]
+    trs = []
+    for j in range(max(1, k - 14), k):
+        if None in (h[j], l[j], c[j - 1]):
+            continue
+        trs.append(max(h[j] - l[j], abs(h[j] - c[j - 1]), abs(l[j] - c[j - 1])))
+    return sum(trs) / len(trs) if trs else None
+
+def simulate_s7(ch, k0, entry, stop, trail, buffer_met=False):
+    """由入場日 k0（開市買入）逐日行：收市 < 止蝕 → 止蝕；升過 entry+0.5ATR 之後收市跌穿均線 → 平倉。"""
+    c, e20 = ch["c"], ch.get("e20") or []
+    risk = entry - stop
+    atr = _atr14_before(ch, k0) if k0 > 0 else None
+    buf_px = entry + 0.5 * atr if atr else entry
+    mx = None
+    for k in range(k0, len(c)):
+        ck = c[k]
+        if ck is None:
+            continue
+        if ck < stop:
+            return {"exit": (k, ck, "止蝕(收市穿整固低位)" if k > k0 else "止蝕(入場當日收市穿整固低位)",
+                             (ck - entry) / risk)}
+        mx = ck if mx is None else max(mx, ck)
+        if k > k0 and (buffer_met or mx >= buf_px):
+            if trail == "E20":
+                ma, name = (e20[k] if k < len(e20) else None), "20MA"
+            else:
+                win = [x for x in c[k - 9:k + 1] if x is not None] if k >= 9 else []
+                ma, name = (sum(win) / 10 if len(win) == 10 else None), "10MA"
+            if ma is not None and ck < ma:
+                why = f"止賺(收市跌穿{name})" if ck > entry else f"止蝕(升過之後打返轉，收市跌穿{name})"
+                return {"exit": (k, ck, why, (ck - entry) / risk)}
+    return {"exit": None}
+
+def _post_s7_close(tk, grp, ch, entry, stop, res):
+    if not res["exit"]:
+        return
+    k, px, reason, r = res["exit"]
+    d = _bar_dates(ch)[k]
+    gv_post({"action": "paper_close", "ticker": tk, "group": grp, "exitDate": d, "exitPx": round(px, 2),
+             "reason": reason, "r": round(r, 2), "pct": round((px - entry) / entry * 100, 1)})
+    print(f"平倉 [{grp}] {tk} {d}: {reason} R={r:.2f}")
+
+def manage_s7_auto(p, charts):
+    tk, grp = p["ticker"], p["group"]
+    entry, stop = _num(p.get("entry")), _num(p.get("stop"))
+    ch = charts.get(tk) or {}
+    if entry is None or stop is None or entry <= stop or not ch.get("c"):
+        return
+    nd = _norm_date(str(p.get("entryDate", "")))
+    if not nd:
+        return
+    ed = "%04d-%02d-%02d" % nd
+    dates = _bar_dates(ch)
+    trail = dict((g, t) for g, t, _ in S7N_GROUPS).get(grp, "E20")
+    if ed in dates:
+        res = simulate_s7(ch, dates.index(ed), entry, stop, trail)
+    elif dates and ed < dates[0]:
+        res = simulate_s7(ch, 0, entry, stop, trail, buffer_met=True)   # 揸咗好耐，入場日已經唔喺圖表入面
+    else:
+        return
+    _post_s7_close(tk, grp, ch, entry, stop, res)
+
+def open_s7_auto(data, charts, open_pos, closed):
+    groups = [g for g, _, _ in S7N_GROUPS]
+    recent, held = {}, set()
+    for x in list(open_pos) + list(closed):
+        if x.get("group") in groups:
+            recent.setdefault((x["ticker"], x["group"]), []).append(str(x.get("entryDate", "")))
+    for x in open_pos:
+        if x.get("group") in groups:
+            held.add((x["ticker"], x["group"]))
+    pend = data.get("s7Pending") or []
+    n = cancel = 0
+    for pd in pend:
+        tk, sig, pivot, stop = pd["ticker"], pd.get("signalDate"), pd.get("pivot"), pd.get("stopRef")
+        ch = charts.get(tk) or {}
+        if not sig or not pivot or not stop or not ch.get("c"):
+            continue
+        dates = _bar_dates(ch)
+        nxt = [k for k, d in enumerate(dates) if d > sig]
+        if not nxt:
+            continue
+        k = nxt[0]
+        opn = ch["o"][k]
+        why = None
+        if opn < pivot:
+            why = f"開市 {opn:.2f} 跌返落突破位 {pivot:.2f} 以下（突破失敗）"
+        elif opn > pivot * (1 + S7N_MAX_CHASE_PCT / 100):
+            why = f"開市 {opn:.2f} 已經高過突破位 {(opn / pivot - 1) * 100:.1f}%（唔追）"
+        elif (opn - stop) / opn * 100 > S7N_MAX_RISK_PCT:
+            why = f"止蝕太闊（{(opn - stop) / opn * 100:.1f}% > {S7N_MAX_RISK_PCT:.0f}%）"
+        if why:
+            cancel += 1
+            print(f"  S7 取消 {tk}（突破 {sig}，{dates[k]}）：{why}")
+            continue
+        entry = opn
+        for grp, trail, label in S7N_GROUPS:
+            gaps = [_days_between(d, dates[k]) for d in recent.get((tk, grp), [])]
+            if (tk, grp) in held or any(g is not None and g <= S7N_COOLDOWN_DAYS for g in gaps):
+                continue
+            gv_post({"action": "paper_open", "ticker": tk, "group": grp,
+                     "state": f"S7突破 | {label} | 突破位 {pivot:.2f} | RVOL {pd.get('brkRvol')} | "
+                              f"{pd.get('universe', '')} | 大市{pd.get('regime', '')} | 突破日 {sig[5:]}",
+                     "entryDate": dates[k], "entry": round(entry, 2), "stop": round(stop, 2),
+                     "bonus": pd.get("bonus"), "spy1m": "", "m1": ""})
+            recent.setdefault((tk, grp), []).append(dates[k]); held.add((tk, grp)); n += 1
+            print(f"開倉 [{grp}] {tk}: 突破 {sig} → {dates[k]} 開市 {entry:.2f} 止蝕 {stop:.2f}（{label}）")
+            _post_s7_close(tk, grp, ch, entry, stop, simulate_s7(ch, k, entry, stop, trail))
+    print(f"S7 突破記錄：掛單 {len(pend)} 張，開 {n} 單，取消 {cancel} 張")
+
 def main():
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
@@ -327,6 +454,9 @@ def main():
         ed = str(p.get("entryDate", ""))
         if grp in [a for a, _, _ in S1_AUTO_GROUPS]:
             manage_s1_auto(p, charts)
+            continue
+        if grp in [g for g, _, _ in S7N_GROUPS]:
+            manage_s7_auto(p, charts)
             continue
         if _same_day(ed, today):
             continue
@@ -430,6 +560,7 @@ def main():
                     if _same_day(str(c.get("exitDate", "")), today)}
     if session:
         open_s1_auto(data, stocks, charts, open_pos, closed, session)
+        open_s7_auto(data, charts, open_pos, closed)
 
     if not S7_OPEN_NEW:
         print("S7 開新單已暫停（S7_OPEN_NEW=False），只管理現有持倉")

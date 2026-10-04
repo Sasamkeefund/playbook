@@ -1742,6 +1742,39 @@ def build_record(ticker, hist):
         "e200": [round(ema200a[i], 2) if ema200a[i] is not None else None for i in range(start, last + 1)],
     }
 
+    # ── S7 突破偵測（2026-10-04）──
+    # 舊版只認到「整固緊」（ready），冇突破位，paper trade 一見 ready 就買 → 4,402 單全部負期望。
+    # 而家：前一日 S7 ready（VCP 整固）+ 今日收市升穿整固區最高收市（pivot）+ 放量（RelVol ≥ 1.5）= 突破訊號。
+    s7 = strategies["S7"]
+    s7.update({"breakoutToday": False, "pivot": None, "stopRef": None, "brkRvol": None,
+               "prevReady": None, "pivotNow": None})
+    try:
+        l_now = min(int(today["S7"].get("consolDays") or 0), 50)
+        if l_now >= 2:
+            s7["pivotNow"] = round(max(closes[last - l_now + 1: last + 1]), 2)   # 整固區頂（包括今日）
+        prev = eval_strategies(last - 1, closes, highs, lows, volumes,
+                               ema20a, ema50a, ema200a, rsia, atr5a, atr14a) if last >= 64 else None
+        if prev and prev.get("S7"):
+            pv = prev["S7"]
+            s7["prevReady"] = bool(pv.get("ready"))
+            L = min(int(pv.get("consolDays") or 0), 50)
+            if L >= 15 and last - L >= 0 and last >= 10:
+                pivot = max(closes[last - L: last])          # 突破前整固區最高收市
+                stop_ref = min(closes[last - 10: last])      # 突破前最後 10 日最低收市（整固低位）
+                base_v = sma_at(volumes, last, 20)
+                rv = volumes[last] / base_v if base_v else None
+                # 第一次突破：昨日收市仲未高過佢之前嘅整固區頂（避免突破後連續幾日都當新突破）
+                first_break = L < 2 or closes[last - 1] <= max(closes[last - L: last - 1])
+                # 排除優先股 / 等收購嘅股（波幅細到唔會走趨勢）：ATR% 要 ≥ 1%
+                atr_pct = (atr14a[last] / closes[last] * 100) if atr14a[last] and closes[last] else 0
+                s7["pivot"] = round(pivot, 4)
+                s7["stopRef"] = round(stop_ref, 4)
+                s7["brkRvol"] = round(rv, 2) if rv else None
+                s7["breakoutToday"] = bool(pv.get("ready") and closes[last] > pivot and first_break
+                                           and atr_pct >= 1.0 and rv is not None and rv >= 1.5)
+    except Exception:
+        pass
+
     return {
         "ticker": ticker,
         "close": round(closes[last], 2),
@@ -1857,6 +1890,38 @@ def s1_signals(stocks, charts, session):
                     "trend": s.get("streakBefore") if s.get("streakBefore") is not None else s.get("recentMaxStreak"),
                     "pullback": s.get("pullbackDaysAgo")})
     return out
+
+
+# ════════════════════════════════════════════════════════════════
+# S7 突破：今日放量突破（s7Next）→ 下一個交易日開市買（paper_trade 用上次嘅 s7Next 做 s7Pending）
+# ════════════════════════════════════════════════════════════════
+def s7_signals(stocks, session, regime_map):
+    rg = (regime_map or {}).get(session or "", {}).get("regime")
+    if rg not in ("強", "中"):          # 大市過濾：SPY 要企喺 EMA200 之上
+        return []
+    out = []
+    for st in stocks:
+        s7 = (st.get("strategies") or {}).get("S7") or {}
+        if not s7.get("breakoutToday"):
+            continue
+        out.append({"ticker": st["ticker"], "signalDate": session, "pivot": s7.get("pivot"),
+                    "stopRef": s7.get("stopRef"), "close": st.get("close"), "brkRvol": s7.get("brkRvol"),
+                    "bonus": s7.get("bonusScore"), "regime": rg,
+                    "universe": st.get("universe") or ("SP500" if st.get("inSP500") else "R1000")})
+    return out
+
+def compute_s7_pending(new_session):
+    """上次 scan 嘅 s7Next = 今次要喺新一日開市買嘅單；同一日重跑就沿用上次嘅 s7Pending。"""
+    try:
+        old = json.load(open(OUTPUT_FILE, encoding="utf-8"))
+    except Exception:
+        return []
+    old_session = old.get("dataSession")
+    if not old_session or not new_session:
+        return []
+    if old_session == new_session:
+        return old.get("s7Pending", [])
+    return old.get("s7Next", [])
 
 
 def load_previous_ready():
@@ -2136,6 +2201,14 @@ def main():
     except Exception as e:
         print("大市狀態計唔到（唔影響其他數據）:", e)
         output["marketRegime"] = {}
+    try:
+        output["s7Pending"] = compute_s7_pending(output["dataSession"])
+        output["s7Next"] = s7_signals(records, output["dataSession"], output["marketRegime"])
+        print(f"S7 突破：今日 {len(output['s7Next'])} 隻（下個交易日開市買）→ "
+              + ", ".join(x["ticker"] for x in output["s7Next"]) + f"｜今日要處理嘅掛單 {len(output['s7Pending'])} 張")
+    except Exception as e:
+        print("S7 突破計唔到:", e)
+        output["s7Next"], output["s7Pending"] = [], []
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))

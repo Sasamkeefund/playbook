@@ -603,7 +603,15 @@
         const cd=strat.consolDays, mk=strat.mktOK;
         let vcpTxt='整固'+(cd||'?')+'日 + 波動收窄';
         const mkTxt=(mk===false)?' ｜ ⚠️大盤弱(留意)':'';
-        return{text:'🔥 J Law VCP：'+vcpTxt+' ｜ '+rsTxt+' — TradingView 等突破入場'+mkTxt,color:'green'};}
+        // 2026-10-04：只有「今日第一次放量突破整固區頂」先係入場訊號（綠）；ready 只係整固緊（黃，續 watch）
+        if(strat.breakoutToday){
+          const pv=strat.pivot, sr=strat.stopRef;
+          const hi=(pv!=null&&sr!=null)?Math.min(pv*1.05, sr/0.92):null;
+          if(hi!=null&&hi<pv)return{text:'🚀 今日放量突破 $'+pv.toFixed(2)+'（RVOL '+(strat.brkRvol||'—')+'x）但止蝕 $'+sr.toFixed(2)+' 太闊（>8%），唔入'+mkTxt,color:'amber'};
+          return{text:'🚀 今日放量突破 $'+(pv!=null?pv.toFixed(2):'—')+'（RVOL '+(strat.brkRvol||'—')+'x）→ 下個交易日開市買，開市要喺 $'+(pv!=null?pv.toFixed(2):'—')+'–$'+(hi!=null?hi.toFixed(2):'—')+' ｜ 止蝕 $'+(sr!=null?sr.toFixed(2):'—')+'（收市）'+mkTxt,color:'green'};
+        }
+        const pn=strat.pivotNow;
+        return{text:'👀 J Law VCP 整固中：'+vcpTxt+' ｜ '+rsTxt+' — 等收市放量（RVOL≥1.5）升穿整固區頂'+(pn!=null?' $'+pn.toFixed(2):'')+mkTxt,color:'amber'};}
       if(tab==='S4'){
         if(req<reqMax)return{text:'👀 未搵到完整假突破結構（升浪+橫行區+假突破+返回）',color:'amber'};
         const rt=strat.rangeTop, rl=strat.rangeLow, entry=strat.entry, stop=strat.stop,
