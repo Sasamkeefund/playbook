@@ -171,7 +171,7 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
   document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
 }});
 
-let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null, _regime={};
+let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null, _regime={}, _s1Next=[];
 async function load(){
   const now=new Date();
   const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
@@ -190,6 +190,7 @@ async function load(){
   if(dataResult.status==='fulfilled'){
     (dataResult.value.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
     _regime=dataResult.value.marketRegime||{};
+    _s1Next=dataResult.value.s1Next||[];
   }
   _macroData=(marketResult.status==='fulfilled')?marketResult.value:null;
   renderCurrent();
@@ -343,6 +344,37 @@ function render(openP, closed){
   document.getElementById('content').innerHTML=h;
 }
 
+function s1PlanTxt(entry, stop, t1){
+  const risk=entry-stop;
+  if(!(risk>0)||!(t1>entry))return {txt:'唔入（前頂唔高過入場價）',ok:false};
+  const rr1=(t1-entry)/risk;
+  if(rr1>=2)return {txt:'T1全平（R:R 1:'+rr1.toFixed(1)+'）',ok:true};
+  const t2=t1+(t1-stop)*1.618, rr2=(t2-entry)/risk;
+  if(rr2<2)return {txt:'唔入（R:R 唔夠）',ok:false};
+  return {txt:'T1半 + T2 $'+t2.toFixed(2)+' 半（R:R 1:'+rr1.toFixed(1)+' / 1:'+rr2.toFixed(1)+'）',ok:true};
+}
+function s1NextPanel(openP){
+  const nx=_s1Next||[];
+  let h='<div class="panel"><h2>📋 下個交易日掛單（'+nx.length+'）</h2>';
+  if(!nx.length)return h+'<div class="sub">最新交易日冇 🟢🔵 S1 訊號。</div></div>';
+  h+='<div class="sub" style="margin-bottom:8px">最新交易日收市後嘅 🟢🔵 訊號。下個交易日開市先做開市前 Check：開市價要喺下面「開市範圍」入面（唔可以低過 EMA20，亦唔可以離 Limit 超過 1%），之後跌到 Limit 先成交。成交咗嘅會喺下一次 scan 之後出現喺持倉。</div>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>訊號日</th><th>Limit（入場價）</th><th>開市範圍</th><th>止蝕 0% / 1%</th><th>T1</th><th>計劃（0% 組）</th><th>跌穿深度</th><th>狀態</th></tr></thead><tbody>';
+  nx.forEach(x=>{
+    const lim=x.limit, lo=Math.max(x.ema20, lim*0.99), hi=lim*1.01, s0=x.low, s1=x.low*0.99;
+    const pl=s1PlanTxt(lim, s0, x.t1);
+    const held=openP.some(p=>p.ticker===x.ticker);
+    const tv='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(String(x.ticker).replace('-','.'));
+    h+='<tr><td><a href="'+tv+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">'+x.ticker+' ↗</a></td>'
+      +'<td>'+(x.color==='green'?'🟢':'🔵')+'</td><td class="mono">'+String(x.signalDate).slice(5)+'</td>'
+      +'<td class="mono">$'+lim.toFixed(2)+'</td>'
+      +'<td class="mono" style="font-size:11px">$'+lo.toFixed(2)+' – $'+hi.toFixed(2)+'<br><span style="color:var(--faint)">EMA20 $'+x.ema20.toFixed(2)+'</span></td>'
+      +'<td class="mono red">$'+s0.toFixed(2)+' / $'+s1.toFixed(2)+'</td><td class="mono green">$'+x.t1.toFixed(2)+'</td>'
+      +'<td style="font-size:11px;color:'+(pl.ok?'inherit':'#ff5d6c')+'">'+pl.txt+'</td>'
+      +'<td class="mono">'+x.depth+'%</td>'
+      +'<td style="font-size:11px">'+(held?'<span style="color:var(--faint)">已持倉，唔會再入</span>':(pl.ok?'⏳ 等開市':'—'))+'</td></tr>';
+  });
+  return h+'</tbody></table></div></div>';
+}
 function renderS1A(openP, closed){
   closed=closed.filter(t=>t.r!==''&&t.r!=null&&!isNaN(Number(t.r)));
   const G=[['S1A0','0% 緩衝','止蝕 = 前底'],['S1A1','1% 緩衝','止蝕 = 前底 × 0.99']];
@@ -351,7 +383,7 @@ function renderS1A(openP, closed){
     const sl=cl.filter(t=>String(t.reason||'').includes('穿前底')).length;
     return {n:cl.length,wr:cl.length?Math.round(w/cl.length*100)+'%':'—',exp:cl.length?(R/cl.length>=0?'+':'')+(R/cl.length).toFixed(2)+'R':'—',
             tot:cl.length?(R>=0?'+':'')+R.toFixed(1)+'R':'—',col:R>=0?'green':'red',sl:cl.length?Math.round(sl/cl.length*100)+'%':'—'};};
-  let h='<div class="panel"><h2>🔬 兩組對比：止蝕要唔要加 1% 緩衝？</h2><div style="overflow-x:auto"><table><thead><tr>'
+  let h=s1NextPanel(openP)+'<div class="panel"><h2>🔬 兩組對比：止蝕要唔要加 1% 緩衝？</h2><div style="overflow-x:auto"><table><thead><tr>'
     +'<th>組</th><th>止蝕</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th><th>被前底止蝕</th></tr></thead><tbody>';
   G.forEach(([g,lab,desc])=>{const s=stat(closed.filter(t=>t.group===g));
     h+='<tr><td style="font-weight:700">'+lab+'</td><td style="font-size:11px;color:var(--dim)">'+desc+'</td>'

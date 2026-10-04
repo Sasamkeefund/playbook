@@ -1833,18 +1833,23 @@ def compute_s1_pending(new_session):
     if old_session == new_session:
         # 同一個交易日重跑（例如手動 run）→ 沿用上次計好嘅掛單
         return old.get("s1Pending", [])
+    return s1_signals(old.get("stocks", []), old_charts, old_session)
+
+
+def s1_signals(stocks, charts, session):
+    """某個交易日收市後嘅 S1 🟢🔵 訊號 → 下一個交易日要掛嘅 Limit 單（價位全部用 K 線實體）。"""
     out = []
-    for st in old.get("stocks", []):
+    for st in stocks:
         s = (st.get("strategies") or {}).get("S1") or {}
         if not s.get("ready") or not st.get("inScope", st.get("inSP500")):
             continue
         color = s1_verdict(s)
         if not color:
             continue
-        lv = s1_levels(old_charts.get(st["ticker"]) or {})
+        lv = s1_levels(charts.get(st["ticker"]) or {})
         if not lv or abs(lv["close"] - st["close"]) > 0.01 * st["close"]:
             continue
-        out.append({"ticker": st["ticker"], "signalDate": old_session, "limit": round(lv["close"], 4),
+        out.append({"ticker": st["ticker"], "signalDate": session, "limit": round(lv["close"], 4),
                     "low": lv["low"], "t1": lv["t1"], "dipDate": lv["dipDate"], "color": color,
                     "ema20": round(lv["ema20"], 4), "depth": lv["depth"],
                     "universe": st.get("universe") or ("SP500" if st.get("inSP500") else ""),
@@ -2118,6 +2123,12 @@ def main():
     except Exception as e:
         print("S1 掛單計唔到:", e)
         output["s1Pending"] = []
+    try:
+        output["s1Next"] = s1_signals(records, charts, output["dataSession"])
+        print(f"S1 下個交易日掛單（今日訊號）：{len(output['s1Next'])} 張 → " + ", ".join(x["ticker"] for x in output["s1Next"]))
+    except Exception as e:
+        print("S1 下個交易日掛單計唔到:", e)
+        output["s1Next"] = []
     try:
         output["marketRegime"] = build_market_regime()
         last = max(output["marketRegime"]) if output["marketRegime"] else None
