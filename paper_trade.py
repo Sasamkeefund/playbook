@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-S7 機械 Paper Trade 引擎（跟 J Law）— 每日 scan 後自動行
-入場：S7 ready + state 突破放量/回測 + 最嚴(旗桿強 + 跑贏×2 + Bonus≥4) → 隔日開市買
-止損：突破位(resist)下方
-止賺：收市跌穿 20MA → 平倉（移動止損，let winners run）
-持倉 + 戰績存 Google Sheet（同 watchlist 一樣，零本地痕跡）
+Paper Trade 引擎 — 每日 scan 後自動行，持倉 + 戰績存 Google Sheet（零本地痕跡）
+  S1 組   ：人手揀股（dashboard 加入），程式跟 T1/T2/止損
+  TV 組   ：我的記錄（TradingView 真實 paper 單），只做 T1 提示，唔自動平倉
+  S1A0/S1A1：S1 自動記錄（止蝕 0% vs 1% 緩衝）
+  S7E20/S7S10：S7 突破自動記錄（20MA vs 10MA 止賺）
+  （舊版 S7 A/B/C/D 已於 2026-10-04 移除：冇等突破就買，4 組全部負期望）
 """
 import sys, json, datetime, urllib.request, urllib.parse
 sys.path.insert(0, ".")
@@ -67,35 +68,6 @@ def _num(x):
         return float(x)
     except (ValueError, TypeError):
         return None
-
-# S7 止賺保護期：入場後要曾經升穿呢個 buffer 先當「真正止賺」，
-# 未升到就淨係用硬止損睇住，唔會一有正常回調篤穿 MA 就篤走（未賺過錢）
-S7_BUFFER_MULT = 0.5  # buffer = entry + 0.5 × ATR(估算)
-
-# 2026-09-30 停止 S7 開新單：4,402 單已平倉，四組全部負期望（-0.28R 至 -0.48R）。
-# 原因：入場只 check S7 ready（VCP 整固中），冇等突破就買，唔係 J Law 原本做法。
-# 現有持倉照舊按規則平倉。修好入場邏輯（等突破）之後先改返 True。
-S7_OPEN_NEW = False
-
-def max_close_since(charts, ticker, entry_date_str):
-    """揾返 ticker 喺 charts.json 入面，entryDate 至今嘅最高 close。
-    冇歷史數據就 return None（外面會 fallback 用當日 close）。"""
-    hist = charts.get(ticker)
-    if not hist or not hist.get("t") or not hist.get("c"):
-        return None
-    ed = _norm_date(entry_date_str)
-    if not ed:
-        return None
-    ed_date = datetime.date(ed[0], ed[1], ed[2])
-    mx = None
-    for ts, c in zip(hist["t"], hist["c"]):
-        try:
-            d = datetime.datetime.utcfromtimestamp(ts).date()
-        except (ValueError, OSError, OverflowError):
-            continue
-        if d >= ed_date and c is not None:
-            mx = c if mx is None else max(mx, c)
-    return mx
 
 # ════════════════════════════════════════════════════════════════
 # S1 自動記錄（跟 Sasa 平時 S1 做法；2026-09-30 定、2026-10-04 修訂）
@@ -523,72 +495,12 @@ def main():
                 print(f"📍 [TV] {tk}: 掂咗 T1 ${t1}（提示止損可以上調去 ${new_stop:.2f}，唔會自動平倉）")
             continue
 
-        # ── S7 組（A/B/C/D）：用收市價 + trail ──
-        # 止賺線：A/B = EMA20；C/D = 10MA
-        trail = st.get("sma10") if grp in ("C", "D") else st.get("ema20")
-        trail_name = "10MA" if grp in ("C", "D") else "20MA"
-        # 數據新鮮度：close 同入場價一模一樣（冇變）= 數據未更新，唔平倉
-        if abs(close - entry) < 0.001:
-            continue
-        exit_reason = None
-        if close <= stop:
-            exit_reason = "止蝕(1.5×ATR)"
-        elif trail and close < trail:
-            # 保護期：要曾經升穿 entry + 0.5×ATR(估算) 先當「真正止賺」，
-            # 未升到就當未達標，唔平倉（避免入場即回調、未賺過錢就俾正常波動篤穿MA走）
-            atr_est = (entry - stop) / 1.5 if entry > stop else 0
-            buffer_px = entry + S7_BUFFER_MULT * atr_est
-            mx = max_close_since(charts, tk, ed)
-            if mx is None:
-                mx = max(close, st.get("high", close))  # 冇歷史數據 fallback
-            if mx >= buffer_px:
-                exit_reason = "止賺(跌穿" + trail_name + ")" if close > entry else "止蝕(曾達標後打返轉，跌穿" + trail_name + ")"
-            # else：未升穿保護buffer，唔平倉，繼續持有等硬止損
-        if exit_reason:
-            r_mult = (close - entry) / (entry - stop) if entry > stop else 0
-            pct = (close - entry) / entry * 100
-            gv_post({"action": "paper_close", "ticker": tk, "group": grp,
-                     "exitDate": today, "exitPx": round(close, 2),
-                     "reason": exit_reason, "r": round(r_mult, 2), "pct": round(pct, 1)})
-            print(f"平倉 [{grp}] {tk}: {exit_reason} R={r_mult:.2f} {pct:+.1f}%")
-            held.discard((tk, grp))
+        # 其他組（例如舊版 S7 A/B/C/D）：已移除，唔再處理
 
-    # 4. 揾新入場 — 4 組對比（2×2：入場 × 止賺）：
-    #    A = 全部 ready + EMA20止賺   B = Bonus5/5 + EMA20止賺
-    #    C = 全部 ready + 10MA止賺    D = Bonus5/5 + 10MA止賺
-    closed_today = {(c["ticker"], c.get("group", "A")) for c in closed
-                    if _same_day(str(c.get("exitDate", "")), today)}
+    # 4. 新入場：S1 自動記錄 + S7 突破
     if session:
         open_s1_auto(data, stocks, charts, open_pos, closed, session)
         open_s7_auto(data, charts, open_pos, closed)
-
-    if not S7_OPEN_NEW:
-        print("S7 開新單已暫停（S7_OPEN_NEW=False），只管理現有持倉")
-        print("Paper trade 完成")
-        return
-    for tk, st in stocks.items():
-        s7 = st["strategies"].get("S7", {})
-        if not s7.get("ready"):
-            continue
-        entry = st["close"]
-        atr14 = st.get("atr14")
-        if not atr14 or atr14 <= 0:
-            continue
-        stop = entry - 1.5 * atr14
-        if stop <= 0 or stop >= entry:
-            continue
-        is55 = s7.get("bonusScore", 0) >= 5
-        common = {"state": "J Law VCP", "entryDate": today,
-                  "entry": round(entry, 2), "stop": round(stop, 2),
-                  "bonus": s7.get("bonusScore"), "spy1m": s7.get("spy1m"),
-                  "m1": s7.get("keyvals", {}).get("1M%")}
-        # 開倉：A(全部+20MA)、B(5/5+20MA)、C(全部+10MA)、D(5/5+10MA)
-        groups = [("A", True), ("B", is55), ("C", True), ("D", is55)]
-        for g, cond in groups:
-            if cond and (tk, g) not in held and (tk, g) not in closed_today:
-                gv_post({"action": "paper_open", "ticker": tk, "group": g, **common})
-                held.add((tk, g))
-        print(f"開倉 {tk}: entry={entry:.2f} stop={stop:.2f}" + (" [5/5]" if is55 else ""))
     print("Paper trade 完成")
 
 if __name__ == "__main__":
