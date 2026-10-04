@@ -17,7 +17,7 @@ Phase 1.5 升級：加埋 Bonus 條件（b1-b5）計分
 import json
 import time
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import requests
 
@@ -725,7 +725,9 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                  "keyvals": {"RSI": round(r, 1), "1W%": round(perf1w, 1) if perf1w is not None else None}}
 
     # ── S1 回調形態偵測（用收市 close 跌穿 EMA20，唔睇下影線）──
-    # pullbackTouch = 過去 6 日內，有冇一日 close 收市跌穿 EMA20（夠深，加 0.3% buffer 減少鋸齒誤判）
+    # pullbackTouch = 過去 6 日內，有冇一日 close 收市跌穿 EMA20
+    #   （2026-10-04 取消 0.3% buffer：同 daysBelow20 / streakBefore 一致，亦同肉眼睇圖一致；
+    #     淺跌穿嘅質素改為記錄「跌穿深度」，用數據判斷，唔預先過濾）
     # pullbackDaysAgo = 最近一次收市跌穿 EMA20 係幾多日前（今日=0）
     # aboveNow = 今日 close 企返 EMA20 上
     pullback_touch = False
@@ -738,8 +740,8 @@ def eval_strategies(idx, closes, highs, lows, volumes,
                 break
             if ema20a[k] is None:
                 continue
-            # 收市 close 跌穿 EMA20（低過 0.3% buffer 先算，避免線上下鋸齒）
-            if closes[k] < ema20a[k] * 0.997:
+            # 收市 close 跌穿 EMA20
+            if closes[k] < ema20a[k]:
                 pullback_touch = True
                 if pullback_days_ago < 0:
                     pullback_days_ago = back
@@ -1176,9 +1178,13 @@ def compute_streaks(closes, highs, lows, volumes,
 # 攞數據
 # ─────────────────────────────────────────────────────────────
 def fetch_history(ticker):
+    # 2026-10-04：原本用固定網址 range=5y，Yahoo CDN 成日畀返幾個鐘至一兩日前嘅快取
+    #（大約一半 nightly scan 少咗最新 1-2 個交易日）。改用 period1/period2，每次網址唔同 → 唔會中舊快取。
+    p2 = int(time.time()) + 86400
+    p1 = p2 - 5 * 366 * 86400
     for host in ("query1", "query2"):
         url = (f"https://{host}.finance.yahoo.com/v8/finance/chart/{ticker}"
-               f"?interval={INTERVAL}&range={HISTORY_RANGE}")
+               f"?interval={INTERVAL}&period1={p1}&period2={p2}")
         try:
             resp = requests.get(url, headers=YF_HEADERS, timeout=15)
             if resp.status_code != 200:
@@ -1240,12 +1246,57 @@ def spy_perf(idx_time, lookback_days=30):
         return None
     return (cur / base - 1) * 100
 
+# 美股休市日（NYSE）——用嚟計「應該有邊日嘅數據」；每年要補下一年
+US_MARKET_HOLIDAYS = {
+    "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25", "2026-06-19",
+    "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25",
+    "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31", "2027-06-18",
+    "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24",
+}
+
+def expected_session(now_utc=None):
+    """最近一個已經收市嘅美股交易日（紐約時間 16:15 之後先當今日收咗市）。"""
+    now = now_utc or datetime.now(timezone.utc)
+    try:
+        from zoneinfo import ZoneInfo
+        ny = now.astimezone(ZoneInfo("America/New_York"))
+    except Exception:
+        ny = now - timedelta(hours=4)
+    d = ny.date()
+    if (ny.hour, ny.minute) < (16, 15):
+        d -= timedelta(days=1)
+    while d.weekday() >= 5 or d.isoformat() in US_MARKET_HOLIDAYS:
+        d -= timedelta(days=1)
+    return d.isoformat()
+
+def _last_bar_date(h):
+    t = (h or {}).get("time") or []
+    return datetime.fromtimestamp(t[-1], timezone.utc).strftime("%Y-%m-%d") if t and t[-1] else None
+
+_TARGET_SESSION = None   # main() 設定：每隻股最少要有呢日嘅 bar
+
+def fetch_history_fresh(ticker, want=None, tries=2, wait=2.0):
+    """fetch_history + 新鮮度檢查：最後一條 bar 早過 want 就重試（每次網址唔同）。返回最新嗰份。"""
+    want = want or _TARGET_SESSION
+    best = fetch_history(ticker)
+    if not want or not best or (_last_bar_date(best) or "") >= want:
+        return best
+    for _ in range(tries):
+        time.sleep(wait)
+        h = fetch_history(ticker)
+        if h and (_last_bar_date(h) or "") > (_last_bar_date(best) or ""):
+            best = h
+        if (_last_bar_date(best) or "") >= want:
+            break
+    return best
+
+
 def load_spy():
     """fetch SPY，建 date->close map（module 快取）。"""
     global _SPY_MAP, _SPY_TC, _SPY_ABOVE_200
     if _SPY_MAP is not None:
         return _SPY_MAP
-    h = fetch_history("SPY")
+    h = fetch_history_fresh("SPY", want=expected_session(), tries=4, wait=20.0)
     m = {}
     if h:
         for t, c in zip(h["time"], h["close"]):
@@ -1729,22 +1780,32 @@ def s1_verdict(s):
     return "green"
 
 def s1_levels(ch):
-    """由圖表（最後一條 bar = 訊號日）計：收市、跌穿期間最低（前底）、跌穿前 20 日最高（前頂）。"""
-    c, h, l, e = ch.get("c") or [], ch.get("h") or [], ch.get("l") or [], ch.get("e20") or []
+    """由圖表（最後一條 bar = 訊號日）計 S1 價位，全部用 K 線實體（開市/收市），唔用影線：
+    前底 = 呢次回調（窗口內第一次收市跌穿 EMA20 起）到訊號日，實體最低（min(開,收)）
+    前頂 = 最近一次跌穿之前 20 個交易日，實體最高（max(開,收)）
+    另外記錄訊號日 EMA20（開市前 Check 用）同跌穿深度（回調期間最深收市低過 EMA20 幾多 %）。"""
+    c, o, e = ch.get("c") or [], ch.get("o") or [], ch.get("e20") or []
     i = len(c) - 1
-    if i < 30 or len(e) != len(c):
+    if i < 30 or len(e) != len(c) or len(o) != len(c):
         return None
-    br = [k for k in range(i - 5, i + 1) if e[k] and c[k] is not None and c[k] < e[k] * 0.997]
+    below = lambda k: e[k] is not None and c[k] is not None and c[k] < e[k]
+    br = [k for k in range(i - 5, i + 1) if below(k)]
     if not br:
         return None
-    ds = br[0]
-    while ds - 1 >= 0 and e[ds - 1] and c[ds - 1] is not None and c[ds - 1] < e[ds - 1]:
+    ds = br[0]                      # 呢次回調第一日（窗口內最早跌穿，再向前追埋連續跌穿）
+    while ds - 1 >= 0 and below(ds - 1):
         ds -= 1
-    lows = [x for x in l[ds:i + 1] if x is not None]
-    highs = [x for x in h[max(0, ds - S1_T1_LOOKBACK):ds] if x is not None]
-    if not lows or not highs:
+    last_dip = br[-1]               # 最近一次跌穿段嘅第一日
+    while last_dip - 1 >= ds and below(last_dip - 1):
+        last_dip -= 1
+    body_lo = [min(o[k], c[k]) for k in range(ds, i + 1) if o[k] is not None and c[k] is not None]
+    body_hi = [max(o[k], c[k]) for k in range(max(0, ds - S1_T1_LOOKBACK), last_dip)
+               if o[k] is not None and c[k] is not None]
+    if not body_lo or not body_hi:
         return None
-    return {"close": c[i], "low": min(lows), "t1": max(highs),
+    depth = max((e[k] - c[k]) / e[k] * 100 for k in range(ds, i + 1) if below(k))
+    return {"close": c[i], "low": min(body_lo), "t1": max(body_hi), "ema20": e[i],
+            "depth": round(depth, 2),
             "dipDate": datetime.fromtimestamp(ch["t"][ds], timezone.utc).strftime("%Y-%m-%d")}
 
 def charts_session(charts):
@@ -1785,6 +1846,7 @@ def compute_s1_pending(new_session):
             continue
         out.append({"ticker": st["ticker"], "signalDate": old_session, "limit": round(lv["close"], 4),
                     "low": lv["low"], "t1": lv["t1"], "dipDate": lv["dipDate"], "color": color,
+                    "ema20": round(lv["ema20"], 4), "depth": lv["depth"],
                     "universe": st.get("universe") or ("SP500" if st.get("inSP500") else ""),
                     "bonus": s.get("bonusScore"), "rsi": st.get("rsi"),
                     "trend": s.get("streakBefore") if s.get("streakBefore") is not None else s.get("recentMaxStreak"),
@@ -1936,6 +1998,14 @@ def get_forex_s1_data(forex_charts):
 
 
 def main():
+    global _TARGET_SESSION
+    want = expected_session()
+    load_spy()
+    spy_last = _last_bar_date({"time": _SPY_TC[0]}) if _SPY_TC else None
+    if spy_last and spy_last < want:
+        print(f"⚠️ SPY 數據只到 {spy_last}，預期 {want}（休市日未入表？定係 Yahoo 未更新）——照用 {spy_last} 做目標")
+    _TARGET_SESSION = min(want, spy_last) if spy_last else want
+    print(f"目標交易日：{_TARGET_SESSION}（預期 {want}）")
     sp500 = set(get_sp500_tickers())
     ndx = set(get_ndx_tickers())
     print(f"NDX：{len(ndx)} 隻（S&P500 以外：{len(ndx - sp500)} 隻）")
@@ -1957,7 +2027,7 @@ def main():
     records = []
     ok = 0
     for i, t in enumerate(tickers, 1):
-        hist = fetch_history(t)
+        hist = fetch_history_fresh(t)
         if hist:
             rec = build_record(t, hist)
             if rec:
@@ -2038,6 +2108,10 @@ def main():
         "summary": summary,
         "stocks": records,
     }
+    output["dataSession"] = charts_session(charts)
+    output["expectedSession"] = want
+    output["dataStale"] = bool(output["dataSession"] and output["dataSession"] < want)
+    print(f"數據交易日：{output['dataSession']}（預期 {want}）" + ("  ⚠️ 數據過時！" if output["dataStale"] else "  ✅"))
     try:
         output["s1Pending"] = compute_s1_pending(charts_session(charts))
         print(f"S1 掛單（上個交易日訊號，等今日成交）：{len(output['s1Pending'])} 張")

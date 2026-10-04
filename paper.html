@@ -202,7 +202,7 @@ function switchPT(m){
   document.getElementById('tabS1A').classList.toggle('active',m==='S1A');
   if(m==='S1A'){
     document.getElementById('ptTitle').textContent='📒 S1 自動記錄 — 跟你平時 S1 做法，每個 🟢🔵 訊號自動記錄';
-    document.getElementById('ptSub').textContent='入場：跌穿EMA20後3日內企返上 → 即晚放 Limit（收市價），第二日跌到先成交 ｜ 止損：前底（0% vs 1%緩衝兩組） ｜ T1：前頂 ｜ R:R≥2 到T1全平，否則T1平一半+T2(1.618)平一半';
+    document.getElementById('ptSub').textContent='入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%）收市確認 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半';
     renderCurrent(); return;
   }
   document.getElementById('ptTitle').textContent=m==='S7'?'📒 S7 Paper Trade — 機械模擬（跟 J Law）':m==='S1'?'📒 S1 Paper Trade — 人手揀股（假突破回測）':'📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade';
@@ -348,7 +348,7 @@ function renderS1A(openP, closed){
   const G=[['S1A0','0% 緩衝','止蝕 = 前底'],['S1A1','1% 緩衝','止蝕 = 前底 × 0.99']];
   const part=(s,i)=>((s||'').split('|')[i]||'').trim();
   const stat=cl=>{const w=cl.filter(t=>Number(t.r)>0).length,R=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
-    const sl=cl.filter(t=>String(t.reason||'').includes('跌穿前底')).length;
+    const sl=cl.filter(t=>String(t.reason||'').includes('穿前底')).length;
     return {n:cl.length,wr:cl.length?Math.round(w/cl.length*100)+'%':'—',exp:cl.length?(R/cl.length>=0?'+':'')+(R/cl.length).toFixed(2)+'R':'—',
             tot:cl.length?(R>=0?'+':'')+R.toFixed(1)+'R':'—',col:R>=0?'green':'red',sl:cl.length?Math.round(sl/cl.length*100)+'%':'—'};};
   let h='<div class="panel"><h2>🔬 兩組對比：止蝕要唔要加 1% 緩衝？</h2><div style="overflow-x:auto"><table><thead><tr>'
@@ -367,6 +367,7 @@ function renderS1A(openP, closed){
     return x+'</tbody></table></div>';};
   h+=sub('🟢 vs 🔵',t=>part(t.state,0).replace('S1自動','').trim());
   h+=sub('股票池',t=>part(t.state,3));
+  h+=sub('跌穿 EMA20 深度',t=>{const m=String(part(t.state,5)).match(/([\d.]+)%/);if(!m)return null;const d=parseFloat(m[1]);return d<0.5?'淺（<0.5%）':d<2?'中（0.5–2%）':'深（≥2%）';});
   h+=regimeStatsHtml(closed);
   h+='<div class="sub" style="margin-top:10px">每個訊號會同時開兩單（每組一單），所以兩組嘅數字可以直接比較。樣本少過 20 單前唔好落結論。</div></div>';
   const row=(p,isOpen)=>{const e=Number(p.entry),st=Number(p.stop),t1=Number(p.t1),t2=Number(p.t2),risk=e-st;
@@ -393,7 +394,7 @@ function renderS1A(openP, closed){
   if(closed.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>組</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>止損</th><th>T1</th><th>T2</th><th>計劃</th><th>原因</th><th>R</th><th>股票池</th><th>大市</th><th>圖</th></tr></thead><tbody>';
     closed.slice().reverse().forEach(p=>h+=row(p,false));h+='</tbody></table></div>';}
   else h+='<div class="sub">仲未有平倉記錄</div>';
-  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你講嘅 S1 做法；訊號日收市後掛 Limit，第二個交易日成交先記錄（入場日 = 成交日），冇成交就取消；止蝕用當日 Low 觸發，裂口低開用開市價計。到 T1 平一半後，餘下止蝕移去入場同 T1 中間。</div>';
+  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你講嘅 S1 做法：訊號日收市後掛 Limit（收市價），第二個交易日先做開市前 Check（開市低過 EMA20、裂口高開或低開超過 1% 就取消），跌到 Limit 先成交，入場價 = Limit 價；前底、前頂用 K 線實體；止蝕要收市低過先算，用收市價平倉，裂口低開用開市價計。到 T1 平一半後，餘下止蝕移去入場同 T1 中間。</div>';
   document.getElementById('content').innerHTML=h;
 }
 function renderS1(openP, closed){

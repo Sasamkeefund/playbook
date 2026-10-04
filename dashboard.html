@@ -635,7 +635,11 @@
         return;
       }
       globalData=dataR.value;
-      document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated);
+      document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated)+(globalData.dataSession?' ｜ 美股數據：'+globalData.dataSession.slice(5)+' 收市':'');
+      if(globalData.dataStale){
+        const u=document.getElementById('updated');
+        u.innerHTML+=' <span style="color:#ff5d6c;font-weight:700" title="Scanner 攞到嘅數據唔係最新交易日，訊號可能過時">⚠️ 數據未更新到 '+String(globalData.expectedSession||'').slice(5)+'，訊號可能過時</span>';
+      }
       try{
         const updDate=new Date(globalData.updated.replace(' UTC','Z').replace(' ','T'));
         const diffMin=Math.round((Date.now()-updDate.getTime())/60000);
