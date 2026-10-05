@@ -2001,6 +2001,7 @@ def compute_s7_pending(new_session):
 # ════════════════════════════════════════════════════════════════
 S6_SIGNAL_LOOKBACK = 30
 S6_MIN_STREAK = 5
+S6_NEAR_MISS_STREAK = 3
 S6_RV_A = 1.5
 S6_A_MAX_GAP_UP = 1.0
 S6_C_MAX_WAIT = 20
@@ -2052,7 +2053,8 @@ def s6_breakouts(s6_days, ch, offset):
         while k in s6_days and s6_days[k].get("ready"):
             streak += 1
             k -= 1
-        if streak < S6_MIN_STREAK:
+        # 之前連續🔥 3–4 日就突破咗：唔入（checklist 要 5 日），但都列出嚟畀你對（筆記：3–5日🔥 開始留意）
+        if streak < S6_NEAR_MISS_STREAK:
             continue
         a, b, fl, h1, rv = cur.get("poleA"), cur.get("poleB"), cur.get("flagLow"), cur.get("h1"), cur.get("rvol")
         if None in (a, b, fl, h1) or b <= a:
@@ -2075,7 +2077,9 @@ def s6_breakouts(s6_days, ch, offset):
         else:
             quality, need = "未夠班", None
         skip = None
-        if need is None:
+        if streak < S6_MIN_STREAK:
+            skip = f"突破前連續🔥淨係 {streak} 日（要 {S6_MIN_STREAK} 日）"
+        elif need is None:
             skip = f"b1、b5 都唔過 + Bonus {bonus}/5（< 3）"
         elif rr is None:
             skip = "入場價低過止蝕位"
