@@ -571,6 +571,8 @@
           }
           return{text:'🔥 收市企喺 H1 之上（唔係今日第一次突破，唔好追）'+h1txt,color:'amber'};
         }
+        // 收市高過 H1 但未算突破 = B 之後未夠 4 日（即係仲喺度創新高），未有旗形
+        if(pth!=null&&pth>0)return{text:'📈 收市高過 H1，但 B 之後得 '+(strat.daysSincePole??'?')+' 日（要 ≥4 日先算旗形）— 仲喺度升緊，唔算突破，等佢整固'+h1txt,color:'amber'};
         const streakTxt=' ｜ 連續'+streak+'日'+(streak>15?'⚠️過長，可能唔係旗形':'');
         // 跟 checklist updateQuality() 一致嘅評級：req≥4 already 通過，睇 b1/b5/bonus
         if(b1&&b5)return{text:'🔥 頂級 Setup — b1+b5 通過，被震走風險最低'+streakTxt+h1txt+' ｜ TradingView 確認',color:'green'};
@@ -1385,8 +1387,14 @@
           const rv=stk.rvol;
           if(broke){
             h1txt=' · <span style="color:var(--dim)">H1 $'+h1.toFixed(2)+'（已否決，唔使理突破）</span>';
+          }else if(cur>h1&&isNaN(h1In)){
+            // 自動 H1：跟 scanner 嘅 S6 訊號（要突破前連續 5日🔥 + 今日第一次突破），同表入面判斷一致
+            const sig=(globalData.s6Signals||[]).find(x=>x.ticker===ticker&&x.signalDate===globalData.dataSession);
+            h1txt=sig&&!sig.skip
+              ?' · <span style="color:#2ee6a6;font-weight:700">✓ 收市升穿 H1 → 手法'+sig.method+'：Limit @ $'+sig.limit+'</span>'
+              :' · <span style="color:#ff9838">收市企喺 H1 $'+h1.toFixed(2)+' 之上，但唔係 S6 突破訊號'+(sig&&sig.skip?'（'+sig.skip+'）':'')+'</span>';
           }else if(cur>h1){
-            // 收市升穿 H1 → 照筆記用 RV 分手法：RV > 1.5 = 手法A，其餘 = 手法C
+            // 手動 H1 升穿 → 照筆記用 RV 分手法：RV > 1.5 = 手法A，其餘 = 手法C
             let method='';
             if(rv!==null&&rv!==undefined){
               if(rv>1.5) method=' <span style="color:#2ee6a6;font-weight:700">→ 手法A（RV '+rv+' > 1.5）：Limit @ 今日收市</span>';
