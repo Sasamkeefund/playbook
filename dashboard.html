@@ -480,7 +480,7 @@
       return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} HKT`;
     }
 
-    function getVerdict(tab,strat,curClose){
+    function getVerdict(tab,strat,curClose,stk){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5'||tab==='S6'||tab==='S1V1')?4:(tab==='S7'?6:5);
       if(tab==='S1V1'){
@@ -542,7 +542,8 @@
         const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1, fr=strat.flagRetrace, streak=strat.streak||0;
         const frTxt=(fr!==null&&fr!==undefined)?' ｜ 回調 '+(fr*100).toFixed(0)+'%'+(fr<=0.236?' ✓淺':fr<=0.382?' ⚠️':' 🔻深'):'';
         const abTxt=(strat.poleA!=null&&strat.poleB!=null)?' ｜ A $'+strat.poleA+'('+String(strat.poleADate||'').slice(5)+') → B $'+strat.poleB+'('+String(strat.poleBDate||'').slice(5)+')':'';
-        const h1txt=(h1?(' ｜ H1≈$'+h1+(pth!==null?'('+(pth>0?'+':'')+pth+'%)':'')):'')+frTxt+abTxt;
+        const h1d=strat.h1Date?'('+String(strat.h1Date).slice(5)+')':'';
+        const h1txt=(h1?(' ｜ H1 $'+h1+h1d+(pth!==null?' '+(pth>0?'+':'')+pth+'%':'')):'')+frTxt+abTxt;
         // b6 veto：回調深度超過0.236（原文門檻），冇recovery exceptions，唔理score/streak/bonus幾靚都直接reject。
         // 之前呢個位淨係得informational text（frTxt），冧真正阻止到深回調嘅假旗形顯示做綠色。
         if(fr!==null&&fr!==undefined&&fr>0.236){
@@ -551,11 +552,25 @@
         // 跟 checklist Step1：Scanner 要連續 5日🔥以上先算開始評估——要行喺broke之前check，
         // 唔係嘅話，今日先第一日撞到5/5就即刻突破（例如業績/新聞跳空），都會被誤判做「🔥突破」，
         // 但呢種情況streak=1，根本未有過真正嘅縮量整固歷史，唔算原文定義嘅旗形
-        if(streak<5){
-          const brokeWarn=broke?('⚠️今日已經破H1+放量，但streak淨係'+streak+'日——好可能係業績/新聞跳空，唔係真正旗形整固，唔好當手法A入場 ｜ '):'';
+        // 突破日本身唔計入整固日數（checklist：整固期間要連續 5日🔥，同 S6 自動記錄一致）
+        const prevStreak=broke?streak-1:streak;
+        if(prevStreak<5){
+          const brokeWarn=broke?('⚠️今日已經收市升穿 H1，但之前連續🔥淨係'+prevStreak+'日（要 5日）——好可能係業績/新聞跳空，唔係真正旗形整固，唔好入 ｜ '):'';
           return{text:'🕒 '+brokeWarn+'未夠5日整固（現'+streak+'日）— 續 watch，未到評估門檻'+h1txt,color:'amber'};
         }
-        if(broke)return{text:'🔥 突破 H1 + 放量！突破入場（手法A）'+h1txt+' ｜ TradingView 畫旗形確認',color:'green'};
+        if(broke){
+          // 今日第一次突破 → 用 scanner 計好嘅 S6 訊號（同 paper trade 自動記錄一模一樣）
+          const sig=stk?(globalData.s6Signals||[]).find(x=>x.ticker===stk.ticker&&x.signalDate===globalData.dataSession):null;
+          if(sig){
+            const plan=' ｜ 止蝕 $'+sig.stop+' T1 $'+sig.t1+' T2 $'+sig.t2+' R:R '+sig.rr;
+            if(sig.skip)return{text:'⛔ 突破咗但唔入：'+sig.skip+'（'+sig.quality+'）'+plan+h1txt,color:'red'};
+            const mTxt=sig.method==='A'
+              ?'手法A（RV '+sig.rv+' > 1.5）→ 今晚 Limit @ 今日收市 $'+sig.limit+'，明日高開超過 1% 就取消'
+              :'手法C（RV '+(sig.rv??'?')+' ≤ 1.5）→ 今晚 Limit @ H1 $'+sig.limit+' 等回測，最多等 20 個交易日';
+            return{text:'🔥 突破 H1！'+mTxt+plan+' ｜ '+sig.quality+h1txt,color:'green'};
+          }
+          return{text:'🔥 收市企喺 H1 之上（唔係今日第一次突破，唔好追）'+h1txt,color:'amber'};
+        }
         const streakTxt=' ｜ 連續'+streak+'日'+(streak>15?'⚠️過長，可能唔係旗形':'');
         // 跟 checklist updateQuality() 一致嘅評級：req≥4 already 通過，睇 b1/b5/bonus
         if(b1&&b5)return{text:'🔥 頂級 Setup — b1+b5 通過，被震走風險最低'+streakTxt+h1txt+' ｜ TradingView 確認',color:'green'};
@@ -750,8 +765,8 @@
         else if(ff==='below')s=s.filter(x=>x.strategies.S1.pullbackTouch&&!x.strategies.S1.aboveNow);
       }
       const vf=document.getElementById('filterVerdict')?document.getElementById('filterVerdict').value:'';
-      if(vf==='actionable')s=s.filter(x=>{const vc=getVerdict(activeTab,x.strategies[activeTab],x.close).color;return vc==='green'||vc==='cyan';});
-      else if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close).color===vf);
+      if(vf==='actionable')s=s.filter(x=>{const vc=getVerdict(activeTab,x.strategies[activeTab],x.close,x).color;return vc==='green'||vc==='cyan';});
+      else if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close,x).color===vf);
       // 排序
       if(sortKey){
         const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo'];
@@ -823,7 +838,7 @@
       tb.innerHTML=stocks.map(s=>{
         const st=s.strategies[activeTab];
         const ch=s.chgPct>0?'up':s.chgPct<0?'down':'flat';
-        const v=getVerdict(activeTab,st,s.close);
+        const v=getVerdict(activeTab,st,s.close,s);
         const cell=(i)=>{ if(i===4&&!c5Exist)return '<td class="c na">–</td>';
           return `<td class="c ${st.conds[i]?'ok':'no'}">${st.conds[i]?'✓':'✗'}</td>`;};
         return `<tr>
@@ -1184,7 +1199,7 @@
       const s=globalData.stocks.find(x=>x.ticker===ticker);
       if(!s){box.innerHTML='';return;}
       const st=s.strategies[activeTab];
-      const v=getVerdict(activeTab,st,s.close);
+      const v=getVerdict(activeTab,st,s.close,s);
       const chCol=s.chgPct>0?'#2ee6a6':s.chgPct<0?'#ff5d6c':'var(--dim)';
       const vCol=v.color==='green'?'#2ee6a6':v.color==='amber'?'#f5b945':v.color==='cyan'?'#22d3ee':'#ff5d6c';
       const cd=st.conds||[];
@@ -1310,13 +1325,10 @@
       document.getElementById('zoomAll').addEventListener('click',showAll);
       showRecent(); // 預設聚焦近期
 
-      // S6 黃金比例：用最近 swing high → swing low 自動畫 Fib
+      // S6 黃金比例（2026-10-05 改）：自動模式直接用 scanner 嘅 A/B（收市價，照筆記），
+      // 唔再用影線同半年最高位（之前 ILMN/MRNA/PLTR 會錯顯示「否決」，ALAB 仲由 6 月 $499 起計）
       const n=d.c.length;
-      const hi=Math.max(...d.h), lo=Math.min(...d.l.slice(-40)); // 高位 = 全段最高；低位 = 近 40 根最低
-      const hiIdx=d.h.indexOf(hi);
-      // swing low = 高位之後嘅最低（旗形整固低點）
-      let swingLo=lo;
-      if(hiIdx<n-1){swingLo=Math.min(...d.l.slice(hiIdx));}
+      const dayOf=t=>new Date(t*1000).toISOString().slice(0,10);
       const fibLevels=[[0,'#5b6075'],[0.236,'#f5b945'],[1,'#5b6075']];
       let fibSeries=[];
       function drawFib(on){
@@ -1324,23 +1336,25 @@
         const fibInputs=document.getElementById('fibInputs');
         if(!on){fibInputs.style.display='none';return;}
         fibInputs.style.display='flex';
-        // 用手動輸入或自動偵測（A=低 swingLo，B=高 hi）
+        const stk=globalData.stocks.find(x=>x.ticker===ticker)||{};
+        const s6=(stk.strategies||{}).S6||{};
+        // 手動輸入優先；冇就用 scanner：A = 急升前最低收市，B = 急升最高收市
         const aInput=parseFloat(document.getElementById('fibA').value);  // 低
         const bInput=parseFloat(document.getElementById('fibB').value);  // 高
-        let hi,swingLo,isManual=false;
+        let hi,swingLo,isManual=false,bIdx=-1;
         if(!isNaN(aInput)&&!isNaN(bInput)){
           swingLo=aInput; hi=bInput; isManual=true;
+          // 旗形由 B 之後開始：最後一根收市 ≥ B×0.995 嘅 K 線當 B
+          for(let i=n-1;i>=0;i--){if(d.c[i]>=hi*0.995){bIdx=i;break;}}
         }else{
-          hi=Math.max(...d.h);
-          const hiIdx=d.h.indexOf(hi);
-          // 旗桿起點 = 高位之前，最近一次明顯升浪嘅起點（唔好搵到太舊嘅深低）
-          let poleLow=d.l[hiIdx];
-          for(let i=hiIdx;i>=0;i--){
-            poleLow=Math.min(poleLow, d.l[i]);
-            if((hi-poleLow)/hi>=0.08) break;  // 升幅夠 8% 就當搵到旗桿底，停
+          if(s6.poleA!=null&&s6.poleB!=null&&s6.poleB>s6.poleA){
+            swingLo=s6.poleA; hi=s6.poleB;
+            if(s6.poleBDate)bIdx=d.t.findIndex(t=>dayOf(t)===s6.poleBDate);
+          }else{
+            // 冇 scanner A/B：近 20 根（唔計今日）最高收市做 B，B 之前 20 根最低收市做 A
+            hi=Math.max(...d.c.slice(Math.max(0,n-21),n-1)); bIdx=d.c.lastIndexOf(hi,n-2);
+            swingLo=Math.min(...d.c.slice(Math.max(0,bIdx-20),bIdx+1));
           }
-          const postLow=hiIdx<n-1?Math.min(...d.l.slice(hiIdx)):poleLow;
-          swingLo=Math.min(poleLow, postLow);
           document.getElementById('fibA').placeholder='低 ('+(swingLo.toFixed(2))+')';
           document.getElementById('fibB').placeholder='高 ('+(hi.toFixed(2))+')';
         }
@@ -1350,39 +1364,43 @@
         fibLevels.forEach(([lv,col])=>{
           const useCol=isManual?(lv===0.236?'#e0aaff':manualCol):col;
           const price=hi-range*lv;
-          const s=chart.addLineSeries({color:useCol,lineWidth:lv===0.236?2:1,lineStyle:lv===0.236?0:2,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:lv===0?'A':lv===1?'B':lv.toFixed(3)});
+          const s=chart.addLineSeries({color:useCol,lineWidth:lv===0.236?2:1,lineStyle:lv===0.236?0:2,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:lv===0?'B':lv===1?'A':lv.toFixed(3)});
           s.setData([{time:d.t[0],value:price},{time:d.t[n-1],value:price}]);
           fibSeries.push(s);
         });
         const f236=(hi-range*0.236);
-        const broke=d.c[n-1]<f236;
+        // b6：旗形期間（B 之後）任何一日收市穿 0.236 = 否決（唔係淨係睇今日）
+        const flagC=bIdx>=0?d.c.slice(bIdx+1):[d.c[n-1]];
+        const broke=flagC.length>0&&Math.min(...flagC)<f236;
         const manualBadge=isManual?'<span style="color:#c77dff;font-weight:700">✎ 手動</span> · ':'';
-        // 手打頸線/突破位（H1）→ 畫橙線 + 突破判斷
+        // H1（突破位）：手動輸入優先；自動模式用 scanner 嘅 H1（B 之後整固期間最高收市）
         let h1txt='';
-        const h1=parseFloat(document.getElementById('fibH1').value);
+        const h1In=parseFloat(document.getElementById('fibH1').value);
+        const h1=!isNaN(h1In)?h1In:((!isManual&&s6.h1!=null)?s6.h1:NaN);
         if(!isNaN(h1)){
-          const sH1=chart.addLineSeries({color:'#ff9838',lineWidth:2,lineStyle:0,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:'頸線H1'});
+          const sH1=chart.addLineSeries({color:'#ff9838',lineWidth:2,lineStyle:0,lastValueVisible:true,priceLineVisible:false,crosshairMarkerVisible:false,title:'H1'});
           sH1.setData([{time:d.t[0],value:h1},{time:d.t[n-1],value:h1}]);
           fibSeries.push(sH1);
           const cur=d.c[n-1];
-          const stk=globalData.stocks.find(x=>x.ticker===ticker)||{};
           const rv=stk.rvol;
-          if(cur>h1){
-            // 升穿頸線 → 睇 RVOL 分手法
+          if(broke){
+            h1txt=' · <span style="color:var(--dim)">H1 $'+h1.toFixed(2)+'（已否決，唔使理突破）</span>';
+          }else if(cur>h1){
+            // 收市升穿 H1 → 照筆記用 RV 分手法：RV > 1.5 = 手法A，其餘 = 手法C
             let method='';
             if(rv!==null&&rv!==undefined){
-              if(rv>=1.5) method=' <span style="color:#2ee6a6;font-weight:700">→ 手法A（放量 RVOL '+rv+'）</span>';
-              else method=' <span style="color:#ff9838;font-weight:700">→ 手法C（縮量 RVOL '+rv+' ⚠️假突破風險）</span>';
+              if(rv>1.5) method=' <span style="color:#2ee6a6;font-weight:700">→ 手法A（RV '+rv+' > 1.5）：Limit @ 今日收市</span>';
+              else method=' <span style="color:#ff9838;font-weight:700">→ 手法C（RV '+rv+' ≤ 1.5）：Limit @ H1 等回測</span>';
             }else{
               method=' <span style="color:var(--dim)">(冇成交量數據，重新掃描)</span>';
             }
-            h1txt=' · <span style="color:#2ee6a6;font-weight:700">✓ 升穿頸線</span>'+method;
+            h1txt=' · <span style="color:#2ee6a6;font-weight:700">✓ 收市升穿 H1</span>'+method;
           }else{
             const away=((h1-cur)/cur*100).toFixed(1);
-            h1txt=' · <span style="color:#ff9838">頸線 $'+h1.toFixed(2)+'（差 '+away+'% 突破）</span>';
+            h1txt=' · <span style="color:#ff9838">H1 $'+h1.toFixed(2)+'（差 '+away+'% 突破）</span>';
           }
         }
-        document.getElementById('fibInfo').innerHTML=manualBadge+`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 守住</span>'}`+h1txt;
+        document.getElementById('fibInfo').innerHTML=manualBadge+`0.236 = $${f236.toFixed(2)} · ${broke?'<span style="color:#ff5d6c">⚠ 旗形期間有收市跌穿 = 否決</span>':'<span style="color:#2ee6a6">✓ 旗形期間收市守住</span>'}`+h1txt;
       }
       const ft=document.getElementById('fibToggle');
       // 填返 A/B/H1 值（drawChart 重建咗 input 後先填）

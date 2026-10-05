@@ -169,7 +169,7 @@
     const STRATEGY_NAMES={S1:'順勢交易',S2:'趨勢終結',S3:'突破交易',S4:'假突破',S5:'支持阻力',S6:'圖表形態',S7:'52週新高'};
     const WL_API='https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec';
     // 由 dashboard.html 搬過嚟，確保「可考慮」判斷同 Screener 完全一致
-    function getVerdict(tab,strat,curClose){
+    function getVerdict(tab,strat,curClose,stk,scan){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5'||tab==='S6'||tab==='S1V1')?4:(tab==='S7'?6:5);
       if(tab==='S1V1'){
@@ -195,8 +195,14 @@
         if(req<reqMax)return{color:'red'};
         const broke=strat.brokeH1, streak=strat.streak||0, fr=strat.flagRetrace;
         if(fr!=null&&fr>0.236)return{color:'red'};
-        if(streak<5)return{color:'amber'};
-        if(broke)return{color:'green'};
+        // 突破日本身唔計入整固日數（同 dashboard / S6 自動記錄一致）
+        const prevStreak=broke?streak-1:streak;
+        if(prevStreak<5)return{color:'amber'};
+        if(broke){
+          const sig=(stk&&scan)?(scan.s6Signals||[]).find(z=>z.ticker===stk.ticker&&z.signalDate===scan.dataSession):null;
+          if(!sig)return{color:'amber'};          // 唔係今日第一次突破
+          return{color:sig.skip?'red':'green'};    // R:R / 質素唔夠 → 唔入
+        }
         if(b1&&b5)return{color:'green'};
         if(b1||b5)return{color:'green'};
         if(bonus>=3)return{color:'amber'};
@@ -280,7 +286,7 @@
             const st=x.strategies[s];
             if(!st)return;
             if(st.isNew)nc++;
-            if(st.ready&&getVerdict(s,st,x.close).color==='green')greenCount++;
+            if(st.ready&&getVerdict(s,st,x.close,x,scan).color==='green')greenCount++;
           });
         }
         return `<a class="scard" href="dashboard.html"><div class="code">${s}</div><div class="nm">${STRATEGY_NAMES[s]}</div><div class="cnt">${sum.count}</div>`

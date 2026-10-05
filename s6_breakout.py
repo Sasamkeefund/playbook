@@ -8,7 +8,7 @@ S6 旗形突破日 RV 自動記錄 — 每日 scan 後自動行
 import json, datetime, urllib.request, urllib.parse
 
 WL_API = "https://script.google.com/macros/s/AKfycbw-taBatpcuHXt5daIGq3Bo7lGw9OvdtsNeg292qdN0eW4RyxWLV4qf-oACvaVHHUI-Bg/exec"
-RV_THRESHOLD = 1.5  # RV >= 1.5 = 手法A(放量) ; < 1.5 = 手法C(縮量)
+RV_THRESHOLD = 1.5  # RV > 1.5 = 手法A(放量) ; ≤ 1.5 = 手法C(縮量)（照 S6 筆記）
 
 
 def gv_get(action):
@@ -74,7 +74,7 @@ def main():
         rv = st.get("rvol")
         if close is None or close <= h1:
             continue
-        method = "A" if (rv is not None and rv >= RV_THRESHOLD) else "C"
+        method = "A" if (rv is not None and rv > RV_THRESHOLD) else "C"
         gv_post({
             "action": "fib_breakout",
             "ticker": ticker,
