@@ -614,7 +614,7 @@
       }
       if(tab==='S5'){
         // S5 自動記錄：最近掛緊嘅 0.786 Limit 單（S5R 跟 checklist / S5S 淨結構）
-        const s5p=stk?(globalData.s5Signals||[]).filter(x=>x.ticker===stk.ticker&&x.status==='wait'):[];
+        const s5p=stk?(globalData.s5Signals||[]).filter(x=>x.ticker===stk.ticker&&x.status==='wait'&&x.signalDate>='2026-10-02'):[];   // 上線日之前嘅唔計
         const s5r=s5p.find(x=>x.grp==='R'), s5s=s5p.find(x=>x.grp==='S');
         if(s5r)return{text:'🎯 S5 掛緊 Limit @ 0.786 $'+s5r.limit+'（'+(s5r.signalDate===globalData.dataSession?'今晚新掛':'已等 '+(s5r.waited||0)+'/20 日')+'）｜ 止蝕 A $'+s5r.stop+' T1 $'+s5r.t1+' T2 $'+s5r.t2+' ｜ 整理區 $'+s5r.congesBottom+'-$'+s5r.congesTop,color:'green'};
         if(req<reqMax){

@@ -500,6 +500,8 @@ def open_s6_auto(data, charts, open_pos, closed):
     for sg in sigs:
         tk, sig, m = sg["ticker"], sg["signalDate"], sg["method"]
         grp, label = S6_GROUPS[m]
+        if sig < AUTO_START:
+            continue
         if sg.get("skip"):
             skip += 1
             continue
@@ -544,6 +546,25 @@ def open_s6_auto(data, charts, open_pos, closed):
 #   出場：收市穿止蝕先平；T1 平一半、止蝕移去入場價；T2 平餘下（S3 入場價高過 T1 就全倉等 T2）
 # ════════════════════════════════════════════════════════════════
 AUTO_SIG_MARK = "訊號日"
+# 上線日：之前嘅訊號唔記錄（Sasa 要 forward test，唔要補記歷史）。scanner 嘅 30 日清單仍然會顯示，方便對圖。
+AUTO_START = "2026-10-02"
+
+def cleanup_backfill(open_pos, closed):
+    """刪走上線日之前嘅 S3 / S5 / S6 自動記錄（第一次上線時補記咗嘅舊訊號）。"""
+    groups = set(AUTO_GROUP_STOP) | {g for g, _ in S6_GROUPS.values()}
+    n = 0
+    for lst, status in ((open_pos, "open"), (closed, "closed")):
+        for x in list(lst):
+            if x.get("group") not in groups:
+                continue
+            sd = _auto_sig_date(x.get("state")) or _s6_sig_date(x.get("state"))
+            if sd and sd < AUTO_START:
+                gv_post({"action": "paper_remove", "ticker": x["ticker"], "group": x["group"],
+                         "entry": x.get("entry"), "status": status})
+                lst.remove(x)
+                n += 1
+    if n:
+        print(f"刪走 {n} 張上線日（{AUTO_START}）之前嘅自動記錄（只做 forward test）")
 AUTO_CFG = {
     "S3": {"key": "s3Signals", "gfield": "method",
            "groups": {"A": ("S3A", "手法A", "Buildup底×0.98"), "B": ("S3B", "手法B", "假突破低×0.98"),
@@ -593,6 +614,8 @@ def open_auto(strat, data, charts, open_pos, closed):
             continue
         grp, label, stop_txt = gmap[gk]
         tk, sig = sg["ticker"], sg["signalDate"]
+        if sig < AUTO_START:
+            continue
         if (tk, grp, sig) in done:
             continue
         ch = charts.get(tk) or {}
@@ -666,6 +689,7 @@ def main():
     closed = pf.get("closed", [])      # 已平倉
 
     cleanup_old_s1_auto(open_pos, closed)
+    cleanup_backfill(open_pos, closed)
 
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}
