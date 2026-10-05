@@ -263,10 +263,11 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
             continue
         if impulse_h / a_price * 100 < 8:
             continue  # 推進浪太細，唔算數（避免噪音）
-        post_l = seg_l[b_idx + 1:n]
-        if not post_l:
+        # 2026-10-05：筆記「Buildup 底部 = 整固期間最低 Close（唔係 Wick/影線）」→ 改用收市價
+        post_c = seg_c[b_idx + 1:n]
+        if not post_c:
             continue
-        buildup_low = min(post_l)
+        buildup_low = min(post_c)
         fib236 = b_price - impulse_h * 0.236
         if buildup_low <= fib236:
             continue  # b6 唔過：回調過深
@@ -295,8 +296,13 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
     t1 = b_price + buildup_h * 1.5
     t2 = b_price + impulse_h * 0.618
 
-    # 假突破：曾經跌穿 Buildup 底部（結構已經失敗，唔算數）
-    failed = today_c < buildup_low if n else False
+    # 結構失敗：今日收市跌穿之前 Buildup 底部 × 0.98（即係手法A 嘅止蝕位）
+    prior_c = seg_c[best["b_idx"] + 1:n - 1]
+    failed = bool(prior_c) and today_c < min(prior_c) * 0.98
+
+    # 2026-10-05：筆記「Buildup 一定要喺歷史高位形成（上面冇蟹貨）」——突破線 B 要係今日之前嘅 52 週最高位
+    hi52 = max(highs[max(0, idx - 252):idx]) if idx > 0 else None
+    at_high = hi52 is not None and b_price >= hi52 * 0.98
 
     days_since_b = (n - 1) - best["b_idx"]
 
@@ -318,6 +324,8 @@ def detect_s3_buildup(idx, highs, lows, closes, volumes):
         "methodAOk": method_a_ok, "failed": failed, "daysSinceB": days_since_b, "crossCount": cross_count,
         "stop": round(stop, 2), "t1": round(t1, 2), "t2": round(t2, 2),
         "entry": round(today_c, 2) if method_a_ok else None,
+        "hi52": round(hi52, 2) if hi52 else None, "atHigh": at_high,
+        "bBelow52wPct": round((hi52 - b_price) / hi52 * 100, 1) if hi52 else None,
     }
 
 
@@ -936,7 +944,12 @@ def eval_strategies(idx, closes, highs, lows, volumes,
             "Buildup底": s3_buildup["buildupLow"], "距B幾多日": s3_buildup["daysSinceB"],
             "穿咗幾多次": s3_buildup["crossCount"],
         }
-        res["S3"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b), "ready": sum(c) >= 4,
+        # 2026-10-05：硬性條件——突破線 B 係 52 週高位（±2%）而且現價距 52 週高 ≤ 4%（checklist c1）
+        near_high = bool(s3_buildup["atHigh"]) and pct_from_high is not None and pct_from_high <= 4
+        res["S3"] = {"conds": c, "bonus": b, "score": sum(c), "bonusScore": sum(b),
+                     "ready": sum(c) >= 4 and near_high,
+                     "near52w": near_high, "hi52": s3_buildup["hi52"], "bBelow52wPct": s3_buildup["bBelow52wPct"],
+                     "pctFrom52w": round(pct_from_high, 1) if pct_from_high is not None else None,
                      "keyvals": keyvals,
                      "buildupA": s3_buildup["a"], "buildupB": s3_buildup["b"], "buildupLow": s3_buildup["buildupLow"],
                      "brokeToday": s3_buildup["brokeToday"], "rvolToday": s3_buildup["rvolToday"],
@@ -948,7 +961,8 @@ def eval_strategies(idx, closes, highs, lows, volumes,
         res["S3"] = {"conds": [False]*5, "bonus": [False]*5, "score": 0, "bonusScore": 0, "ready": False,
                      "keyvals": {}, "buildupA": None, "buildupB": None, "buildupLow": None,
                      "brokeToday": None, "rvolToday": None, "methodAOk": None, "daysSinceB": None,
-                     "crossCount": None,
+                     "crossCount": None, "near52w": False, "hi52": None, "bBelow52wPct": None,
+                     "pctFrom52w": round(pct_from_high, 1) if pct_from_high is not None else None,
                      "entry": None, "stop": None, "t1": None, "t2": None}
 
     # ── S4 假突破（淡倉，Required 4/4, Bonus 4/4）── 跟原文Playbook：橫行區假突破策略
@@ -1202,14 +1216,14 @@ def compute_streaks(closes, highs, lows, volumes,
     broken = {s: False for s in STRATEGY_META}
     v1_macro_streak = 0
     v1_macro_broken = False
-    s6_days = {}          # 每日 S6 結果（S6 自動記錄搵突破日用，唔使再計多次）
+    day_evs = {}          # 每日全部策略結果（S3/S5/S6 自動記錄搵訊號用，唔使再計多次）
     start = max(0, last - STREAK_LOOKBACK)
     for idx in range(last, start - 1, -1):
         ev = eval_strategies(idx, closes, highs, lows, volumes,
                              ema20a, ema50a, ema200a, rsia, atr5a, atr14a)
         if ev is None:
             break
-        s6_days[idx] = ev["S6"]
+        day_evs[idx] = ev
         for s in STRATEGY_META:
             if not broken[s]:
                 if ev[s]["ready"]:
@@ -1225,7 +1239,7 @@ def compute_streaks(closes, highs, lows, volumes,
             else:
                 v1_macro_broken = True
     streaks["_v1MacroStreak"] = v1_macro_streak
-    streaks["_s6Days"] = s6_days
+    streaks["_days"] = day_evs
     return streaks
 
 
@@ -1754,7 +1768,8 @@ def build_record(ticker, hist):
         # S3 突破交易（Buildup）：pass-through 結構價位 + entry/stop/T1/T2
         if s == "S3":
             for k in ("buildupA", "buildupB", "buildupLow", "brokeToday", "rvolToday",
-                      "methodAOk", "daysSinceB", "crossCount", "entry", "stop", "t1", "t2"):
+                      "methodAOk", "daysSinceB", "crossCount", "entry", "stop", "t1", "t2",
+                      "near52w", "hi52", "bBelow52wPct", "pctFrom52w"):
                 strategies[s][k] = today[s].get(k)
         # S4 假突破（淡倉）：pass-through 橫行區/假突破/entry/stop/T1-T3
         if s == "S4":
@@ -1835,9 +1850,19 @@ def build_record(ticker, hist):
 
     # ── S6 突破日（2026-10-05，自動記錄用；main() 會攤平做 s6Signals 再刪走）──
     try:
-        strategies["S6"]["breakouts"] = s6_breakouts(streaks.get("_s6Days") or {}, chart, start)
+        strategies["S6"]["breakouts"] = s6_breakouts({k: v["S6"] for k, v in (streaks.get("_days") or {}).items()}, chart, start)
     except Exception:
         strategies["S6"]["breakouts"] = []
+    # ── S3 / S5 自動記錄訊號（2026-10-05；main() 會攤平做 s3Signals / s5Signals 再刪走）──
+    _days = streaks.get("_days") or {}
+    try:
+        strategies["S3"]["s3Signals"] = s3_breakouts(_days, closes, volumes, chart, start)
+    except Exception:
+        strategies["S3"]["s3Signals"] = []
+    try:
+        strategies["S5"]["s5Signals"] = s5_setups(_days, chart, start)
+    except Exception:
+        strategies["S5"]["s5Signals"] = []
 
     return {
         "ticker": ticker,
@@ -2109,6 +2134,219 @@ def s6_signals(stocks, regime_map):
         if not st.get("inScope", st.get("inSP500")):
             continue
         for x in brks:
+            x = dict(x)
+            x["ticker"] = st["ticker"]
+            x["universe"] = st.get("universe") or ("SP500" if st.get("inSP500") else "")
+            x["regime"] = ((regime_map or {}).get(x["signalDate"]) or {}).get("regime")
+            out.append(x)
+    out.sort(key=lambda x: (x["signalDate"], x["ticker"]), reverse=True)
+    return out
+
+
+# ════════════════════════════════════════════════════════════════
+# 通用掛單：訊號日收市後掛 Limit = 訊號日收市價，下一個交易日先成交（同 S6 手法A 一樣）
+#   高開 > 1% → 取消（唔追）；開市已經低過止蝕 → 取消；全日最低未跌到 Limit → 冇成交
+# ════════════════════════════════════════════════════════════════
+def limit_next_day_status(limit, stop, k_sig, o, l, c):
+    return s6_order_status("A", limit, stop, k_sig, o, l, c)
+
+
+def _rv_prior20(volumes, k):
+    """S3 用嘅 RelVol：今日成交量 ÷ 之前 20 日平均（同 detect_s3_buildup 一樣）。"""
+    base = [v for v in volumes[max(0, k - 20):k] if v]
+    return volumes[k] / (sum(base) / len(base)) if base and volumes[k] else None
+
+
+# ════════════════════════════════════════════════════════════════
+# S3 突破交易自動記錄（2026-10-05，跟 Sasa 嘅 S3 筆記最終版 #48–51 + checklist）
+#   前提：突破前一日 S3 ready（Buildup 喺 52 週高位、b6 守住）而且連續 ≥ 3 日🔥
+#   突破線 L = B（52 週高位）；Buildup 底 = 整固期最低收市；A = 推進浪起點
+#   手法A：第一次收市升穿 L，RV ≥ 1.5 → Limit @ 突破日收市；止蝕 = Buildup 底 × 0.98
+#   手法B：突破後收市跌返 L 下面（假突破），之後再次收市升穿 L 而 RV ≥ 1.5 → Limit @ 嗰日收市；
+#          止蝕 = 假突破期間最低收市 × 0.98
+#   手法C：突破後一直守住 L 之上，回測（收市回落到 L 3% 以內）之後第一日放量向上（RV ≥ 1.0）→ Limit @ 嗰日收市；
+#          止蝕 = 突破後最低收市 × 0.98
+#   T1 = L + Buildup 高度 × 1.5（平一半，止蝕移去入場價）；T2 = L + 推進浪 × 0.618
+#   R:R 只係參考，唔係門檻（筆記 #48）；第一次突破之後最多跟 20 個交易日
+# ════════════════════════════════════════════════════════════════
+S3_LOOKBACK = 30
+S3_MIN_STREAK = 3
+S3_RV_A = 1.5
+S3_RV_B = 1.5
+S3_RV_C = 1.0
+S3_FOLLOW_DAYS = 20
+S3_RETEST_PCT = 3.0       # 手法C：突破後收市回落到突破線 3% 以內 = 回測
+
+
+def s3_breakouts(days, closes, volumes, ch, offset):
+    c, o, l, ts = ch["c"], ch["o"], ch["l"], ch["t"]
+    last = offset + len(c) - 1
+    day = lambda i: datetime.fromtimestamp(ts[i], timezone.utc).strftime("%Y-%m-%d")
+    first_ok = max(offset + 1, last - S3_LOOKBACK + 1)          # 訊號日要喺最近 30 個交易日
+    out = []
+    broken = {}                                                  # 突破線 → 第一次突破日（同一條線唔重複計）
+    t = max(offset + 1, first_ok - S3_FOLLOW_DAYS)               # 第一次突破可以早啲，之後嘅 B/C 喺 30 日內
+    while t <= last:
+        prev = (days.get(t - 1) or {}).get("S3") or {}
+        L = prev.get("buildupB")
+        if (L is None or prev.get("buildupLow") is None or prev.get("buildupA") is None
+                or closes[t] is None or closes[t - 1] is None or closes[t] <= L or closes[t - 1] > L):
+            t += 1
+            continue
+        if round(L, 2) in broken and t - broken[round(L, 2)] <= S3_FOLLOW_DAYS + 5:
+            t += 1                                               # 假突破之後再升穿 = 手法B，唔係新一次突破
+            continue
+        broken[round(L, 2)] = t
+        k, streak = t - 1, 0
+        while k in days and ((days[k].get("S3") or {}).get("ready")):
+            streak += 1
+            k -= 1
+        a, bl = prev["buildupA"], prev["buildupLow"]
+        t1, t2 = round(L + (L - bl) * 1.5, 2), round(L + (L - a) * 0.618, 2)
+        base = {"line": L, "buildupA": a, "buildupLow": bl, "t1": t1, "t2": t2,
+                "breakoutDate": day(t - offset), "streak": streak, "bonus": prev.get("bonusScore"),
+                "pctFrom52w": prev.get("pctFrom52w")}
+        events = []
+        rv0 = _rv_prior20(volumes, t)
+        if not prev.get("ready") or streak < S3_MIN_STREAK:
+            if prev.get("near52w"):                              # 喺 52 週高位嘅 Buildup 先列出嚟畀你對
+                why = (f"突破前連續🔥淨係 {streak} 日（要 {S3_MIN_STREAK} 日）" if prev.get("ready")
+                       else "突破前一日 S3 未 ready（Required 未夠 4/5）")
+                events.append(("-", t, round(bl * 0.98, 2), rv0, why))
+        else:
+            if rv0 is not None and rv0 >= S3_RV_A:
+                events.append(("A", t, round(bl * 0.98, 2), rv0, None))
+            elif t >= first_ok:
+                events.append(("-", t, None, rv0, f"第一次突破 RV {rv0:.2f} < {S3_RV_A}，唔係手法A；等手法B / C"
+                               if rv0 is not None else "第一次突破冇成交量數據"))
+            below_low, held_low, retested, got_b, got_c = None, closes[t], False, False, False
+            for d in range(t + 1, min(last, t + S3_FOLLOW_DAYS) + 1):
+                cd, cp = closes[d], closes[d - 1]
+                if cd is None or cp is None:
+                    continue
+                rvd = _rv_prior20(volumes, d)
+                if cd <= L:                                    # 跌返突破線下面 = 假突破
+                    below_low = cd if below_low is None else min(below_low, cd)
+                    continue
+                if below_low is not None:                      # 假突破之後再次企返上突破線
+                    if not got_b and rvd is not None and rvd >= S3_RV_B:
+                        events.append(("B", d, round(below_low * 0.98, 2), rvd, None))
+                        got_b = True
+                    continue
+                # 一直守住突破線之上：要先回測（收市回落到突破線 3% 以內），之後第一日放量向上先算手法C
+                if retested and not got_c and cd > cp and rvd is not None and rvd >= S3_RV_C:
+                    events.append(("C", d, round(held_low * 0.98, 2), rvd, None))
+                    got_c = True
+                held_low = min(held_low, cd)
+                if cd <= L * (1 + S3_RETEST_PCT / 100):
+                    retested = True
+        for m, d, stop, rv, skip in events:
+            if d < first_ok:
+                continue
+            ci = d - offset
+            limit = round(c[ci], 2)
+            t1_use = t1
+            if not skip and m in "ABC" and t1 <= limit:
+                if t2 > limit:
+                    t1_use = None                              # 入場價已經高過 T1 → 全倉等 T2
+                else:
+                    skip = f"T1 ${t1}、T2 ${t2} 都已經低過入場價"
+            rr1 = ((t1_use - limit) / (limit - stop)) if (stop and t1_use and limit > stop) else None
+            rr2 = ((t2 - limit) / (limit - stop)) if (stop and limit > stop) else None
+            st = {"status": "skip"} if (skip or m == "-") else limit_next_day_status(limit, stop, ci, o, l, c)
+            sk = st.get("k")
+            out.append(dict(base, method=m, signalDate=day(ci), limit=limit, close=c[ci], stop=stop,
+                            t1=t1_use, t1Plan=t1,
+                            rv=round(rv, 2) if rv is not None else None,
+                            rr1=round(rr1, 2) if rr1 is not None else None, rr2=round(rr2, 2) if rr2 is not None else None,
+                            skip=skip, status=st["status"], why=st.get("why"),
+                            statusDate=day(sk) if sk is not None and sk < len(c) else None,
+                            fillPx=round(st["px"], 2) if st.get("px") is not None else None))
+        t += 1
+    return out
+
+
+# ════════════════════════════════════════════════════════════════
+# S5 支持阻力自動記錄（2026-10-05，跟 S5 checklist）
+#   結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 同整理區重疊（scanner confluence）
+#   兩組：S5R = 跟 checklist（Scanner 4/4 連續 ≥ 3 日🔥 + 結構）；S5S = 淨結構（唔使 4/4）
+#   掛單：結構第一日出現 → Limit @ 0.786；最多等 20 個交易日；收市升穿 B（冇回調落嚟）→ 取消
+#   止蝕 = A（收市確認）；T1 = 入場 + (B − 入場) × 0.618（平一半，止蝕移去入場價）；T2 = B
+# ════════════════════════════════════════════════════════════════
+S5_LOOKBACK = 30
+S5_MIN_STREAK = 3
+S5_MAX_WAIT = 20
+
+
+def s5_order_status(limit, stop, top, k_sig, o, l, c):
+    n = len(c)
+    for j, k in enumerate(range(k_sig + 1, min(n, k_sig + 1 + S5_MAX_WAIT)), 1):
+        if None in (o[k], l[k], c[k]):
+            continue
+        if l[k] <= limit:
+            if o[k] <= stop:
+                return {"status": "cancel", "k": k, "why": f"開市 {o[k]:.2f} 已經低過止蝕位 A {stop:.2f}", "waited": j}
+            return {"status": "fill", "k": k, "px": min(o[k], limit), "waited": j}
+        if c[k] > top:
+            return {"status": "cancel", "k": k, "why": f"收市 {c[k]:.2f} 升穿 B {top:.2f}，冇回調到 0.786", "waited": j}
+    waited = min(n - 1 - k_sig, S5_MAX_WAIT)
+    if waited >= S5_MAX_WAIT:
+        return {"status": "cancel", "k": k_sig + S5_MAX_WAIT,
+                "why": f"等咗 {S5_MAX_WAIT} 個交易日都冇跌到 0.786", "waited": waited}
+    return {"status": "wait", "waited": waited}
+
+
+def s5_setups(days, ch, offset):
+    c, o, l, ts = ch["c"], ch["o"], ch["l"], ch["t"]
+    last = offset + len(c) - 1
+    day = lambda i: datetime.fromtimestamp(ts[i], timezone.utc).strftime("%Y-%m-%d")
+    first_ok = max(offset + 1, last - S5_LOOKBACK + 1)
+    out = []
+    for grp in ("R", "S"):
+        seen = set()
+        for t in sorted(k for k in days if k >= offset):
+            cur = (days[t].get("S5") or {})
+            if not cur.get("confluenceFound") or cur.get("confFailed"):
+                continue
+            key = (cur.get("confA"), cur.get("confB"))
+            streak = 0
+            k = t
+            while k in days and ((days[k].get("S5") or {}).get("ready")):
+                streak += 1
+                k -= 1
+            if grp == "R" and streak < S5_MIN_STREAK:
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+            if t < first_ok:
+                continue
+            a, b, entry = cur.get("confA"), cur.get("confB"), cur.get("entry")
+            if None in (a, b, entry) or not (a < entry < b):
+                continue
+            ci = t - offset
+            t1, t2 = round(entry + (b - entry) * 0.618, 2), round(b, 2)
+            st = s5_order_status(entry, a, b, ci, o, l, c)
+            sk = st.get("k")
+            out.append({"grp": grp, "signalDate": day(ci), "limit": entry, "close": c[ci], "stop": a,
+                        "poleA": a, "poleB": b, "congesTop": cur.get("congesTop"), "congesBottom": cur.get("congesBottom"),
+                        "t1": t1, "t2": t2, "rr1": round((t1 - entry) / (entry - a), 2),
+                        "rr2": round((t2 - entry) / (entry - a), 2), "streak": streak, "bonus": cur.get("bonusScore"),
+                        "status": st["status"], "waited": st.get("waited"), "why": st.get("why"),
+                        "statusDate": day(sk) if sk is not None and sk < len(c) else None,
+                        "fillPx": round(st["px"], 2) if st.get("px") is not None else None})
+    return out
+
+
+def flat_signals(stocks, key, regime_map):
+    """將每隻股嘅訊號 list（strategies[S].<key>）攤平，加股票池同大市；之後喺 stock record 刪走。"""
+    out = []
+    strat = {"s3": "S3", "s5": "S5"}[key]
+    for st in stocks:
+        lst = ((st.get("strategies") or {}).get(strat) or {}).pop(key + "Signals", None) or []
+        if not st.get("inScope", st.get("inSP500")):
+            continue
+        for x in lst:
             x = dict(x)
             x["ticker"] = st["ticker"]
             x["universe"] = st.get("universe") or ("SP500" if st.get("inSP500") else "")
@@ -2413,6 +2651,17 @@ def main():
         output["s6Signals"] = []
         for r in records:
             (r.get("strategies") or {}).get("S6", {}).pop("breakouts", None)
+    for key, name in (("s3", "S3 突破"), ("s5", "S5 支持阻力")):
+        try:
+            output[key + "Signals"] = flat_signals(records, key, output["marketRegime"])
+            sg = output[key + "Signals"]
+            from collections import Counter as _C
+            print(f"{name}：最近 30 個交易日 {len(sg)} 個訊號 → " + ", ".join(f"{k}={v}" for k, v in _C(x['status'] for x in sg).items()))
+        except Exception as e:
+            print(f"{name} 計唔到:", e)
+            output[key + "Signals"] = []
+            for r in records:
+                (r.get("strategies") or {}).get(key.upper(), {}).pop(key + "Signals", None)
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))

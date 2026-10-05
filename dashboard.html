@@ -580,7 +580,20 @@
         if(bonus>=3)return{text:'⚠️ 一般 Setup — Bonus 3/5 但 b1 b5 都未過，細倉 R:R≥3:1'+streakTxt+h1txt,color:'amber'};
         return{text:'❌ 未夠班（Bonus唔夠，冇b1/b5）'+streakTxt,color:'red'};}
       if(tab==='S3'){
+        // 2026-10-05：筆記「Buildup 一定要喺歷史高位形成」——突破線唔係 52 週高位就唔算
+        if(strat.buildupB!=null&&strat.near52w===false){
+          return{text:'— 未 ready：Buildup 唔喺 52 週高位（突破線 $'+strat.buildupB+(strat.hi52?'，52 週高 $'+strat.hi52:'')+(strat.pctFrom52w!=null?'，現價距 52 週高 '+strat.pctFrom52w+'%':'')+'）— 筆記：一定要喺歷史高位形成',color:'red'};
+        }
         if(req<reqMax)return{text:'— 未 ready（搵唔到合理Buildup結構，或者已經跌穿Buildup底部）',color:'red'};
+        // 今日有 S3 自動記錄訊號 → 直接顯示（同 paper trade 一樣）
+        const s3sig=stk?(globalData.s3Signals||[]).filter(x=>x.ticker===stk.ticker&&x.signalDate===globalData.dataSession):[];
+        const s3ok=s3sig.find(x=>x.method!=='-'&&!x.skip);
+        if(s3ok){
+          return{text:'🔥 S3 手法'+s3ok.method+'（RV '+(s3ok.rv??'—')+'）→ 今晚 Limit @ $'+s3ok.limit+'，明日高開超過 1% 就取消 ｜ 突破線 $'+s3ok.line+' ｜ 止蝕 $'+s3ok.stop+' '+(s3ok.t1!=null?'T1 $'+s3ok.t1+' ':'(入場價已過 T1，全倉等 T2) ')+'T2 $'+s3ok.t2+' ｜ R:R 參考 '+(s3ok.rr1??'—')+' / '+(s3ok.rr2??'—'),color:'green'};
+        }
+        if(s3sig.length){
+          return{text:'⚠️ 今日突破咗，但唔入：'+(s3sig[0].skip||'')+' ｜ 突破線 $'+s3sig[0].line+' ｜ 等手法B / C',color:'amber'};
+        }
         const bA=strat.buildupA, bB=strat.buildupB, bLow=strat.buildupLow;
         const days=strat.daysSinceB, rvol=strat.rvolToday, methodOk=strat.methodAOk, broke=strat.brokeToday;
         const stopPx=strat.stop, t1=strat.t1, t2=strat.t2;
@@ -600,7 +613,14 @@
         return{text:'⚠️ 已突破但今日冇放量confirm(RVOL '+(rvol!=null?rvol+'x':'—')+')，可能假突破或者已冷卻，留意'+priceTxt+driftTxt+daysTxt,color:'amber'};
       }
       if(tab==='S5'){
-        if(req<reqMax)return{text:'— 未 ready（未符合支持阻力回調嘅粗篩條件）',color:'red'};
+        // S5 自動記錄：最近掛緊嘅 0.786 Limit 單（S5R 跟 checklist / S5S 淨結構）
+        const s5p=stk?(globalData.s5Signals||[]).filter(x=>x.ticker===stk.ticker&&x.status==='wait'):[];
+        const s5r=s5p.find(x=>x.grp==='R'), s5s=s5p.find(x=>x.grp==='S');
+        if(s5r)return{text:'🎯 S5 掛緊 Limit @ 0.786 $'+s5r.limit+'（'+(s5r.signalDate===globalData.dataSession?'今晚新掛':'已等 '+(s5r.waited||0)+'/20 日')+'）｜ 止蝕 A $'+s5r.stop+' T1 $'+s5r.t1+' T2 $'+s5r.t2+' ｜ 整理區 $'+s5r.congesBottom+'-$'+s5r.congesTop,color:'green'};
+        if(req<reqMax){
+          if(s5s)return{text:'🧪 淨結構組（S5S）掛緊 Limit @ 0.786 $'+s5s.limit+'（已等 '+(s5s.waited||0)+'/20 日）— Scanner 未夠 4/4，唔係 checklist setup，只係測試用',color:'amber'};
+          return{text:'— 未 ready（未符合支持阻力回調嘅粗篩條件）',color:'red'};
+        }
         const found=strat.confluenceFound, cA=strat.confA, cB=strat.confB, cTop=strat.congesTop, cBot=strat.congesBottom;
         const entryPx=strat.entry, stopPx=strat.stop, t1=strat.t1, t2=strat.t2, touched=strat.touched, days=strat.daysSinceB;
         if(!found){

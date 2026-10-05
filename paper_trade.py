@@ -6,6 +6,8 @@ Paper Trade 引擎 — 每日 scan 後自動行，持倉 + 戰績存 Google Shee
   S1A0/S1A1：S1 自動記錄（止蝕 0% vs 1% 緩衝）
   S7E20/S7S10：S7 突破自動記錄（20MA vs 10MA 止賺）
   S6A/S6C：S6 旗形突破自動記錄（手法A 放量 Limit @ 收市 vs 手法C Limit @ H1 等回測）
+  S3A/S3B/S3C：S3 突破交易自動記錄（手法A / B / C）
+  S5R/S5S：S5 支持阻力自動記錄（跟 checklist 4/4 vs 淨結構）
   （舊版 S7 A/B/C/D 已於 2026-10-04 移除：冇等突破就買，4 組全部負期望）
 """
 import sys, json, datetime, urllib.request, urllib.parse
@@ -399,8 +401,9 @@ def open_s7_auto(data, charts, open_pos, closed):
 S6_GROUPS = {"A": ("S6A", "手法A"), "C": ("S6C", "手法C")}
 S6_SIG_MARK = "突破日"
 
-def simulate_s6(ch, k0, entry, stop, t1, t2):
-    """由入場日 k0 開始逐日行（入場日只 check 收市止蝕，唔計目標——唔知成交前定後先掂到）。"""
+def simulate_t12(ch, k0, entry, stop, t1, t2, stop_txt):
+    """由入場日 k0 開始逐日行（入場日只 check 收市止蝕，唔計目標——唔知成交前定後先掂到）。
+    T1（盤中掂到）平一半、餘下止蝕移去入場價；T2 平餘下；收市低過止蝕先平倉。t1 = None → 全倉等 T2。"""
     c, h = ch["c"], ch["h"]
     risk = entry - stop
     R = lambda px: (px - entry) / risk
@@ -409,17 +412,23 @@ def simulate_s6(ch, k0, entry, stop, t1, t2):
         if c[k] is None or h[k] is None:
             continue
         if k > k0:
-            if not t1hit and h[k] >= t1:
+            if t1 is not None and not t1hit and h[k] >= t1:
                 t1hit, eff = True, entry
-            if t1hit and h[k] >= t2:
-                return {"exit": (k, t2, "止賺(T1平一半+T2平一半)", 0.5 * R(t1) + 0.5 * R(t2)), "t1hit": True}
+            if h[k] >= t2:
+                if t1 is None:
+                    return {"exit": (k, t2, "止賺(全倉到T2)", R(t2)), "t1hit": False}
+                if t1hit:
+                    return {"exit": (k, t2, "止賺(T1平一半+T2平一半)", 0.5 * R(t1) + 0.5 * R(t2)), "t1hit": True}
         if c[k] < eff:
             if t1hit:
                 return {"exit": (k, c[k], "保本(T1平一半後，餘下收市跌穿入場價)", 0.5 * R(t1) + 0.5 * R(c[k])),
                         "t1hit": True}
-            why = "止蝕(入場當日收市穿旗形低×0.98)" if k == k0 else "止蝕(收市穿旗形低×0.98)"
+            why = f"止蝕(入場當日收市穿{stop_txt})" if k == k0 else f"止蝕(收市穿{stop_txt})"
             return {"exit": (k, c[k], why, R(c[k])), "t1hit": False}
     return {"exit": None, "t1hit": t1hit}
+
+def simulate_s6(ch, k0, entry, stop, t1, t2):
+    return simulate_t12(ch, k0, entry, stop, t1, t2, "旗形低×0.98")
 
 def _post_s6_result(tk, grp, ch, entry, stop, res, already_t1hit=False):
     dates = _bar_dates(ch)
@@ -457,16 +466,36 @@ def _s6_sig_date(state):
     i = s.find(S6_SIG_MARK)
     return s[i + len(S6_SIG_MARK):].strip()[:10] if i >= 0 else None
 
+def _iso(d):
+    nd = _norm_date(str(d or ""))
+    return "%04d-%02d-%02d" % nd if nd else None
+
+def _hold_intervals(open_pos, closed, groups):
+    """每隻股每組嘅持倉期間 [入場日, 平倉日]（未平倉 = None）。用嚟判斷某日係咪已經揸緊。"""
+    iv = {}
+    for x in open_pos:
+        if x.get("group") in groups:
+            iv.setdefault((x["ticker"], x["group"]), []).append((_iso(x.get("entryDate")), None))
+    for x in closed:
+        if x.get("group") in groups:
+            iv.setdefault((x["ticker"], x["group"]), []).append((_iso(x.get("entryDate")), _iso(x.get("exitDate"))))
+    return iv
+
+def _busy(iv, key, day):
+    """day 嗰日同一組係咪已經揸緊呢隻股（補跑舊日子都會得出同每日行一樣嘅結果）。"""
+    return any(a and a <= day and (b is None or day <= b) for a, b in iv.get(key, []))
+
+def _exit_day(ch, res):
+    return _bar_dates(ch)[res["exit"][0]] if res.get("exit") else None
+
 def open_s6_auto(data, charts, open_pos, closed):
     groups = [g for g, _ in S6_GROUPS.values()]
-    done, held = set(), set()
+    done = set()
     for x in list(open_pos) + list(closed):
         if x.get("group") in groups:
             done.add((x["ticker"], x["group"], _s6_sig_date(x.get("state"))))
-    for x in open_pos:
-        if x.get("group") in groups:
-            held.add((x["ticker"], x["group"]))
-    sigs = data.get("s6Signals") or []
+    iv = _hold_intervals(open_pos, closed, groups)
+    sigs = sorted(data.get("s6Signals") or [], key=lambda x: x["signalDate"])
     n = wait = cancel = skip = 0
     for sg in sigs:
         tk, sig, m = sg["ticker"], sg["signalDate"], sg["method"]
@@ -487,10 +516,10 @@ def open_s6_auto(data, charts, open_pos, closed):
         if st["status"] == "cancel":
             cancel += 1
             continue
-        if (tk, grp) in held:
-            print(f"  S6 {tk} [{grp}]：突破 {sig} 成交咗，但已經揸緊同一組，唔再入")
-            continue
         k, entry = st["k"], st["px"]
+        if _busy(iv, (tk, grp), dates[k]):
+            print(f"  S6 {tk} [{grp}]：突破 {sig} 喺 {dates[k]} 成交，但嗰日已經揸緊同一組，唔再入")
+            continue
         stop, t1, t2 = sg["stop"], sg["t1"], sg["t2"]
         waited = f" 等{st.get('waited')}日" if m == "C" else ""
         gv_post({"action": "paper_open", "ticker": tk, "group": grp,
@@ -500,11 +529,116 @@ def open_s6_auto(data, charts, open_pos, closed):
                  "t1": round(t1, 2), "t2": round(t2, 2),
                  "bonus": sg.get("bonus"), "trend": sg.get("streak"), "pullback": sg.get("retrace"),
                  "spy1m": "", "m1": ""})
-        done.add((tk, grp, sig)); held.add((tk, grp)); n += 1
+        n += 1
         print(f"成交 [{grp}] {tk}: 突破 {sig} → {dates[k]} @ {entry:.2f}（Limit {sg['limit']}）"
               f" 止蝕 {stop:.2f} T1 {t1:.2f} T2 {t2:.2f}｜{sg.get('quality')}")
-        _post_s6_result(tk, grp, ch, entry, stop, simulate_s6(ch, k, entry, stop, t1, t2))
+        res = simulate_s6(ch, k, entry, stop, t1, t2)
+        done.add((tk, grp, sig)); iv.setdefault((tk, grp), []).append((dates[k], _exit_day(ch, res)))
+        _post_s6_result(tk, grp, ch, entry, stop, res)
     print(f"S6 自動記錄：最近突破 {len(sigs)} 次 → 新成交 {n}，等緊 {wait}，取消 {cancel}，唔入 {skip}")
+
+# ════════════════════════════════════════════════════════════════
+# S3 突破 / S5 支持阻力 自動記錄（2026-10-05；訊號同掛單規則喺 scan.py s3_breakouts / s5_setups）
+#   S3A / S3B / S3C = 手法A / B / C：Limit @ 訊號日收市，下一個交易日高開 > 1% 取消
+#   S5R = 跟 checklist（4/4 + 3日🔥 + 結構）；S5S = 淨結構：Limit @ 0.786，最多等 20 日
+#   出場：收市穿止蝕先平；T1 平一半、止蝕移去入場價；T2 平餘下（S3 入場價高過 T1 就全倉等 T2）
+# ════════════════════════════════════════════════════════════════
+AUTO_SIG_MARK = "訊號日"
+AUTO_CFG = {
+    "S3": {"key": "s3Signals", "gfield": "method",
+           "groups": {"A": ("S3A", "手法A", "Buildup底×0.98"), "B": ("S3B", "手法B", "假突破低×0.98"),
+                      "C": ("S3C", "手法C", "回測低×0.98")}},
+    "S5": {"key": "s5Signals", "gfield": "grp",
+           "groups": {"R": ("S5R", "跟checklist", "A點"), "S": ("S5S", "淨結構", "A點")}},
+}
+AUTO_GROUP_STOP = {g: txt for cfg in AUTO_CFG.values() for g, _, txt in cfg["groups"].values()}
+
+def _auto_sig_date(state):
+    s = str(state or "")
+    i = s.find(AUTO_SIG_MARK)
+    return s[i + len(AUTO_SIG_MARK):].strip()[:10] if i >= 0 else None
+
+def manage_t12_auto(p, charts):
+    tk, grp = p["ticker"], p["group"]
+    entry, stop = _num(p.get("entry")), _num(p.get("stop"))
+    t1, t2 = _num(p.get("t1")), _num(p.get("t2"))
+    ch = charts.get(tk) or {}
+    if None in (entry, stop, t2) or entry <= stop or not ch.get("c"):
+        return
+    nd = _norm_date(str(p.get("entryDate", "")))
+    if not nd:
+        return
+    ed = "%04d-%02d-%02d" % nd
+    dates = _bar_dates(ch)
+    if ed not in dates:
+        return
+    res = simulate_t12(ch, dates.index(ed), entry, stop, t1, t2, AUTO_GROUP_STOP.get(grp, "止蝕位"))
+    _post_s6_result(tk, grp, ch, entry, stop, res, already_t1hit=str(p.get("t1hit", "")).upper() == "Y")
+
+def open_auto(strat, data, charts, open_pos, closed):
+    cfg = AUTO_CFG[strat]
+    gmap = cfg["groups"]
+    groups = [g for g, _, _ in gmap.values()]
+    done = set()
+    for x in list(open_pos) + list(closed):
+        if x.get("group") in groups:
+            done.add((x["ticker"], x["group"], _auto_sig_date(x.get("state"))))
+    iv = _hold_intervals(open_pos, closed, groups)
+    sigs = sorted(data.get(cfg["key"]) or [], key=lambda x: x["signalDate"])
+    n = wait = cancel = skip = 0
+    for sg in sigs:
+        gk = sg.get(cfg["gfield"])
+        if gk not in gmap or sg.get("skip") or sg.get("status") == "skip":
+            skip += 1
+            continue
+        grp, label, stop_txt = gmap[gk]
+        tk, sig = sg["ticker"], sg["signalDate"]
+        if (tk, grp, sig) in done:
+            continue
+        ch = charts.get(tk) or {}
+        dates = _bar_dates(ch)
+        if not ch.get("c") or sig not in dates:
+            continue
+        ks = dates.index(sig)
+        if strat == "S5":
+            st = scan.s5_order_status(sg["limit"], sg["stop"], sg["poleB"], ks, ch["o"], ch["l"], ch["c"])
+        else:
+            st = scan.limit_next_day_status(sg["limit"], sg["stop"], ks, ch["o"], ch["l"], ch["c"])
+        if st["status"] == "wait":
+            wait += 1
+            continue
+        if st["status"] == "cancel":
+            cancel += 1
+            continue
+        k, entry = st["k"], st["px"]
+        if _busy(iv, (tk, grp), dates[k]):
+            print(f"  {strat} {tk} [{grp}]：訊號 {sig} 喺 {dates[k]} 成交，但嗰日已經揸緊同一組，唔再入")
+            continue
+        stop, t1, t2 = sg["stop"], sg.get("t1"), sg["t2"]
+        if t1 is not None and t1 <= entry:
+            t1 = None
+        if t2 <= entry or entry <= stop:
+            print(f"  {strat} {tk} [{grp}]：成交價 {entry:.2f} 唔啱（T2 {t2} / 止蝕 {stop}），唔入")
+            continue
+        if strat == "S3":
+            desc = f"突破線 {sg.get('line')} | RV {sg.get('rv')}"
+        else:
+            desc = f"A {sg.get('poleA')} → B {sg.get('poleB')} | 整理區 {sg.get('congesBottom')}-{sg.get('congesTop')}"
+        plan = "T1半+T2半" if t1 is not None else "全倉等T2"
+        waited = f" 等{st.get('waited')}日" if strat == "S5" else ""
+        gv_post({"action": "paper_open", "ticker": tk, "group": grp,
+                 "state": f"{strat}自動 | {label} | {plan} | {desc} | {sg.get('universe', '')} | "
+                          f"Limit {sg['limit']}{waited} | {AUTO_SIG_MARK} {sig}",
+                 "entryDate": dates[k], "entry": round(entry, 2), "stop": round(stop, 2),
+                 "t1": round(t1, 2) if t1 is not None else "", "t2": round(t2, 2),
+                 "bonus": sg.get("bonus"), "trend": sg.get("streak"), "pullback": "", "spy1m": "", "m1": ""})
+        n += 1
+        print(f"成交 [{grp}] {tk}: 訊號 {sig} → {dates[k]} @ {entry:.2f}（Limit {sg['limit']}）止蝕 {stop:.2f}"
+              + (f" T1 {t1:.2f}" if t1 is not None else "") + f" T2 {t2:.2f}")
+        res = simulate_t12(ch, k, entry, stop, t1, t2, stop_txt)
+        done.add((tk, grp, sig)); iv.setdefault((tk, grp), []).append((dates[k], _exit_day(ch, res)))
+        _post_s6_result(tk, grp, ch, entry, stop, res)
+    print(f"{strat} 自動記錄：最近訊號 {len(sigs)} 個 → 新成交 {n}，等緊 {wait}，取消 {cancel}，唔入 {skip}")
 
 def main():
     # 1. 攞最新 scan data
@@ -551,6 +685,9 @@ def main():
             continue
         if grp in [g for g, _ in S6_GROUPS.values()]:
             manage_s6_auto(p, charts)
+            continue
+        if grp in AUTO_GROUP_STOP:
+            manage_t12_auto(p, charts)
             continue
         if _same_day(ed, today):
             continue
@@ -624,6 +761,8 @@ def main():
         open_s1_auto(data, stocks, charts, open_pos, closed, session)
         open_s7_auto(data, charts, open_pos, closed)
         open_s6_auto(data, charts, open_pos, closed)
+        open_auto("S3", data, charts, open_pos, closed)
+        open_auto("S5", data, charts, open_pos, closed)
     print("Paper trade 完成")
 
 if __name__ == "__main__":
