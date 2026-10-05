@@ -2325,6 +2325,8 @@ def s5_setups(days, ch, offset):
             if None in (a, b, entry) or not (a < entry < b):
                 continue
             ci = t - offset
+            if not (a < c[ci] < b):
+                continue          # 現價已經高過 B（升浪頂）或者跌穿 A：唔係回調緊，結構唔適用
             t1, t2 = round(entry + (b - entry) * 0.618, 2), round(b, 2)
             st = s5_order_status(entry, a, b, ci, o, l, c)
             sk = st.get("k")
