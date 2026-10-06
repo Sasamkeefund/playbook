@@ -33,6 +33,13 @@
     .ptab{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 16px;color:var(--dim);cursor:pointer;font-size:14px;font-weight:600}
     .ptab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     body.work .ptab.active{background:#444;border-color:#444}
+    .pgroup{display:inline-flex;margin:14px 0 10px;border:1px solid var(--border);border-radius:12px;overflow:hidden;max-width:100%}
+    .pgbtn{background:var(--surface);border:none;padding:9px 20px;color:var(--dim);cursor:pointer;font-size:14px;font-weight:700}
+    .pgbtn+.pgbtn{border-left:1px solid var(--border)}
+    .pgbtn.active{background:var(--accent);color:#fff}
+    body.work .pgbtn.active{background:#444}
+    .ptabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+    .ptab.hide{display:none}
     .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin:18px 0}
     .panel h2{font-size:15px;margin:0 0 14px;color:var(--dim)}
     table{width:100%;border-collapse:collapse;font-size:13px}
@@ -75,14 +82,19 @@
   <div class="wrap">
     <h1 id="ptTitle">📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade</h1>
     <div class="sub" id="ptSub">記低你自己喺 TradingView 落嘅 paper trade，留返個原因，儲返自己嘅trade record</div>
-    <div style="display:flex;gap:8px;margin:14px 0">
-      <button id="tabTV" class="ptab active" onclick="switchPT('TV')">📝 我的記錄(TradingView)</button>
-      <button id="tabS7N" class="ptab" onclick="switchPT('S7N')">🚀 S7 突破</button>
-      <button id="tabS1" class="ptab" onclick="switchPT('S1')">✋ S1 人手揀</button>
-      <button id="tabS1A" class="ptab" onclick="switchPT('S1A')">🤖 S1 自動</button>
-      <button id="tabS6A" class="ptab" onclick="switchPT('S6A')">🚩 S6 旗形</button>
+    <div class="pgroup">
+      <button id="grpAuto" class="pgbtn" onclick="switchGroup('auto')">🤖 自動記錄</button>
+      <button id="grpManual" class="pgbtn" onclick="switchGroup('manual')">✋ 人手記錄</button>
+    </div>
+    <div class="ptabs">
+      <button id="tabAUTO" class="ptab" onclick="switchPT('AUTO')">📊 總覽</button>
+      <button id="tabS1A" class="ptab" onclick="switchPT('S1A')">🟢 S1 順勢</button>
       <button id="tabS3A" class="ptab" onclick="switchPT('S3A')">📈 S3 突破</button>
       <button id="tabS5A" class="ptab" onclick="switchPT('S5A')">🎯 S5 支持阻力</button>
+      <button id="tabS6A" class="ptab" onclick="switchPT('S6A')">🚩 S6 旗形</button>
+      <button id="tabS7N" class="ptab" onclick="switchPT('S7N')">🚀 S7 突破</button>
+      <button id="tabTV" class="ptab" onclick="switchPT('TV')">📝 我的記錄（TradingView）</button>
+      <button id="tabS1" class="ptab" onclick="switchPT('S1')">✋ S1 人手揀</button>
     </div>
     <div id="content"><div class="loading">載入緊…</div></div>
   </div>
@@ -177,7 +189,7 @@ document.addEventListener('keydown',e=>{if(e.key==='`'){
   document.body.classList.remove('mobile');document.body.classList.toggle('work',!w);
 }});
 
-let _allOpen=[], _allClosed=[], _ptMode='TV', _liveData={}, _macroData=null, _regime={}, _s1Next=[], _s7Next=[], _s6Sig=[], _s3Sig=[], _s5Sig=[], _dataSession='';
+let _allOpen=[], _allClosed=[], _ptMode='AUTO', _liveData={}, _macroData=null, _regime={}, _s1Next=[], _s7Next=[], _s6Sig=[], _s3Sig=[], _s5Sig=[], _dataSession='';
 async function load(){
   const now=new Date();
   const hourKey=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0');
@@ -206,76 +218,88 @@ async function load(){
   _macroData=(marketResult.status==='fulfilled')?marketResult.value:null;
   renderCurrent();
 }
+// ── 分頁：🤖 自動記錄（系統自己記）/ ✋ 人手記錄（你自己落）──
+const PT_MODES={
+  AUTO:{grp:'auto',title:'📊 自動記錄總覽 — 邊個策略做到勝率 50% 以上？',
+    sub:'系統每晚 scan 完自動記錄嘅 paper trade（冇真錢）。每個策略分組對比做法，撳策略名睇詳細。'},
+  S1A:{grp:'auto',title:'📒 S1 自動記錄 — 跟你平時 S1 做法，每個 🟢🔵 訊號自動記錄',
+    sub:'入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%）收市確認 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半'},
+  S3A:{grp:'auto',title:'📒 S3 突破交易自動記錄 — 52 週高位 Buildup 突破（手法A / B / C）',
+    sub:'前提：Buildup 喺 52 週高位、連續 3日🔥 ｜ 手法A：第一次突破 RV≥1.5 ｜ 手法B：假突破後再突破 RV≥1.5 ｜ 手法C：突破後守住、回測再向上 RV≥1.0 ｜ 全部 Limit @ 訊號日收市，高開>1% 取消 ｜ T1 平一半、止蝕移去入場價，T2 平餘下'},
+  S5A:{grp:'auto',title:'📒 S5 支持阻力自動記錄 — 0.786 同整理區重疊（跟 checklist vs 淨結構）',
+    sub:'結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 重疊 ｜ S5R 要 Scanner 4/4 連續 3日🔥；S5S 唔使 ｜ Limit @ 0.786，最多等 20 日，收市升穿 B 取消 ｜ 止蝕 A（收市） ｜ T1 = 0.618 反彈（平一半），T2 = B'},
+  S6A:{grp:'auto',title:'📒 S6 旗形自動記錄 — 跟你 S6 筆記，突破 H1 自動記錄（手法A vs 手法C）',
+    sub:'訊號：連續 5日🔥 整固 → 收市第一次升穿 H1（b6 0.236 守住） ｜ 手法A（RV>1.5）：Limit @ 突破日收市，高開>1% 取消 ｜ 手法C（RV≤1.5）：Limit @ H1 等回測，最多 20 日 ｜ 止蝕：旗形低×0.98（收市） ｜ T1 平一半、止蝕移去入場價，T2 平餘下'},
+  S7N:{grp:'auto',title:'📒 S7 突破 — VCP 整固後放量突破先買（新版）',
+    sub:'訊號：VCP 整固（S7 ready）後第一次收市放量（RVOL≥1.5）升穿整固區頂，大市 SPY>EMA200 ｜ 入場：下個交易日開市（開市要喺突破位至+5%） ｜ 止蝕：整固低位（收市） ｜ 止賺：20MA vs 10MA 兩組'},
+  TV:{grp:'manual',title:'📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade',
+    sub:'記低你自己喺 TradingView 落嘅 paper trade，留返個原因，儲返自己嘅trade record'},
+  S1:{grp:'manual',title:'📒 S1 Paper Trade — 人手揀股（假突破回測）',
+    sub:'入場：你睇圖人手揀 ｜ 止損：1.5ATR 或 前面最底 ｜ 止賺：T1(通知) / T2(1.618)'},
+};
+const _lastInGroup={auto:'AUTO',manual:'TV'};
+function _store(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function _load(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function applyTabUI(){
+  const cfg=PT_MODES[_ptMode]||PT_MODES.AUTO, grp=cfg.grp;
+  document.getElementById('grpAuto').classList.toggle('active',grp==='auto');
+  document.getElementById('grpManual').classList.toggle('active',grp==='manual');
+  Object.keys(PT_MODES).forEach(k=>{const b=document.getElementById('tab'+k);if(!b)return;
+    b.classList.toggle('active',k===_ptMode);b.classList.toggle('hide',PT_MODES[k].grp!==grp);});
+  document.getElementById('ptTitle').textContent=cfg.title;
+  document.getElementById('ptSub').textContent=cfg.sub;
+}
 function switchPT(m){
-  _ptMode=m;
-  document.getElementById('tabS1').classList.toggle('active',m==='S1');
-  document.getElementById('tabTV').classList.toggle('active',m==='TV');
-  document.getElementById('tabS1A').classList.toggle('active',m==='S1A');
-  document.getElementById('tabS7N').classList.toggle('active',m==='S7N');
-  document.getElementById('tabS6A').classList.toggle('active',m==='S6A');
-  document.getElementById('tabS3A').classList.toggle('active',m==='S3A');
-  document.getElementById('tabS5A').classList.toggle('active',m==='S5A');
-  if(m==='S3A'){
-    document.getElementById('ptTitle').textContent='📒 S3 突破交易自動記錄 — 52 週高位 Buildup 突破（手法A / B / C）';
-    document.getElementById('ptSub').textContent='前提：Buildup 喺 52 週高位、連續 3日🔥 ｜ 手法A：第一次突破 RV≥1.5 ｜ 手法B：假突破後再突破 RV≥1.5 ｜ 手法C：突破後守住、回測再向上 RV≥1.0 ｜ 全部 Limit @ 訊號日收市，高開>1% 取消 ｜ T1 平一半、止蝕移去入場價，T2 平餘下';
-    renderCurrent(); return;
-  }
-  if(m==='S5A'){
-    document.getElementById('ptTitle').textContent='📒 S5 支持阻力自動記錄 — 0.786 同整理區重疊（跟 checklist vs 淨結構）';
-    document.getElementById('ptSub').textContent='結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 重疊 ｜ S5R 要 Scanner 4/4 連續 3日🔥；S5S 唔使 ｜ Limit @ 0.786，最多等 20 日，收市升穿 B 取消 ｜ 止蝕 A（收市） ｜ T1 = 0.618 反彈（平一半），T2 = B';
-    renderCurrent(); return;
-  }
-  if(m==='S6A'){
-    document.getElementById('ptTitle').textContent='📒 S6 旗形自動記錄 — 跟你 S6 筆記，突破 H1 自動記錄（手法A vs 手法C）';
-    document.getElementById('ptSub').textContent='訊號：連續 5日🔥 整固 → 收市第一次升穿 H1（b6 0.236 守住） ｜ 手法A（RV>1.5）：Limit @ 突破日收市，高開>1% 取消 ｜ 手法C（RV≤1.5）：Limit @ H1 等回測，最多 20 日 ｜ 止蝕：旗形低×0.98（收市） ｜ T1 平一半、止蝕移去入場價，T2 平餘下';
-    renderCurrent(); return;
-  }
-  if(m==='S7N'){
-    document.getElementById('ptTitle').textContent='📒 S7 突破 — VCP 整固後放量突破先買（新版）';
-    document.getElementById('ptSub').textContent='訊號：VCP 整固（S7 ready）後第一次收市放量（RVOL≥1.5）升穿整固區頂，大市 SPY>EMA200 ｜ 入場：下個交易日開市（開市要喺突破位至+5%） ｜ 止蝕：整固低位（收市） ｜ 止賺：20MA vs 10MA 兩組';
-    renderCurrent(); return;
-  }
-  if(m==='S1A'){
-    document.getElementById('ptTitle').textContent='📒 S1 自動記錄 — 跟你平時 S1 做法，每個 🟢🔵 訊號自動記錄';
-    document.getElementById('ptSub').textContent='入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%）收市確認 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半';
-    renderCurrent(); return;
-  }
-  document.getElementById('ptTitle').textContent=m==='S1'?'📒 S1 Paper Trade — 人手揀股（假突破回測）':'📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade';
-  document.getElementById('ptSub').textContent=m==='S1'?'入場：你睇圖人手揀 ｜ 止損：1.5ATR 或 前面最底 ｜ 止賺：T1(通知) / T2(1.618)':'記低你自己喺 TradingView 落嘅 paper trade，留返個原因，儲返自己嘅trade record';
-  renderCurrent();
+  if(!PT_MODES[m])m='AUTO';
+  _ptMode=m; _lastInGroup[PT_MODES[m].grp]=m;
+  _store('ptMode',m); _store('ptLast_'+PT_MODES[m].grp,m);
+  applyTabUI(); renderCurrent();
 }
-async function removeS1(ticker, entry){
-  if(!confirm('確定刪除 '+ticker+' 呢個 S1 test 單？（成行消失，好似冇買過）'))return;
-  try{
-    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'paper_remove',ticker,group:'S1',entry})});
-    alert('已刪除 '+ticker+'。1-2秒後刷新頁面就見到。');
-    setTimeout(()=>load(),1500);
-  }catch(e){alert('刪除失敗，再試');}
+function switchGroup(g){
+  const last=_load('ptLast_'+g)||_lastInGroup[g];
+  switchPT(PT_MODES[last]&&PT_MODES[last].grp===g?last:(g==='auto'?'AUTO':'TV'));
 }
-async function manualCloseS1(ticker, entry){
-  const px=prompt('手動平倉 '+ticker+'，輸入平倉價：');
-  if(px===null||px==='')return;
-  const exitPx=parseFloat(px);
-  if(isNaN(exitPx)){alert('請輸入數字');return;}
-  const today=new Date().toISOString().slice(0,10);
-  try{
-    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'paper_manual_close',ticker,group:'S1',exitPx,exitDate:today})});
-    alert('已平倉 '+ticker+' @ $'+exitPx+'。1-2秒後刷新。');
-    setTimeout(()=>load(),1500);
-  }catch(e){alert('平倉失敗，再試');}
-}
-async function removeS1Closed(ticker, entry){
-  if(!confirm('確定刪除已平倉記錄 '+ticker+'？（成行消失）'))return;
-  try{
-    await fetch(WL_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'paper_remove',ticker,group:'S1',entry,status:'closed'})});
-    alert('已刪除 '+ticker+'。1-2秒後刷新。');
-    setTimeout(()=>load(),1500);
-  }catch(e){alert('刪除失敗，再試');}
+// 開頁：返去上次睇開嗰個 tab（冇記錄就由自動總覽開始）
+(function(){const m=_load('ptMode');_ptMode=PT_MODES[m]?m:'AUTO';applyTabUI();})();
+
+// ── 自動記錄總覽：全部策略 / 分組一張表 ──
+const AUTO_STRATS=[
+  {m:'S1A',name:'S1 順勢',groups:[['S1A0','0% 緩衝'],['S1A1','1% 緩衝']],pend:()=>(_s1Next||[]).length},
+  {m:'S3A',name:'S3 突破',groups:[['S3A','手法A'],['S3B','手法B'],['S3C','手法C']],pend:()=>(_s3Sig||[]).filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START).length},
+  {m:'S5A',name:'S5 支持阻力',groups:[['S5R','跟 checklist'],['S5S','淨結構']],pend:()=>(_s5Sig||[]).filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START).length},
+  {m:'S6A',name:'S6 旗形',groups:[['S6A','手法A'],['S6C','手法C']],pend:()=>(_s6Sig||[]).filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START).length},
+  {m:'S7N',name:'S7 突破',groups:[['S7E20','20MA 止賺'],['S7S10','10MA 止賺']],pend:()=>(_s7Next||[]).length},
+];
+function renderAutoOverview(){
+  const valid=t=>t.r!==''&&t.r!=null&&!isNaN(Number(t.r));
+  let h='<div class="panel"><h2>📊 各策略戰績</h2><div class="sub" style="margin-bottom:8px">勝率要有 20 張已平倉單先有參考價值：夠 20 張而勝率 ≥ 50% 會變綠色，少過 50% 變紅色。「掛緊」= 等緊成交嘅單。</div>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>策略</th><th>掛緊</th><th>組</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
+  AUTO_STRATS.forEach(st=>{
+    st.groups.forEach(([g,lab],i)=>{
+      const cl=_allClosed.filter(t=>t.group===g&&valid(t)), s=_autoStat(cl);
+      const wrN=cl.length?cl.filter(t=>Number(t.r)>0).length/cl.length*100:null;
+      const wrCls=(wrN!=null&&cl.length>=20)?(wrN>=50?'green':'red'):'';
+      const rs=st.groups.length;
+      h+='<tr'+(i===0?' style="border-top:2px solid var(--border)"':'')+'>'
+        +(i===0?'<td rowspan="'+rs+'" style="font-weight:700;vertical-align:top;white-space:nowrap"><a href="#" onclick="switchPT(\''+st.m+'\');return false" style="color:var(--accent);text-decoration:none">'+st.name+' ›</a></td>'
+               +'<td rowspan="'+rs+'" class="mono" style="text-align:center;vertical-align:top">'+st.pend()+'</td>':'')
+        +'<td style="font-size:12px;white-space:nowrap">'+g+' <span style="color:var(--faint)">'+lab+'</span></td>'
+        +'<td class="mono" style="text-align:center">'+_allOpen.filter(p=>p.group===g).length+'</td>'
+        +'<td class="mono" style="text-align:center">'+s.n+(s.n<20?'<span style="font-size:10px;color:var(--faint)"> /20</span>':'')+'</td>'
+        +'<td class="mono '+wrCls+'" style="text-align:center">'+s.wr+'</td>'
+        +'<td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';
+    });
+  });
+  h+='</tbody></table></div></div>';
+  const groups=AUTO_STRATS.flatMap(x=>x.groups.map(g=>g[0]));
+  const allCl=_allClosed.filter(t=>groups.includes(t.group)&&valid(t)), all=_autoStat(allCl);
+  h+='<div class="panel"><h2>🧮 全部自動記錄合計</h2><div class="sub">已平倉 '+all.n+' 張 ｜ 勝率 '+all.wr+' ｜ 每單期望 <span class="'+all.col+'">'+all.exp+'</span> ｜ 累計 <span class="'+all.col+'">'+all.tot+'</span></div>'
+    +regimeStatsHtml(allCl)+'</div>';
+  h+='<div class="warn"><b>🤖 全部係自動記錄，冇真錢。</b>S3、S5、S6 由 2026-10-02 開始記錄（只做 forward test）；S1、S7 更早已經開始。</div>';
+  document.getElementById('content').innerHTML=h;
 }
 function renderCurrent(){
+  if(_ptMode==='AUTO'){renderAutoOverview();return;}
   const isS1A=g=>g==='S1A0'||g==='S1A1';
   const isS7N=g=>g==='S7E20'||g==='S7S10';
   if(_ptMode==='S7N'){renderS7N(_allOpen.filter(p=>isS7N(p.group)), _allClosed.filter(p=>isS7N(p.group)));return;}
