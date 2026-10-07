@@ -7,7 +7,7 @@ Paper Trade 引擎 — 每日 scan 後自動行，持倉 + 戰績存 Google Shee
   S7E20/S7S10：S7 突破自動記錄（20MA vs 10MA 止賺）
   S6A/S6C：S6 旗形突破自動記錄（手法A 放量 Limit @ 收市 vs 手法C Limit @ H1 等回測）
   S3A/S3B/S3C：S3 突破交易自動記錄（手法A / B / C）
-  S5R/S5S：S5 支持阻力自動記錄（跟 checklist 4/4 vs 淨結構）
+  S5R/S5S/S5S2：S5 支持阻力自動記錄（跟 checklist 4/4 vs 淨結構 vs 淨結構＋止蝕 A×0.98）
   （舊版 S7 A/B/C/D 已於 2026-10-04 移除：冇等突破就買，4 組全部負期望）
 """
 import sys, json, datetime, urllib.request, urllib.parse
@@ -570,7 +570,8 @@ def open_s6_auto(data, charts, open_pos, closed):
 # S3 突破 / S5 支持阻力 自動記錄（2026-10-05；訊號同掛單規則喺 scan.py s3_breakouts / s5_setups）
 #   S3A / S3B / S3C = 手法A / B / C：Limit @ 訊號日收市，下一個交易日高開 > 1% 取消
 #   S5R = 跟 checklist（4/4 + 3日🔥 + 結構）；S5S = 淨結構：Limit @ 0.786，最多等 20 日
-#   出場：收市穿止蝕先平；T1 平一半、止蝕移去入場價；T2 平餘下（S3 入場價高過 T1 就全倉等 T2）
+#   S5S2 = 同 S5S 一樣，止蝕 A × 0.98（2% 緩衝；2026-10-07 加，睇緩衝會唔會少啲俾人打止蝕）
+#   出場：Stop 單盤中掂到止蝕就平；T1 平一半、止蝕移去入場價；T2 平餘下（S3 入場價高過 T1 就全倉等 T2）
 # ════════════════════════════════════════════════════════════════
 AUTO_SIG_MARK = "訊號日"
 # 上線日：之前嘅訊號唔記錄（Sasa 要 forward test，唔要補記歷史）。scanner 嘅 30 日清單仍然會顯示，方便對圖。
@@ -597,7 +598,8 @@ AUTO_CFG = {
            "groups": {"A": ("S3A", "手法A", "Buildup底×0.98"), "B": ("S3B", "手法B", "假突破低×0.98"),
                       "C": ("S3C", "手法C", "回測低×0.98")}},
     "S5": {"key": "s5Signals", "gfield": "grp",
-           "groups": {"R": ("S5R", "跟checklist", "A點"), "S": ("S5S", "淨結構", "A點")}},
+           "groups": {"R": ("S5R", "跟checklist", "A點"), "S": ("S5S", "淨結構", "A點"),
+                      "S2": ("S5S2", "淨結構·2%緩衝", "A點×0.98")}},
 }
 AUTO_GROUP_STOP = {g: txt for cfg in AUTO_CFG.values() for g, _, txt in cfg["groups"].values()}
 

@@ -226,8 +226,8 @@ const PT_MODES={
     sub:'入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%），Stop 單盤中掂到就止蝕 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半'},
   S3A:{grp:'auto',title:'📒 S3 突破交易自動記錄 — 52 週高位 Buildup 突破（手法A / B / C）',
     sub:'前提：Buildup 喺 52 週高位、連續 3日🔥 ｜ 手法A：第一次突破 RV≥1.5 ｜ 手法B：假突破後再突破 RV≥1.5 ｜ 手法C：突破後守住、回測再向上 RV≥1.0 ｜ 全部 Limit @ 訊號日收市，高開>1% 取消 ｜ T1 平一半、止蝕移去入場價，T2 平餘下'},
-  S5A:{grp:'auto',title:'📒 S5 支持阻力自動記錄 — 0.786 同整理區重疊（跟 checklist vs 淨結構）',
-    sub:'結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 重疊 ｜ S5R 要 Scanner 4/4 連續 3日🔥；S5S 唔使 ｜ Limit @ 0.786，最多等 20 日，收市升穿 B 取消 ｜ 止蝕 A（Stop 單） ｜ T1 = 0.618 反彈（平一半），T2 = B'},
+  S5A:{grp:'auto',title:'📒 S5 支持阻力自動記錄 — 0.786 同整理區重疊（跟 checklist vs 淨結構 vs 2% 緩衝）',
+    sub:'結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 重疊 ｜ S5R 要 Scanner 4/4 連續 3日🔥；S5S 唔使 ｜ Limit @ 0.786，最多等 20 日，收市升穿 B 取消 ｜ 止蝕 A（S5S2 = A×0.98），Stop 單 ｜ T1 = 0.618 反彈（平一半），T2 = B'},
   S6A:{grp:'auto',title:'📒 S6 旗形自動記錄 — 跟你 S6 筆記，突破 H1 自動記錄（手法A vs 手法C）',
     sub:'訊號：連續 5日🔥 整固 → 收市第一次升穿 H1（b6 0.236 守住） ｜ 手法A（RV>1.5）：Limit @ 突破日收市，高開>1% 取消 ｜ 手法C（RV≤1.5）：Limit @ H1 等回測，最多 20 日 ｜ 止蝕：旗形低×0.98（Stop 單） ｜ T1 平一半、止蝕移去入場價，T2 平餘下'},
   S7N:{grp:'auto',title:'📒 S7 突破 — VCP 整固後放量突破先買（新版）',
@@ -266,7 +266,7 @@ function switchGroup(g){
 const AUTO_STRATS=[
   {m:'S1A',name:'S1 順勢',groups:[['S1A0','0% 緩衝'],['S1A1','1% 緩衝']],pend:()=>(_s1Next||[]).length},
   {m:'S3A',name:'S3 突破',groups:[['S3A','手法A'],['S3B','手法B'],['S3C','手法C']],pend:()=>(_s3Sig||[]).filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START).length},
-  {m:'S5A',name:'S5 支持阻力',groups:[['S5R','跟 checklist'],['S5S','淨結構']],pend:()=>(_s5Sig||[]).filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START).length},
+  {m:'S5A',name:'S5 支持阻力',groups:[['S5R','跟 checklist'],['S5S','淨結構'],['S5S2','淨結構·2%緩衝']],pend:()=>(_s5Sig||[]).filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START&&x.grp!=='S2').length},
   {m:'S6A',name:'S6 旗形',groups:[['S6A','手法A'],['S6C','手法C']],pend:()=>(_s6Sig||[]).filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START).length},
   {m:'S7N',name:'S7 突破',groups:[['S7E20','20MA 止賺'],['S7S10','10MA 止賺']],pend:()=>(_s7Next||[]).length},
 ];
@@ -305,7 +305,7 @@ function renderCurrent(){
   if(_ptMode==='S7N'){renderS7N(_allOpen.filter(p=>isS7N(p.group)), _allClosed.filter(p=>isS7N(p.group)));return;}
   const isS6=g=>g==='S6A'||g==='S6C';
   if(_ptMode==='S6A'){renderS6(_allOpen.filter(p=>isS6(p.group)), _allClosed.filter(p=>isS6(p.group)));return;}
-  const isS3=g=>g==='S3A'||g==='S3B'||g==='S3C', isS5=g=>g==='S5R'||g==='S5S';
+  const isS3=g=>g==='S3A'||g==='S3B'||g==='S3C', isS5=g=>g==='S5R'||g==='S5S'||g==='S5S2';
   if(_ptMode==='S3A'){renderS3(_allOpen.filter(p=>isS3(p.group)), _allClosed.filter(p=>isS3(p.group)));return;}
   if(_ptMode==='S5A'){renderS5(_allOpen.filter(p=>isS5(p.group)), _allClosed.filter(p=>isS5(p.group)));return;}
   if(_ptMode==='S1A'){renderS1A(_allOpen.filter(p=>isS1A(p.group)), _allClosed.filter(p=>isS1A(p.group)));return;}
@@ -525,34 +525,43 @@ function renderS3(openP, closed){
 }
 function renderS5(openP, closed){
   closed=closed.filter(t=>t.r!==''&&t.r!=null&&!isNaN(Number(t.r)));
-  const sigs=_s5Sig||[], pend=sigs.filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START);
-  const gname=g=>g==='R'?'S5R 跟checklist':'S5S 淨結構';
+  // S5S2 同 S5S 係同一批單（止蝕低 2%），掛單表 / 30 日清單合併做一行顯示
+  const allSig=_s5Sig||[], s2Key=x=>x.ticker+'|'+x.signalDate+'|'+x.limit;
+  const s2Map=new Map(allSig.filter(x=>x.grp==='S2').map(x=>[s2Key(x),x]));
+  const sigs=allSig.filter(x=>x.grp!=='S2'), pend=sigs.filter(x=>x.status==='wait'&&x.signalDate>=AUTO_START);
+  const gname=g=>g==='R'?'S5R 跟checklist':'S5S 淨結構<br><span style="font-size:10px;color:var(--faint)">+ S5S2 2%緩衝</span>';
   let h='<div class="panel"><h2>📋 掛緊嘅單（'+pend.length+'）</h2>';
   if(pend.length){
-    h+='<div class="sub" style="margin-bottom:8px">Limit 掛喺 0.786（同整理區重疊），最多等 20 個交易日；收市升穿 B（冇回調落嚟）就取消。成交咗嘅會喺下一次 scan 之後出現喺持倉。</div>';
-    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>組</th><th>訊號日</th><th>Limit (0.786)</th><th>現價</th><th>止蝕 (A)</th><th>T1</th><th>T2 (B)</th><th>已等</th></tr></thead><tbody>';
+    h+='<div class="sub" style="margin-bottom:8px">Limit 掛喺 0.786（同整理區重疊），最多等 20 個交易日；收市升穿 B（冇回調落嚟）就取消。成交咗嘅會喺下一次 scan 之後出現喺持倉。S5S 同 S5S2 係同一張單，淨係止蝕唔同（A 同 A×0.98）。</div>';
+    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>組</th><th>訊號日</th><th>Limit (0.786)</th><th>現價</th><th>止蝕 (A / A×0.98)</th><th>T1</th><th>T2 (B)</th><th>已等</th></tr></thead><tbody>';
     pend.forEach(x=>{const live=_liveData[x.ticker.toUpperCase()],cur=live?live.close:null,away=cur!=null?((cur-x.limit)/x.limit*100):null;
-      const held=openP.some(p=>p.ticker===x.ticker&&p.group===(x.grp==='R'?'S5R':'S5S'));
+      const s2=x.grp==='S'?s2Map.get(s2Key(x)):null;
+      const heldIn=g=>openP.some(p=>p.ticker===x.ticker&&p.group===g);
+      const gs=x.grp==='R'?['S5R']:['S5S','S5S2'], hg=gs.filter(heldIn);
+      const waitTxt=hg.length===gs.length?'<span style="color:var(--faint)">已持倉</span>'
+        :(hg.length?'<span style="color:var(--faint)">'+hg[0]+' 已持倉</span><br>':'')+(x.waited||0)+'/20 日';
       h+='<tr><td>'+_tvA(x.ticker)+'</td><td style="font-size:12px">'+gname(x.grp)+'</td><td class="mono">'+_md(x.signalDate)+'</td><td class="mono">'+_money(x.limit)+'</td>'
         +'<td class="mono">'+(cur!=null?'$'+cur.toFixed(2)+'<br><span style="font-size:10px;color:var(--faint)">距 Limit '+(away>=0?'+':'')+away.toFixed(1)+'%</span>':'—')+'</td>'
-        +'<td class="mono red">'+_money(x.stop)+'</td><td class="mono green">'+_money(x.t1)+'</td><td class="mono green">'+_money(x.t2)+'</td>'
-        +'<td style="font-size:11px">'+(held?'<span style="color:var(--faint)">已持倉</span>':(x.waited||0)+'/20 日')+'</td></tr>';});
+        +'<td class="mono red">'+_money(x.stop)+(s2?'<br><span style="font-size:10px">2%緩衝 '+_money(s2.stop)+'</span>':'')+'</td><td class="mono green">'+_money(x.t1)+'</td><td class="mono green">'+_money(x.t2)+'</td>'
+        +'<td style="font-size:11px">'+waitTxt+'</td></tr>';});
     h+='</tbody></table></div>';
   }else h+='<div class="sub">而家冇掛緊嘅 S5 單。</div>';
   h+='</div>';
-  h+=_autoCompare('🔬 兩組對比：要唔要 Scanner 4/4？',[['S5R','跟 checklist：Scanner 4/4 連續 3日🔥 + 0.786 / 整理區結構'],['S5S','淨結構：唔理 4/4，只要 0.786 同整理區重疊']],openP,closed,
-    'S5R 嘅單一定都會喺 S5S 出現（S5S 條件寬啲），所以 S5S 單數會多好多。睇吓 4/4 呢個篩選有冇提高勝率。樣本少過 20 單前唔好落結論。');
-  {const PG=_posGroupBar('S5A',[['S5R','跟 checklist'],['S5S','淨結構']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
+  h+=_autoCompare('🔬 三組對比：要唔要 Scanner 4/4？止蝕要唔要留 2% 緩衝？',[['S5R','跟 checklist：Scanner 4/4 連續 3日🔥 + 0.786 / 整理區結構，止蝕 A'],['S5S','淨結構：唔理 4/4，只要 0.786 同整理區重疊，止蝕 A'],['S5S2','淨結構 + 2% 緩衝：同 S5S 一模一樣嘅單，止蝕擺低啲喺 A×0.98']],openP,closed,
+    'S5R 對 S5S：S5R 嘅單一定都會喺 S5S 出現（S5S 條件寬啲），睇吓 4/4 呢個篩選有冇提高勝率。<br>S5S 對 S5S2：同一批單，淨係止蝕唔同。緩衝有用嘅話，S5S2 會少啲俾人「掃完止蝕先升」，勝率高啲；代價係每單輸多啲（1R 嘅金額大咗），所以要睇埋「每單期望」。樣本少過 20 單前唔好落結論。');
+  {const PG=_posGroupBar('S5A',[['S5R','跟 checklist'],['S5S','淨結構'],['S5S2','淨結構·2%緩衝']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
   h+=_autoPositions(openP,closed,'未有持倉。每晚 scan 完會自動掛新嘅 0.786 Limit 單。');
   h+='<div class="panel"><h2>🗂 最近 30 個交易日嘅 S5 結構（'+sigs.length+'）</h2>';
   if(sigs.length){
     h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>組</th><th>訊號日</th><th>A → B</th><th>整理區</th><th>0.786</th><th>T1</th><th>連續🔥</th><th>結果</th></tr></thead><tbody>';
-    sigs.slice(0,80).forEach(x=>{h+='<tr><td>'+_tvA(x.ticker)+'</td><td style="font-size:11px">'+x.grp+'</td><td class="mono">'+_md(x.signalDate)+'</td>'
+    sigs.slice(0,80).forEach(x=>{const s2=x.grp==='S'?s2Map.get(s2Key(x)):null;
+      const s2Diff=s2&&(s2.status!==x.status||s2.fillPx!==x.fillPx)?'<br><span style="font-size:10px">S5S2：'+_sigResult(s2)+'</span>':'';
+      h+='<tr><td>'+_tvA(x.ticker)+'</td><td style="font-size:11px">'+(x.grp==='S'?'S / S2':x.grp)+'</td><td class="mono">'+_md(x.signalDate)+'</td>'
       +'<td class="mono" style="font-size:11px">'+_money(x.poleA)+' → '+_money(x.poleB)+'</td><td class="mono" style="font-size:11px">'+_money(x.congesBottom)+' – '+_money(x.congesTop)+'</td>'
-      +'<td class="mono">'+_money(x.limit)+'</td><td class="mono">'+_money(x.t1)+'</td><td class="mono" style="text-align:center">'+x.streak+'</td><td style="font-size:11px">'+_sigResult(x)+_preTag(x)+'</td></tr>';});
+      +'<td class="mono">'+_money(x.limit)+'</td><td class="mono">'+_money(x.t1)+'</td><td class="mono" style="text-align:center">'+x.streak+'</td><td style="font-size:11px">'+_sigResult(x)+_preTag(x)+s2Diff+'</td></tr>';});
     h+='</tbody></table></div>';
   }else h+='<div class="sub">最近 30 個交易日未搵到 S5 結構。</div>';
-  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你 S5 checklist：入場 = 0.786（要同 A 之前嘅整理區重疊），止蝕 = A（Stop 單，盤中掂到就止蝕），T1 = 0.786 反彈 0.618（到咗平一半，止蝕移去入場價），T2 = B。開市已經低過 A 嘅單會取消。</div>';
+  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你 S5 checklist：入場 = 0.786（要同 A 之前嘅整理區重疊），止蝕 = A（Stop 單，盤中掂到就止蝕；S5S2 組擺喺 A×0.98），T1 = 0.786 反彈 0.618（到咗平一半，止蝕移去入場價），T2 = B。成交嗰日開市已經低過止蝕位嘅單會取消。S5S2 由 2026-10-07 開始加，同 S5S 一樣由 2026-10-02 嘅訊號計起，咁兩組先係比較同一批單。</div>';
   document.getElementById('content').innerHTML=h;
 }
 function s1PlanTxt(entry, stop, t1){

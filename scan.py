@@ -2269,13 +2269,15 @@ def s3_breakouts(days, closes, volumes, ch, offset):
 # ════════════════════════════════════════════════════════════════
 # S5 支持阻力自動記錄（2026-10-05，跟 S5 checklist）
 #   結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 同整理區重疊（scanner confluence）
-#   兩組：S5R = 跟 checklist（Scanner 4/4 連續 ≥ 3 日🔥 + 結構）；S5S = 淨結構（唔使 4/4）
+#   三組：S5R = 跟 checklist（Scanner 4/4 連續 ≥ 3 日🔥 + 結構）；S5S = 淨結構（唔使 4/4）
+#         S5S2 = 淨結構 + 止蝕 A × 0.98（2% 緩衝，2026-10-07 加，同 S5S 比較緩衝有冇用）
 #   掛單：結構第一日出現 → Limit @ 0.786；最多等 20 個交易日；收市升穿 B（冇回調落嚟）→ 取消
-#   止蝕 = A（收市確認）；T1 = 入場 + (B − 入場) × 0.618（平一半，止蝕移去入場價）；T2 = B
+#   止蝕 = A（S5S2 = A × 0.98），Stop 單盤中掂到就止蝕；T1 = 入場 + (B − 入場) × 0.618（平一半，止蝕移去入場價）；T2 = B
 # ════════════════════════════════════════════════════════════════
 S5_LOOKBACK = 30
 S5_MIN_STREAK = 3
 S5_MAX_WAIT = 20
+S5_BUF2 = 0.98            # S5S2 組止蝕 = A × 0.98
 
 
 def s5_order_status(limit, stop, top, k_sig, o, l, c):
@@ -2285,7 +2287,7 @@ def s5_order_status(limit, stop, top, k_sig, o, l, c):
             continue
         if l[k] <= limit:
             if o[k] <= stop:
-                return {"status": "cancel", "k": k, "why": f"開市 {o[k]:.2f} 已經低過止蝕位 A {stop:.2f}", "waited": j}
+                return {"status": "cancel", "k": k, "why": f"開市 {o[k]:.2f} 已經低過止蝕位 {stop:.2f}", "waited": j}
             return {"status": "fill", "k": k, "px": min(o[k], limit), "waited": j}
         if c[k] > top:
             return {"status": "cancel", "k": k, "why": f"收市 {c[k]:.2f} 升穿 B {top:.2f}，冇回調到 0.786", "waited": j}
@@ -2302,7 +2304,7 @@ def s5_setups(days, ch, offset):
     day = lambda i: datetime.fromtimestamp(ts[i], timezone.utc).strftime("%Y-%m-%d")
     first_ok = max(offset + 1, last - S5_LOOKBACK + 1)
     out = []
-    for grp in ("R", "S"):
+    for grp in ("R", "S", "S2"):          # S2 = 同 S 一樣嘅結構，止蝕改 A × 0.98
         seen = set()
         for t in sorted(k for k in days if k >= offset):
             cur = (days[t].get("S5") or {})
@@ -2328,12 +2330,13 @@ def s5_setups(days, ch, offset):
             if not (a < c[ci] < b):
                 continue          # 現價已經高過 B（升浪頂）或者跌穿 A：唔係回調緊，結構唔適用
             t1, t2 = round(entry + (b - entry) * 0.618, 2), round(b, 2)
-            st = s5_order_status(entry, a, b, ci, o, l, c)
+            stop = round(a * S5_BUF2, 2) if grp == "S2" else a
+            st = s5_order_status(entry, stop, b, ci, o, l, c)
             sk = st.get("k")
-            out.append({"grp": grp, "signalDate": day(ci), "limit": entry, "close": c[ci], "stop": a,
+            out.append({"grp": grp, "signalDate": day(ci), "limit": entry, "close": c[ci], "stop": stop,
                         "poleA": a, "poleB": b, "congesTop": cur.get("congesTop"), "congesBottom": cur.get("congesBottom"),
-                        "t1": t1, "t2": t2, "rr1": round((t1 - entry) / (entry - a), 2),
-                        "rr2": round((t2 - entry) / (entry - a), 2), "streak": streak, "bonus": cur.get("bonusScore"),
+                        "t1": t1, "t2": t2, "rr1": round((t1 - entry) / (entry - stop), 2),
+                        "rr2": round((t2 - entry) / (entry - stop), 2), "streak": streak, "bonus": cur.get("bonusScore"),
                         "status": st["status"], "waited": st.get("waited"), "why": st.get("why"),
                         "statusDate": day(sk) if sk is not None and sk < len(c) else None,
                         "fillPx": round(st["px"], 2) if st.get("px") is not None else None})
