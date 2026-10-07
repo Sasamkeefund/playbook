@@ -340,6 +340,7 @@ function renderS7N(openP, closed){
   [['S7E20','收市跌穿 20MA'],['S7S10','收市跌穿 10MA']].forEach(([g,lab])=>{const s=stat(closed.filter(t=>t.group===g));
     h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td><td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';});
   h+='</tbody></table></div>'+regimeStatsHtml(closed)+'<div class="sub" style="margin-top:10px">每個訊號兩組各開一單，入場同止蝕一樣，只係止賺唔同。要升過 入場+0.5×ATR 先開始用均線止賺。</div></div>';
+  {const PG=_posGroupBar('S7N',[['S7E20','20MA 止賺'],['S7S10','10MA 止賺']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
   // 持倉
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>組</th><th>入場日</th><th>入場</th><th>現價</th><th>止蝕</th><th>突破位</th><th>RVOL</th><th>大市</th></tr></thead><tbody>';
@@ -411,6 +412,7 @@ function renderS6(openP, closed){
       +(isOpen?'<td style="text-align:center">'+(t1hit?'<span class="green">✓</span>':'—')+'</td>'
               :'<td style="font-size:11px">'+(p.reason||'')+'</td><td class="mono '+rcol+'">'+(Number(p.r)>=0?'+':'')+p.r+'R</td>')
       +regimeCell(p.entryDate)+'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td></tr>';};
+  {const PG=_posGroupBar('S6A',[['S6A','手法A'],['S6C','手法C']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>手法</th><th>質素</th><th>突破日</th><th>入場日</th><th>入場</th><th>現價</th><th>止蝕</th><th>T1</th><th>T2</th><th>掂T1</th><th>大市</th><th>圖</th></tr></thead><tbody>';
     openP.slice().sort((a,b)=>String(b.entryDate).localeCompare(String(a.entryDate))).forEach(p=>h+=row(p,true));h+='</tbody></table></div>';}
@@ -452,6 +454,18 @@ function _autoCompare(title,groups,openP,closed,note){
   groups.forEach(([g,lab])=>{const s=_autoStat(closed.filter(t=>t.group===g));
     h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td><td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';});
   return h+'</tbody></table></div>'+regimeStatsHtml(closed)+'<div class="sub" style="margin-top:10px">'+note+'</div></div>';
+}
+// ── 持倉 / 已平倉：按組分開睇（2026-10-07：全部擺埋一齊太多，難睇）──
+const _posSel={};
+function _setPosGrp(key,g){_posSel[key]=g;_store('posGrp_'+key,g);renderCurrent();}
+function _posGroupBar(key,groups,openP,closed){
+  let sel=_posSel[key]||_load('posGrp_'+key);
+  if(!groups.some(g=>g[0]===sel))sel=groups[0][0];
+  _posSel[key]=sel;
+  const btn=([g,lab])=>'<button class="ptab'+(g===sel?' active':'')+'" style="padding:6px 14px;font-size:13px" onclick="_setPosGrp(\''+key+'\',\''+g+'\')">'
+    +lab+' <span style="font-size:11px;opacity:.8">持倉 '+openP.filter(p=>p.group===g).length+' ｜ 已平倉 '+closed.filter(p=>p.group===g).length+'</span></button>';
+  const bar='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 12px"><span class="sub" style="margin:0">持倉 / 已平倉睇邊組：</span>'+groups.map(btn).join('')+'</div>';
+  return {bar,open:openP.filter(p=>p.group===sel),closed:closed.filter(p=>p.group===sel)};
 }
 function _autoPositions(openP,closed,emptyTxt){
   const row=(p,isOpen)=>{const e=Number(p.entry),st=Number(p.stop),risk=e-st,t1=p.t1===''||p.t1==null?null:Number(p.t1);
@@ -496,6 +510,7 @@ function renderS3(openP, closed){
   h+='</div>';
   h+=_autoCompare('🔬 三個手法對比',[['S3A','手法A：第一次突破 RV≥1.5，止蝕 Buildup底×0.98'],['S3B','手法B：假突破後再突破 RV≥1.5，止蝕 假突破低×0.98'],['S3C','手法C：守住、回測再向上 RV≥1.0，止蝕 回測低×0.98']],openP,closed,
     '同一隻股可以先後出手法A、B、C（例如手法A 止蝕咗，之後再出手法B），三組各自記錄。樣本少過 20 單前唔好落結論。');
+  {const PG=_posGroupBar('S3A',[['S3A','手法A'],['S3B','手法B'],['S3C','手法C']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
   h+=_autoPositions(openP,closed,'未有持倉。每晚 scan 完會自動處理 S3 突破訊號。');
   h+='<div class="panel"><h2>🗂 最近 30 個交易日嘅 S3 突破（'+sigs.length+'）</h2>';
   if(sigs.length){
@@ -527,6 +542,7 @@ function renderS5(openP, closed){
   h+='</div>';
   h+=_autoCompare('🔬 兩組對比：要唔要 Scanner 4/4？',[['S5R','跟 checklist：Scanner 4/4 連續 3日🔥 + 0.786 / 整理區結構'],['S5S','淨結構：唔理 4/4，只要 0.786 同整理區重疊']],openP,closed,
     'S5R 嘅單一定都會喺 S5S 出現（S5S 條件寬啲），所以 S5S 單數會多好多。睇吓 4/4 呢個篩選有冇提高勝率。樣本少過 20 單前唔好落結論。');
+  {const PG=_posGroupBar('S5A',[['S5R','跟 checklist'],['S5S','淨結構']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
   h+=_autoPositions(openP,closed,'未有持倉。每晚 scan 完會自動掛新嘅 0.786 Limit 單。');
   h+='<div class="panel"><h2>🗂 最近 30 個交易日嘅 S5 結構（'+sigs.length+'）</h2>';
   if(sigs.length){
@@ -613,6 +629,7 @@ function renderS1A(openP, closed){
               :'<td style="font-size:11px">'+(p.reason||'')+'</td><td class="mono '+rcol+'">'+(Number(p.r)>=0?'+':'')+p.r+'R</td>')
       +'<td style="font-size:11px">'+part(p.state,3)+'</td>'+regimeCell(p.entryDate)
       +'<td><button class="linkbtn" onclick="openChart(\''+p.ticker+'\','+p.entry+','+p.stop+')">📈</button></td></tr>';};
+  {const PG=_posGroupBar('S1A',[['S1A0','0% 緩衝'],['S1A1','1% 緩衝']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
   h+='<div class="panel"><h2>📌 持倉中（'+openP.length+'）</h2>';
   if(openP.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>組</th><th>入場日</th><th>入場</th><th>現價</th><th>止損</th><th>T1</th><th>T2</th><th>計劃</th><th>掂T1</th><th>股票池</th><th>大市</th><th>圖</th></tr></thead><tbody>';
     openP.slice().sort((a,b)=>String(b.entryDate).localeCompare(String(a.entryDate))).forEach(p=>h+=row(p,true));h+='</tbody></table></div>';}
