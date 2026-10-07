@@ -646,7 +646,7 @@
           const pv=strat.pivot, sr=strat.stopRef;
           const hi=(pv!=null&&sr!=null)?Math.min(pv*1.05, sr/0.92):null;
           if(hi!=null&&hi<pv)return{text:'🚀 今日放量突破 $'+pv.toFixed(2)+'（RVOL '+(strat.brkRvol||'—')+'x）但止蝕 $'+sr.toFixed(2)+' 太闊（>8%），唔入'+mkTxt,color:'amber'};
-          return{text:'🚀 今日放量突破 $'+(pv!=null?pv.toFixed(2):'—')+'（RVOL '+(strat.brkRvol||'—')+'x）→ 下個交易日開市買，開市要喺 $'+(pv!=null?pv.toFixed(2):'—')+'–$'+(hi!=null?hi.toFixed(2):'—')+' ｜ 止蝕 $'+(sr!=null?sr.toFixed(2):'—')+'（收市）'+mkTxt,color:'green'};
+          return{text:'🚀 今日放量突破 $'+(pv!=null?pv.toFixed(2):'—')+'（RVOL '+(strat.brkRvol||'—')+'x）→ 下個交易日開市買，開市要喺 $'+(pv!=null?pv.toFixed(2):'—')+'–$'+(hi!=null?hi.toFixed(2):'—')+' ｜ 止蝕 $'+(sr!=null?sr.toFixed(2):'—')+'（Stop 單）'+mkTxt,color:'green'};
         }
         const pn=strat.pivotNow;
         return{text:'👀 J Law VCP 整固中：'+vcpTxt+' ｜ '+rsTxt+' — 等收市放量（RVOL≥1.5）升穿整固區頂'+(pn!=null?' $'+pn.toFixed(2):'')+mkTxt,color:'amber'};}

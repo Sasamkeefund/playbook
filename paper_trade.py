@@ -125,30 +125,47 @@ def _days_between(a, b):
 def _bar_dates(ch):
     return [datetime.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d") for t in (ch.get("t") or [])]
 
+def _stop_hit(ch, k, k0, eff):
+    """Stop 止損單（2026-10-07 起，跟 Sasa 實際做法）：盤中最低掂到止蝕價就成交；
+    開市已經低過止蝕價（裂口）就用開市價成交。入場日用止蝕價（成交之後先跌落嚟）。冇掂到返回 None。"""
+    l, o = ch["l"], ch["o"]
+    if k >= len(l) or l[k] is None or l[k] > eff:
+        return None
+    if k > k0 and o[k] is not None and o[k] < eff:
+        return o[k]
+    return eff
+
 def simulate_s1(ch, k0, entry, stop, t1, t2):
-    """由入場日 k0 開始逐日行（入場日只 check 收市止蝕，唔計目標——唔知成交前定後先掂到）。
+    """由入場日 k0 開始逐日行。止蝕用 Stop 單：盤中掂到止蝕價就止蝕（裂口低開用開市價）；
+    同一日又掂止蝕又掂目標 → 當止蝕先（保守）。入場日唔計目標（唔知成交前定後先掂到）。
+    到 T1 之後，餘下止蝕移去入場同 T1 中間，第二日先生效（你第二朝先改得張止蝕單）。
     返回 {"exit": (k, px, reason, r) 或 None, "t1hit": bool}"""
-    c, h = ch["c"], ch["h"]
+    c, h, o = ch["c"], ch["h"], ch["o"]
     risk = entry - stop
     R = lambda px: (px - entry) / risk
-    t1hit, eff = False, stop
+    t1hit, eff, move = False, stop, None
     for k in range(k0, len(c)):
         if c[k] is None or h[k] is None:
             continue
+        if move and k >= move[0]:
+            eff, move = move[1], None
+        px = _stop_hit(ch, k, k0, eff)
+        if px is not None:
+            if t1hit:
+                return {"exit": (k, px, "止蝕(T1平一半後，餘下盤中跌穿中間位)", 0.5 * R(t1) + 0.5 * R(px)), "t1hit": True}
+            gap = k > k0 and o[k] is not None and o[k] < eff
+            why = ("止蝕(入場當日盤中跌穿前底)" if k == k0 else
+                   "止蝕(裂口低開穿前底，開市價平倉)" if gap else "止蝕(盤中跌穿前底)")
+            return {"exit": (k, px, why, R(px)), "t1hit": False}
         if k > k0:
             if t2 is None:
                 if h[k] >= t1:
                     return {"exit": (k, t1, "止賺(到T1全平)", R(t1)), "t1hit": True}
             else:
                 if not t1hit and h[k] >= t1:
-                    t1hit, eff = True, entry + (t1 - entry) * 0.5
+                    t1hit, move = True, (k + 1, entry + (t1 - entry) * 0.5)
                 if t1hit and h[k] >= t2:
                     return {"exit": (k, t2, "止賺(T1平一半+T2平一半)", 0.5 * R(t1) + 0.5 * R(t2)), "t1hit": True}
-        if c[k] < eff:
-            if t1hit:
-                return {"exit": (k, c[k], "止蝕(T1平一半後，餘下收市穿中間位)", 0.5 * R(t1) + 0.5 * R(c[k])), "t1hit": True}
-            why = "止蝕(入場當日收市穿前底)" if k == k0 else "止蝕(收市穿前底)"
-            return {"exit": (k, c[k], why, R(c[k])), "t1hit": False}
     return {"exit": None, "t1hit": t1hit}
 
 def _post_s1_result(tk, grp, ch, entry, stop, res, already_t1hit=False):
@@ -288,8 +305,9 @@ def _atr14_before(ch, k):
     return sum(trs) / len(trs) if trs else None
 
 def simulate_s7(ch, k0, entry, stop, trail, buffer_met=False):
-    """由入場日 k0（開市買入）逐日行：收市 < 止蝕 → 止蝕；升過 entry+0.5ATR 之後收市跌穿均線 → 平倉。"""
-    c, e20 = ch["c"], ch.get("e20") or []
+    """由入場日 k0（開市買入）逐日行：盤中掂到止蝕價（Stop 單）→ 止蝕；
+    升過 entry+0.5ATR 之後收市跌穿均線 → 平倉（均線止賺仍然係睇收市）。"""
+    c, e20, o = ch["c"], ch.get("e20") or [], ch["o"]
     risk = entry - stop
     atr = _atr14_before(ch, k0) if k0 > 0 else None
     buf_px = entry + 0.5 * atr if atr else entry
@@ -298,9 +316,12 @@ def simulate_s7(ch, k0, entry, stop, trail, buffer_met=False):
         ck = c[k]
         if ck is None:
             continue
-        if ck < stop:
-            return {"exit": (k, ck, "止蝕(收市穿整固低位)" if k > k0 else "止蝕(入場當日收市穿整固低位)",
-                             (ck - entry) / risk)}
+        px = _stop_hit(ch, k, k0, stop)
+        if px is not None:
+            gap = k > k0 and o[k] is not None and o[k] < stop
+            why = ("止蝕(入場當日盤中跌穿整固低位)" if k == k0 else
+                   "止蝕(裂口低開穿整固低位，開市價平倉)" if gap else "止蝕(盤中跌穿整固低位)")
+            return {"exit": (k, px, why, (px - entry) / risk)}
         mx = ck if mx is None else max(mx, ck)
         if k > k0 and (buffer_met or mx >= buf_px):
             if trail == "E20":
@@ -402,29 +423,35 @@ S6_GROUPS = {"A": ("S6A", "手法A"), "C": ("S6C", "手法C")}
 S6_SIG_MARK = "突破日"
 
 def simulate_t12(ch, k0, entry, stop, t1, t2, stop_txt):
-    """由入場日 k0 開始逐日行（入場日只 check 收市止蝕，唔計目標——唔知成交前定後先掂到）。
-    T1（盤中掂到）平一半、餘下止蝕移去入場價；T2 平餘下；收市低過止蝕先平倉。t1 = None → 全倉等 T2。"""
-    c, h = ch["c"], ch["h"]
+    """由入場日 k0 開始逐日行。止蝕用 Stop 單：盤中掂到止蝕價就止蝕（裂口低開用開市價）；
+    同一日又掂止蝕又掂目標 → 當止蝕先（保守）。入場日唔計目標。
+    T1（盤中掂到）平一半，餘下止蝕移去入場價（第二日先生效）；T2 平餘下。t1 = None → 全倉等 T2。"""
+    c, h, o = ch["c"], ch["h"], ch["o"]
     risk = entry - stop
     R = lambda px: (px - entry) / risk
-    t1hit, eff = False, stop
+    t1hit, eff, move = False, stop, None
     for k in range(k0, len(c)):
         if c[k] is None or h[k] is None:
             continue
+        if move and k >= move[0]:
+            eff, move = move[1], None
+        px = _stop_hit(ch, k, k0, eff)
+        if px is not None:
+            if t1hit:
+                return {"exit": (k, px, "保本(T1平一半後，餘下盤中跌穿入場價)", 0.5 * R(t1) + 0.5 * R(px)),
+                        "t1hit": True}
+            gap = k > k0 and o[k] is not None and o[k] < eff
+            why = (f"止蝕(入場當日盤中跌穿{stop_txt})" if k == k0 else
+                   f"止蝕(裂口低開穿{stop_txt}，開市價平倉)" if gap else f"止蝕(盤中跌穿{stop_txt})")
+            return {"exit": (k, px, why, R(px)), "t1hit": False}
         if k > k0:
             if t1 is not None and not t1hit and h[k] >= t1:
-                t1hit, eff = True, entry
+                t1hit, move = True, (k + 1, entry)
             if h[k] >= t2:
                 if t1 is None:
                     return {"exit": (k, t2, "止賺(全倉到T2)", R(t2)), "t1hit": False}
                 if t1hit:
                     return {"exit": (k, t2, "止賺(T1平一半+T2平一半)", 0.5 * R(t1) + 0.5 * R(t2)), "t1hit": True}
-        if c[k] < eff:
-            if t1hit:
-                return {"exit": (k, c[k], "保本(T1平一半後，餘下收市跌穿入場價)", 0.5 * R(t1) + 0.5 * R(c[k])),
-                        "t1hit": True}
-            why = f"止蝕(入場當日收市穿{stop_txt})" if k == k0 else f"止蝕(收市穿{stop_txt})"
-            return {"exit": (k, c[k], why, R(c[k])), "t1hit": False}
     return {"exit": None, "t1hit": t1hit}
 
 def simulate_s6(ch, k0, entry, stop, t1, t2):
@@ -663,6 +690,81 @@ def open_auto(strat, data, charts, open_pos, closed):
         _post_s6_result(tk, grp, ch, entry, stop, res)
     print(f"{strat} 自動記錄：最近訊號 {len(sigs)} 個 → 新成交 {n}，等緊 {wait}，取消 {cancel}，唔入 {skip}")
 
+# ════════════════════════════════════════════════════════════════
+# 2026-10-07：止蝕改用 Stop 單（盤中掂到就止蝕）。之前用「收市先算」已經平咗倉嘅自動記錄，
+# 用新規則由入場日重新計一次；結果唔同就刪咗舊記錄再記過（state 加「盤中止蝕」標記，唔會再計）。
+# ════════════════════════════════════════════════════════════════
+STOP_RULE_DATE = "2026-10-07"
+STOP_MARK = "盤中止蝕"
+
+def _resim(x, charts):
+    tk, grp = x["ticker"], x["group"]
+    ch = charts.get(tk) or {}
+    entry, stop = _num(x.get("entry")), _num(x.get("stop"))
+    t1, t2 = _num(x.get("t1")), _num(x.get("t2"))
+    ed = _iso(x.get("entryDate"))
+    dates = _bar_dates(ch)
+    if None in (entry, stop) or entry <= stop or not ed or ed not in dates:
+        return None
+    k0 = dates.index(ed)
+    if grp in [a for a, _, _ in S1_AUTO_GROUPS]:
+        return simulate_s1(ch, k0, entry, stop, t1, t2) if t1 is not None else None
+    if grp in [g for g, _, _ in S7N_GROUPS]:
+        return simulate_s7(ch, k0, entry, stop, dict((g, t) for g, t, _ in S7N_GROUPS)[grp])
+    if grp in [g for g, _ in S6_GROUPS.values()]:
+        return simulate_s6(ch, k0, entry, stop, t1, t2) if None not in (t1, t2) else None
+    if grp in AUTO_GROUP_STOP:
+        return simulate_t12(ch, k0, entry, stop, t1, t2, AUTO_GROUP_STOP[grp]) if t2 is not None else None
+    return None
+
+def migrate_intraday_stops(open_pos, closed, charts):
+    groups = (set(a for a, _, _ in S1_AUTO_GROUPS) | set(g for g, _, _ in S7N_GROUPS)
+              | set(g for g, _ in S6_GROUPS.values()) | set(AUTO_GROUP_STOP))
+    n = 0
+    for x in list(closed):
+        if x.get("group") not in groups or STOP_MARK in str(x.get("state", "")):
+            continue
+        ex = _iso(x.get("exitDate"))
+        if not ex or ex >= STOP_RULE_DATE:
+            continue
+        res = _resim(x, charts)
+        if res is None:
+            continue
+        dates = _bar_dates(charts[x["ticker"]])
+        new = res.get("exit")
+        old_r = _num(x.get("r"))
+        if new and dates[new[0]] == ex and old_r is not None and abs(round(new[3], 2) - old_r) < 0.01:
+            continue                                   # 用新規則計都一樣，唔使改
+        tk, grp = x["ticker"], x["group"]
+        gv_post({"action": "paper_remove", "ticker": tk, "group": grp, "entry": x.get("entry"), "status": "closed"})
+        state = str(x.get("state", "")) + f" | {STOP_MARK}"
+        payload = {"action": "paper_open", "ticker": tk, "group": grp, "state": state,
+                   "entryDate": _iso(x.get("entryDate")), "entry": x.get("entry"), "stop": x.get("stop"),
+                   "t1": x.get("t1", ""), "t2": x.get("t2", "")}
+        for k in ("bonus", "rsi", "trend", "pullback", "spy1m", "m1"):
+            if k in x:
+                payload[k] = x[k]
+        gv_post(payload)
+        x["state"] = state
+        if new:
+            entry, stop = float(x["entry"]), float(x["stop"])
+            if res.get("t1hit"):
+                gv_post({"action": "paper_t1hit", "ticker": tk, "group": grp, "t1hit": "Y"})
+            k, px, reason, r = new
+            gv_post({"action": "paper_close", "ticker": tk, "group": grp, "exitDate": dates[k],
+                     "exitPx": round(px, 2), "reason": reason, "r": round(r, 2),
+                     "pct": round((px - entry) / entry * 100, 1)})
+            print(f"重新計 [{grp}] {tk}：{ex} R={old_r} → {dates[k]} {reason} R={r:.2f}")
+            x.update({"exitDate": dates[k], "exitPx": round(px, 2), "reason": reason, "r": round(r, 2)})
+        else:
+            closed.remove(x)
+            x.pop("exitDate", None)
+            open_pos.append(x)
+            print(f"重新計 [{grp}] {tk}：用盤中止蝕計仲未平倉，改返做持倉")
+        n += 1
+    if n:
+        print(f"止蝕改用盤中 Stop 單：重新計咗 {n} 張已平倉自動記錄")
+
 def main():
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
@@ -690,6 +792,7 @@ def main():
 
     cleanup_old_s1_auto(open_pos, closed)
     cleanup_backfill(open_pos, closed)
+    migrate_intraday_stops(open_pos, closed, charts)
 
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}

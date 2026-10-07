@@ -223,15 +223,15 @@ const PT_MODES={
   AUTO:{grp:'auto',title:'📊 自動記錄總覽 — 邊個策略做到勝率 50% 以上？',
     sub:'系統每晚 scan 完自動記錄嘅 paper trade（冇真錢）。每個策略分組對比做法，撳策略名睇詳細。'},
   S1A:{grp:'auto',title:'📒 S1 自動記錄 — 跟你平時 S1 做法，每個 🟢🔵 訊號自動記錄',
-    sub:'入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%）收市確認 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半'},
+    sub:'入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%），Stop 單盤中掂到就止蝕 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半'},
   S3A:{grp:'auto',title:'📒 S3 突破交易自動記錄 — 52 週高位 Buildup 突破（手法A / B / C）',
     sub:'前提：Buildup 喺 52 週高位、連續 3日🔥 ｜ 手法A：第一次突破 RV≥1.5 ｜ 手法B：假突破後再突破 RV≥1.5 ｜ 手法C：突破後守住、回測再向上 RV≥1.0 ｜ 全部 Limit @ 訊號日收市，高開>1% 取消 ｜ T1 平一半、止蝕移去入場價，T2 平餘下'},
   S5A:{grp:'auto',title:'📒 S5 支持阻力自動記錄 — 0.786 同整理區重疊（跟 checklist vs 淨結構）',
-    sub:'結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 重疊 ｜ S5R 要 Scanner 4/4 連續 3日🔥；S5S 唔使 ｜ Limit @ 0.786，最多等 20 日，收市升穿 B 取消 ｜ 止蝕 A（收市） ｜ T1 = 0.618 反彈（平一半），T2 = B'},
+    sub:'結構：直線升浪 A→B + A 之前窄幅整理區 + 0.786 重疊 ｜ S5R 要 Scanner 4/4 連續 3日🔥；S5S 唔使 ｜ Limit @ 0.786，最多等 20 日，收市升穿 B 取消 ｜ 止蝕 A（Stop 單） ｜ T1 = 0.618 反彈（平一半），T2 = B'},
   S6A:{grp:'auto',title:'📒 S6 旗形自動記錄 — 跟你 S6 筆記，突破 H1 自動記錄（手法A vs 手法C）',
-    sub:'訊號：連續 5日🔥 整固 → 收市第一次升穿 H1（b6 0.236 守住） ｜ 手法A（RV>1.5）：Limit @ 突破日收市，高開>1% 取消 ｜ 手法C（RV≤1.5）：Limit @ H1 等回測，最多 20 日 ｜ 止蝕：旗形低×0.98（收市） ｜ T1 平一半、止蝕移去入場價，T2 平餘下'},
+    sub:'訊號：連續 5日🔥 整固 → 收市第一次升穿 H1（b6 0.236 守住） ｜ 手法A（RV>1.5）：Limit @ 突破日收市，高開>1% 取消 ｜ 手法C（RV≤1.5）：Limit @ H1 等回測，最多 20 日 ｜ 止蝕：旗形低×0.98（Stop 單） ｜ T1 平一半、止蝕移去入場價，T2 平餘下'},
   S7N:{grp:'auto',title:'📒 S7 突破 — VCP 整固後放量突破先買（新版）',
-    sub:'訊號：VCP 整固（S7 ready）後第一次收市放量（RVOL≥1.5）升穿整固區頂，大市 SPY>EMA200 ｜ 入場：下個交易日開市（開市要喺突破位至+5%） ｜ 止蝕：整固低位（收市） ｜ 止賺：20MA vs 10MA 兩組'},
+    sub:'訊號：VCP 整固（S7 ready）後第一次收市放量（RVOL≥1.5）升穿整固區頂，大市 SPY>EMA200 ｜ 入場：下個交易日開市（開市要喺突破位至+5%） ｜ 止蝕：整固低位（Stop 單） ｜ 止賺：20MA vs 10MA 兩組'},
   TV:{grp:'manual',title:'📝 我的 Trade Record — 喺 TradingView 真係落嘅 paper trade',
     sub:'記低你自己喺 TradingView 落嘅 paper trade，留返個原因，儲返自己嘅trade record'},
   S1:{grp:'manual',title:'📒 S1 Paper Trade — 人手揀股（假突破回測）',
@@ -295,7 +295,7 @@ function renderAutoOverview(){
   const allCl=_allClosed.filter(t=>groups.includes(t.group)&&valid(t)), all=_autoStat(allCl);
   h+='<div class="panel"><h2>🧮 全部自動記錄合計</h2><div class="sub">已平倉 '+all.n+' 張 ｜ 勝率 '+all.wr+' ｜ 每單期望 <span class="'+all.col+'">'+all.exp+'</span> ｜ 累計 <span class="'+all.col+'">'+all.tot+'</span></div>'
     +regimeStatsHtml(allCl)+'</div>';
-  h+='<div class="warn"><b>🤖 全部係自動記錄，冇真錢。</b>S3、S5、S6 由 2026-10-02 開始記錄（只做 forward test）；S1、S7 更早已經開始。</div>';
+  h+='<div class="warn"><b>🤖 全部係自動記錄，冇真錢。</b>S3、S5、S6 由 2026-10-02 開始記錄（只做 forward test）；S1、S7 更早已經開始。2026-10-07 起全部止蝕改用 Stop 單（盤中掂到就止蝕，裂口低開用開市價），之前已平倉嘅單都用新規則重新計過。</div>';
   document.getElementById('content').innerHTML=h;
 }
 function renderCurrent(){
@@ -326,7 +326,7 @@ function renderS7N(openP, closed){
   h+='<div class="panel"><h2>📋 下個交易日開市買（'+nx.length+'）</h2>';
   if(nx.length){
     h+='<div class="sub" style="margin-bottom:8px">最新交易日第一次放量突破整固區頂嘅股票。下個交易日開市價要喺「開市範圍」入面先買：低過突破位 = 突破失敗；上限係突破位 +5%（唔追高），或者令止蝕距離超過 8% 嘅價（邊個低用邊個）。</div>';
-    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>突破日</th><th>突破位</th><th>收市</th><th>RVOL</th><th>開市範圍（先買）</th><th>止蝕（收市）</th><th>狀態</th></tr></thead><tbody>';
+    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>突破日</th><th>突破位</th><th>收市</th><th>RVOL</th><th>開市範圍（先買）</th><th>止蝕（Stop 單）</th><th>狀態</th></tr></thead><tbody>';
     nx.forEach(x=>{const held=openP.some(p=>p.ticker===x.ticker);
       const lo=Number(x.pivot), hi=Math.min(x.pivot*1.05, x.stopRef/0.92), ok=hi>=lo;   // 上限：高過突破位 5% 或者止蝕距離 > 8%
       h+='<tr><td>'+tvA(x.ticker)+'</td><td class="mono">'+String(x.signalDate).slice(5)+'</td><td class="mono">$'+lo.toFixed(2)+'</td><td class="mono">$'+Number(x.close).toFixed(2)+'</td><td class="mono">'+x.brkRvol+'x</td>'
@@ -375,7 +375,7 @@ function renderS6(openP, closed){
   h+='<div class="panel"><h2>📋 掛緊嘅單（'+pend.length+'）</h2>';
   if(pend.length){
     h+='<div class="sub" style="margin-bottom:8px">手法A：突破日收市後掛 Limit（收市價），下個交易日高開超過 1% 就取消，跌到 Limit 先成交。手法C：掛 Limit @ H1，等股價跌返嚟回測，最多等 20 個交易日。成交咗嘅會喺下一次 scan 之後出現喺持倉。</div>';
-    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>手法</th><th>突破日</th><th>Limit</th><th>突破日收市</th><th>止蝕（收市）</th><th>T1</th><th>T2</th><th>R:R</th><th>質素</th><th>狀態</th></tr></thead><tbody>';
+    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>手法</th><th>突破日</th><th>Limit</th><th>突破日收市</th><th>止蝕（Stop 單）</th><th>T1</th><th>T2</th><th>R:R</th><th>質素</th><th>狀態</th></tr></thead><tbody>';
     pend.forEach(x=>{
       const held=openP.some(p=>p.ticker===x.ticker&&p.group===grpOf(x.method));
       const stTxt=held?'<span style="color:var(--faint)">已持倉，唔會再入</span>'
@@ -501,7 +501,7 @@ function renderS3(openP, closed){
   let h='<div class="panel"><h2>📋 掛緊嘅單（'+pend.length+'）</h2>';
   if(pend.length){
     h+='<div class="sub" style="margin-bottom:8px">最新交易日收市後嘅 S3 入場訊號：掛 Limit = 訊號日收市價，下個交易日高開超過 1% 就取消，跌到 Limit 先成交。R:R 只係參考（跟你筆記，唔設門檻）。</div>';
-    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>手法</th><th>訊號日</th><th>Limit</th><th>突破線</th><th>止蝕（收市）</th><th>T1</th><th>T2</th><th>R:R T1 / T2</th><th>RV</th></tr></thead><tbody>';
+    h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>手法</th><th>訊號日</th><th>Limit</th><th>突破線</th><th>止蝕（Stop 單）</th><th>T1</th><th>T2</th><th>R:R T1 / T2</th><th>RV</th></tr></thead><tbody>';
     pend.forEach(x=>{h+='<tr><td>'+_tvA(x.ticker)+'</td><td>手法'+x.method+'</td><td class="mono">'+_md(x.signalDate)+'</td><td class="mono">'+_money(x.limit)+'</td><td class="mono">'+_money(x.line)+'</td>'
       +'<td class="mono red">'+_money(x.stop)+'</td><td class="mono green">'+(x.t1!=null?_money(x.t1):'（已過）')+'</td><td class="mono green">'+_money(x.t2)+'</td>'
       +'<td class="mono">'+(x.rr1!=null?x.rr1:'—')+' / '+(x.rr2!=null?x.rr2:'—')+'</td><td class="mono">'+(x.rv??'—')+'</td></tr>';});
@@ -552,7 +552,7 @@ function renderS5(openP, closed){
       +'<td class="mono">'+_money(x.limit)+'</td><td class="mono">'+_money(x.t1)+'</td><td class="mono" style="text-align:center">'+x.streak+'</td><td style="font-size:11px">'+_sigResult(x)+_preTag(x)+'</td></tr>';});
     h+='</tbody></table></div>';
   }else h+='<div class="sub">最近 30 個交易日未搵到 S5 結構。</div>';
-  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你 S5 checklist：入場 = 0.786（要同 A 之前嘅整理區重疊），止蝕 = A（收市低過先算），T1 = 0.786 反彈 0.618（到咗平一半，止蝕移去入場價），T2 = B。開市已經低過 A 嘅單會取消。</div>';
+  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你 S5 checklist：入場 = 0.786（要同 A 之前嘅整理區重疊），止蝕 = A（Stop 單，盤中掂到就止蝕），T1 = 0.786 反彈 0.618（到咗平一半，止蝕移去入場價），T2 = B。開市已經低過 A 嘅單會取消。</div>';
   document.getElementById('content').innerHTML=h;
 }
 function s1PlanTxt(entry, stop, t1){
@@ -638,7 +638,7 @@ function renderS1A(openP, closed){
   if(closed.length){h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>組</th><th>入場日</th><th>平倉日</th><th>入場</th><th>平倉</th><th>止損</th><th>T1</th><th>T2</th><th>計劃</th><th>原因</th><th>R</th><th>股票池</th><th>大市</th><th>圖</th></tr></thead><tbody>';
     closed.slice().reverse().forEach(p=>h+=row(p,false));h+='</tbody></table></div>';}
   else h+='<div class="sub">仲未有平倉記錄</div>';
-  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你講嘅 S1 做法：訊號日收市後掛 Limit（收市價），第二個交易日先做開市前 Check（開市低過 EMA20、裂口高開或低開超過 1% 就取消），跌到 Limit 先成交，入場價 = Limit 價；前底、前頂用 K 線實體；止蝕要收市低過先算，用收市價平倉，裂口低開用開市價計。到 T1 平一半後，餘下止蝕移去入場同 T1 中間。</div>';
+  h+='</div><div class="warn"><b>🤖 自動記錄，冇真錢。</b>規則跟你講嘅 S1 做法：訊號日收市後掛 Limit（收市價），第二個交易日先做開市前 Check（開市低過 EMA20、裂口高開或低開超過 1% 就取消），跌到 Limit 先成交，入場價 = Limit 價；前底、前頂用 K 線實體；止蝕用 Stop 單，盤中掂到止蝕價就平倉，裂口低開用開市價計。到 T1 平一半後，餘下止蝕移去入場同 T1 中間。</div>';
   document.getElementById('content').innerHTML=h;
 }
 function renderS1(openP, closed){
