@@ -24,7 +24,27 @@ jobs:
         run: pip install requests
 
       - name: Run scanner (S1-S7)
-        run: python scan.py
+        # 2026-10-09：Yahoo 有時未出齊最新交易日（10/8 朝得三成股票有 10/7 數據，嗰日 S1 / S7 訊號冇計到）。
+        # 數據未齊（dataStale）就等 30 分鐘成個重跑，最多 4 次；重跑前還原上一晚嘅 data.json / charts.json，
+        # 等 S1 / S7 掛單照樣用上一晚完整嘅數據計。
+        run: |
+          cp data.json /tmp/data.prev.json
+          cp charts.json /tmp/charts.prev.json
+          for i in 1 2 3 4; do
+            python scan.py
+            if python -c "import json,sys; sys.exit(1 if json.load(open('data.json')).get('dataStale') else 0)"; then
+              echo "✅ 數據齊（第 $i 次）"
+              break
+            fi
+            if [ "$i" -lt 4 ]; then
+              echo "⚠️ 數據未齊（第 $i 次），30 分鐘後再試"
+              sleep 1800
+              cp /tmp/data.prev.json data.json
+              cp /tmp/charts.prev.json charts.json
+            else
+              echo "⚠️ 試咗 4 次數據都未齊，照用而家嘅數據"
+            fi
+          done
 
       - name: Commit data.json
         run: |

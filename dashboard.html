@@ -684,7 +684,8 @@
       document.getElementById('updated').textContent='更新於 '+toHKT(globalData.updated)+(globalData.dataSession?' ｜ 美股數據：'+globalData.dataSession.slice(5)+' 收市':'');
       if(globalData.dataStale){
         const u=document.getElementById('updated');
-        u.innerHTML+=' <span style="color:#ff5d6c;font-weight:700" title="Scanner 攞到嘅數據唔係最新交易日，訊號可能過時">⚠️ 數據未更新到 '+String(globalData.expectedSession||'').slice(5)+'，訊號可能過時</span>';
+        const sc=globalData.staleCount?'（'+globalData.staleCount+' 隻股未有最新數據）':'';
+        u.innerHTML+=' <span style="color:#ff5d6c;font-weight:700" title="Scanner 攞到嘅數據唔係最新交易日，訊號可能過時">⚠️ 數據未齊 '+String(globalData.expectedSession||'').slice(5)+sc+'，訊號可能過時</span>';
       }
       try{
         const updDate=new Date(globalData.updated.replace(' UTC','Z').replace(' ','T'));

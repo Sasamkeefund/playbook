@@ -75,7 +75,7 @@ def _num(x):
 # ════════════════════════════════════════════════════════════════
 # S1 自動記錄（跟 Sasa 平時 S1 做法；2026-09-30 定、2026-10-04 修訂）
 #   訊號：S1 ready + dashboard 🟢/🔵（收市跌穿 EMA20，3 日內收市企返上；跌穿前要連續 ready ≥ 3 日）
-#   掛單：訊號日收市後放 Limit = 訊號日收市價（入場價就係呢個價）
+#   掛單：訊號日收市後放 Limit = 訊號日收市價；開市低過 Limit（1% 以內）就用開市價成交（2026-10-09 改，跟真實 Limit 單）
 #   開市前 Check（跟 S1_開市前Check）：第二個交易日 —
 #         開市價 < EMA20 → 取消；裂口低開 > 1% → 取消；裂口高開 > 1% → 取消（唔追）；
 #         全日最低都未跌到 Limit → 冇成交。入場日 = 成交日。
@@ -200,6 +200,60 @@ def manage_s1_auto(p, charts):
                     already_t1hit=str(p.get("t1hit", "")).upper() == "Y")
 
 S1_ENTRY_MARK = "開市Check"
+S1_FILL_MARK = "開市價成交"     # 2026-10-09：開市低過 Limit → 用開市價成交
+
+def migrate_s1_open_fill(open_pos, closed, charts):
+    """一次性：之前開市低過 Limit 嘅 S1 自動單，入場價錯記咗做 Limit 價。
+    改返用開市價，再由入場日重新計（R、計劃、T2 都跟新入場價）。"""
+    groups = [a for a, _, _ in S1_AUTO_GROUPS]
+    n = 0
+    for lst, status in ((open_pos, "open"), (closed, "closed")):
+        for x in list(lst):
+            if x.get("group") not in groups or S1_FILL_MARK in str(x.get("state", "")):
+                continue
+            tk, grp = x["ticker"], x["group"]
+            ch = charts.get(tk) or {}
+            dates = _bar_dates(ch)
+            ed, entry = _iso(x.get("entryDate")), _num(x.get("entry"))
+            stop, t1 = _num(x.get("stop")), _num(x.get("t1"))
+            if not ch.get("o") or ed not in dates or None in (entry, stop, t1):
+                continue
+            k = dates.index(ed)
+            opn = ch["o"][k]
+            if opn is None or opn >= entry - 0.005:
+                continue
+            new_entry = round(opn, 2)
+            plan = s1_plan(new_entry, stop, t1)
+            if not plan:
+                continue
+            t2, plan_txt, _, _ = plan
+            if t2 is not None and _num(x.get("t2")) is not None:
+                t2 = _num(x.get("t2"))          # T2 同入場價無關，保留原本數字
+            parts = [z.strip() for z in str(x.get("state", "")).split("|")]
+            if len(parts) > 2:
+                parts[2] = plan_txt
+            parts = [z.replace("Limit成交", S1_FILL_MARK) for z in parts]
+            state = " | ".join(parts)
+            if S1_FILL_MARK not in state:
+                state += f" | {S1_FILL_MARK}"
+            if status == "closed" and STOP_MARK not in state:
+                state += f" | {STOP_MARK}"
+            gv_post({"action": "paper_remove", "ticker": tk, "group": grp, "entry": x.get("entry"), "status": status})
+            lst.remove(x)
+            payload = {"action": "paper_open", "ticker": tk, "group": grp, "state": state, "entryDate": ed,
+                       "entry": new_entry, "stop": round(stop, 2), "t1": round(t1, 2),
+                       "t2": round(t2, 2) if t2 else "", "spy1m": "", "m1": ""}
+            for f in ("bonus", "rsi", "trend", "pullback"):
+                payload[f] = x.get(f, "")
+            gv_post(payload)
+            res = simulate_s1(ch, k, new_entry, stop, t1, t2)
+            _post_s1_result(tk, grp, ch, new_entry, stop, res)
+            rec = {kk: payload.get(kk) for kk in ("ticker", "group", "state", "entryDate", "entry", "stop", "t1", "t2")}
+            (closed if res["exit"] else open_pos).append(rec)     # 留返喺 list 度，之後開新單嘅重複檢查先準
+            n += 1
+            print(f"S1 入場價更正 [{grp}] {tk} {ed}：{entry} → 開市價 {new_entry}（{plan_txt}）")
+    if n:
+        print(f"S1 自動：{n} 張單改用開市價做入場價（開市低過 Limit）")
 
 def cleanup_old_s1_auto(open_pos, closed):
     """一次性：刪走舊規則嘅 S1 自動記錄（冇「開市Check」標記），由新規則重新開始。"""
@@ -252,7 +306,9 @@ def open_s1_auto(data, stocks, charts, open_pos, closed, session):
             cancel += 1
             print(f"  S1 掛單取消 {tk}（訊號 {sig}，{dates[k]}）：{why}")
             continue
-        fill_date, entry = dates[k], limit
+        fill_date = dates[k]
+        entry = min(opn, limit)             # Limit 買單：開市已經低過 Limit 就用開市價成交（平啲）
+        fill_txt = S1_FILL_MARK if opn < limit else "Limit成交"
         for grp, buf, buf_txt in S1_AUTO_GROUPS:
             gaps = [_days_between(d, fill_date) for d in recent.get((tk, grp), [])]
             if (tk, grp) in held or any(g is not None and g <= S1_AUTO_COOLDOWN_DAYS for g in gaps):
@@ -266,7 +322,7 @@ def open_s1_auto(data, stocks, charts, open_pos, closed, session):
             dot = "🟢" if pd.get("color") == "green" else "🔵"
             gv_post({"action": "paper_open", "ticker": tk, "group": grp,
                      "state": f"S1自動 {dot} | {buf_txt} | {plan_txt} | {pd.get('universe', '')} | "
-                              f"Limit成交(訊號{sig[5:]}) {S1_ENTRY_MARK}✓ | 跌穿{pd.get('depth', '')}%",
+                              f"{fill_txt}(訊號{sig[5:]}) {S1_ENTRY_MARK}✓ | 跌穿{pd.get('depth', '')}%",
                      "entryDate": fill_date, "entry": round(entry, 2), "stop": round(stop, 2),
                      "t1": round(t1, 2), "t2": round(t2, 2) if t2 else "",
                      "bonus": pd.get("bonus"), "rsi": pd.get("rsi"), "trend": pd.get("trend"),
@@ -274,7 +330,7 @@ def open_s1_auto(data, stocks, charts, open_pos, closed, session):
             recent.setdefault((tk, grp), []).append(fill_date)
             held.add((tk, grp))
             n += 1
-            print(f"成交 [{grp}] {tk} {dot}: 訊號{sig} → {fill_date} Limit {entry:.2f} "
+            print(f"成交 [{grp}] {tk} {dot}: 訊號{sig} → {fill_date} @ {entry:.2f}（Limit {limit:.2f}）"
                   f"止蝕 {stop:.2f} T1 {t1:.2f}" + (f" T2 {t2:.2f}" if t2 else "") + f" → {plan_txt}")
             # 成交之後（包括成交當日收市）已經有嘅 bar 即刻逐日計
             _post_s1_result(tk, grp, ch, entry, stop, simulate_s1(ch, k, entry, stop, t1, t2))
@@ -795,6 +851,7 @@ def main():
     cleanup_old_s1_auto(open_pos, closed)
     cleanup_backfill(open_pos, closed)
     migrate_intraday_stops(open_pos, closed, charts)
+    migrate_s1_open_fill(open_pos, closed, charts)
 
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}

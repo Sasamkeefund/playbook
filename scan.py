@@ -1930,6 +1930,11 @@ def s1_levels(ch):
             "depth": round(depth, 2),
             "dipDate": datetime.fromtimestamp(ch["t"][ds], timezone.utc).strftime("%Y-%m-%d")}
 
+def chart_last_day(ch):
+    """一隻股圖表最後一條 bar 嘅日期；冇數據返回 None。"""
+    t = (ch or {}).get("t") or []
+    return datetime.fromtimestamp(t[-1], timezone.utc).strftime("%Y-%m-%d") if t else None
+
 def charts_session(charts):
     """圖表最後一條 bar 嘅日期（取最多隻股一致嗰個）。"""
     from collections import Counter
@@ -1968,7 +1973,10 @@ def s1_signals(stocks, charts, session):
         color = s1_verdict(s)
         if not color:
             continue
-        lv = s1_levels(charts.get(st["ticker"]) or {})
+        ch = charts.get(st["ticker"]) or {}
+        if chart_last_day(ch) != session:
+            continue          # 2026-10-09：呢隻股嘅數據唔係訊號日嗰日（Yahoo 未更新 / 已經多咗一日），唔計，避免撈錯日子
+        lv = s1_levels(ch)
         if not lv or abs(lv["close"] - st["close"]) > 0.01 * st["close"]:
             continue
         out.append({"ticker": st["ticker"], "signalDate": session, "limit": round(lv["close"], 4),
@@ -1984,7 +1992,7 @@ def s1_signals(stocks, charts, session):
 # ════════════════════════════════════════════════════════════════
 # S7 突破：今日放量突破（s7Next）→ 下一個交易日開市買（paper_trade 用上次嘅 s7Next 做 s7Pending）
 # ════════════════════════════════════════════════════════════════
-def s7_signals(stocks, session, regime_map):
+def s7_signals(stocks, session, regime_map, charts=None):
     rg = (regime_map or {}).get(session or "", {}).get("regime")
     if rg not in ("強", "中"):          # 大市過濾：SPY 要企喺 EMA200 之上
         return []
@@ -1993,6 +2001,8 @@ def s7_signals(stocks, session, regime_map):
         s7 = (st.get("strategies") or {}).get("S7") or {}
         if not s7.get("breakoutToday"):
             continue
+        if charts is not None and chart_last_day(charts.get(st["ticker"])) != session:
+            continue          # 2026-10-09：「今日突破」唔係 session 嗰日（數據未齊），唔計
         out.append({"ticker": st["ticker"], "signalDate": session, "pivot": s7.get("pivot"),
                     "stopRef": s7.get("stopRef"), "close": st.get("close"), "brkRvol": s7.get("brkRvol"),
                     "bonus": s7.get("bonusScore"), "regime": rg,
@@ -2617,8 +2627,16 @@ def main():
     }
     output["dataSession"] = charts_session(charts)
     output["expectedSession"] = want
-    output["dataStale"] = bool(output["dataSession"] and output["dataSession"] < want)
-    print(f"數據交易日：{output['dataSession']}（預期 {want}）" + ("  ⚠️ 數據過時！" if output["dataStale"] else "  ✅"))
+    # 2026-10-09：Yahoo 有時淨係出咗部分股票嘅最新交易日（10/8 朝得三成股票有 10/7 數據），
+    # 舊做法只睇「大部分股票」嘅日子，會當咗冇事。而家多數埋有幾多隻股未更新，超過 2% 都當數據未齊
+    #（workflow 見到 dataStale 會等 30 分鐘再成個重跑）。
+    target = _TARGET_SESSION or want
+    stale_n = sum(1 for ch in charts.values() if (chart_last_day(ch) or "") < target)
+    output["staleCount"] = stale_n
+    output["dataStale"] = bool((output["dataSession"] and output["dataSession"] < want)
+                               or stale_n > 0.02 * max(1, len(charts)))
+    print(f"數據交易日：{output['dataSession']}（預期 {want}）｜未有 {target} 數據：{stale_n}/{len(charts)} 隻"
+          + ("  ⚠️ 數據未齊！" if output["dataStale"] else "  ✅"))
     try:
         output["s1Pending"] = compute_s1_pending(charts_session(charts))
         print(f"S1 掛單（上個交易日訊號，等今日成交）：{len(output['s1Pending'])} 張")
@@ -2640,7 +2658,7 @@ def main():
         output["marketRegime"] = {}
     try:
         output["s7Pending"] = compute_s7_pending(output["dataSession"])
-        output["s7Next"] = s7_signals(records, output["dataSession"], output["marketRegime"])
+        output["s7Next"] = s7_signals(records, output["dataSession"], output["marketRegime"], charts)
         print(f"S7 突破：今日 {len(output['s7Next'])} 隻（下個交易日開市買）→ "
               + ", ".join(x["ticker"] for x in output["s7Next"]) + f"｜今日要處理嘅掛單 {len(output['s7Pending'])} 張")
     except Exception as e:
