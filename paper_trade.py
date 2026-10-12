@@ -85,6 +85,7 @@ def _num(x):
 #   R:R→T1 ≥ 2 → 到 T1 全平；< 2 → T2 = T1 + (T1−止蝕)×1.618，T1 平一半、T2 平另一半；連 T2 都 < 2 → 唔入
 #   到 T1 後餘下一半止蝕移去入場同 T1 中間（同樣收市確認）
 #   每次 run 由入場日逐日重新計（唔怕 scan 漏咗日子）；同一隻股同一組 15 日內只入一次
+#   入場日之後 7 日內出業績 → state 加「業績前N日」標記（2026-10-12，只係資料，用嚟之後分開睇結果）
 # ════════════════════════════════════════════════════════════════
 S1_AUTO_GROUPS = [("S1A0", 1.00, "0%緩衝"), ("S1A1", 0.99, "1%緩衝")]
 S1_AUTO_COOLDOWN_DAYS = 15
@@ -200,6 +201,55 @@ def manage_s1_auto(p, charts):
                     already_t1hit=str(p.get("t1hit", "")).upper() == "Y")
 
 S1_ENTRY_MARK = "開市Check"
+S1_EARN_TAG = "業績前"            # 2026-10-12：業績前 7 日內入場嘅 S1 自動單加標記（只係資料，唔改規則）
+S1_EARN_DAYS = 7
+
+def _s1_earn_tag(stocks, tk, fill_date):
+    """入場日之後 7 日內（包括入場當日）出業績 → 返回「業績前N日」，否則返回空字串。"""
+    ed = str((stocks.get(tk) or {}).get("earningsDate") or "")[:10]
+    if not ed or not fill_date or ed < str(fill_date)[:10]:
+        return ""
+    gap = _days_between(ed, fill_date)
+    return f"{S1_EARN_TAG}{gap}日" if gap is not None and gap <= S1_EARN_DAYS else ""
+
+def tag_s1_earnings(open_pos, closed, stocks, charts):
+    """補標記：之前開咗、而入場日之後 7 日內出業績嘅 S1 自動單，state 加「業績前N日」。
+    入場價、止蝕、目標全部唔變（張單刪咗再用同樣數字開過，由入場日重新計）。"""
+    groups = [a for a, _, _ in S1_AUTO_GROUPS]
+    n = 0
+    for lst, status in ((open_pos, "open"), (closed, "closed")):
+        for x in list(lst):
+            state = str(x.get("state", ""))
+            if x.get("group") not in groups or S1_EARN_TAG in state or S1_ENTRY_MARK not in state:
+                continue
+            tk, grp = x["ticker"], x["group"]
+            ed = _iso(x.get("entryDate"))
+            tag = _s1_earn_tag(stocks, tk, ed) if ed else ""
+            if not tag:
+                continue
+            ch = charts.get(tk) or {}
+            dates = _bar_dates(ch)
+            entry, stop, t1, t2 = _num(x.get("entry")), _num(x.get("stop")), _num(x.get("t1")), _num(x.get("t2"))
+            if not ch.get("c") or ed not in dates or None in (entry, stop, t1) or entry <= stop:
+                continue
+            k = dates.index(ed)
+            gv_post({"action": "paper_remove", "ticker": tk, "group": grp, "entry": x.get("entry"), "status": status})
+            lst.remove(x)
+            payload = {"action": "paper_open", "ticker": tk, "group": grp, "state": f"{state} | {tag}", "entryDate": ed,
+                       "entry": round(entry, 2), "stop": round(stop, 2), "t1": round(t1, 2),
+                       "t2": round(t2, 2) if t2 else "", "spy1m": "", "m1": ""}
+            for f in ("bonus", "rsi", "trend", "pullback"):
+                payload[f] = x.get(f, "")
+            gv_post(payload)
+            res = simulate_s1(ch, k, entry, stop, t1, t2)
+            _post_s1_result(tk, grp, ch, entry, stop, res)
+            rec = {kk: payload.get(kk) for kk in ("ticker", "group", "state", "entryDate", "entry", "stop", "t1", "t2")}
+            (closed if res["exit"] else open_pos).append(rec)
+            n += 1
+            print(f"S1 業績標記 [{grp}] {tk} 入場 {ed}：{tag}（業績 {(stocks.get(tk) or {}).get('earningsDate')}）")
+    if n:
+        print(f"S1 自動：{n} 張單補咗「業績前」標記")
+
 S1_OPEN_FILL_TAG = "開市價成交"   # 2026-10-09 上晝試過改用開市價做入場價（已還原）
 
 def revert_s1_open_fill(open_pos, closed, charts):
@@ -320,9 +370,11 @@ def open_s1_auto(data, stocks, charts, open_pos, closed, session):
                 continue
             t2, plan_txt, rr1, rr2 = plan
             dot = "🟢" if pd.get("color") == "green" else "🔵"
+            etag = _s1_earn_tag(stocks, tk, fill_date)
             gv_post({"action": "paper_open", "ticker": tk, "group": grp,
                      "state": f"S1自動 {dot} | {buf_txt} | {plan_txt} | {pd.get('universe', '')} | "
-                              f"Limit成交(訊號{sig[5:]}) {S1_ENTRY_MARK}✓ | 跌穿{pd.get('depth', '')}%",
+                              f"Limit成交(訊號{sig[5:]}) {S1_ENTRY_MARK}✓ | 跌穿{pd.get('depth', '')}%"
+                              + (f" | {etag}" if etag else ""),
                      "entryDate": fill_date, "entry": round(entry, 2), "stop": round(stop, 2),
                      "t1": round(t1, 2), "t2": round(t2, 2) if t2 else "",
                      "bonus": pd.get("bonus"), "rsi": pd.get("rsi"), "trend": pd.get("trend"),
@@ -852,6 +904,7 @@ def main():
     cleanup_backfill(open_pos, closed)
     migrate_intraday_stops(open_pos, closed, charts)
     revert_s1_open_fill(open_pos, closed, charts)
+    tag_s1_earnings(open_pos, closed, stocks, charts)
 
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}
