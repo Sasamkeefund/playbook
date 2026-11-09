@@ -480,6 +480,23 @@
       return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} HKT`;
     }
 
+    // 2026-11-09：S1 真錢提示（一個月 paper trade：大市「強」+ 唔係業績前 7 日內入場 先好做）
+    // 下個交易日（跳過週末）到業績日嘅日數；0–7 = 業績前 7 日內入場
+    function s1EarnGap(earningsDate,session){
+      if(!earningsDate||!session)return null;
+      const d=new Date(String(session).slice(0,10)+'T00:00:00Z');
+      do{d.setUTCDate(d.getUTCDate()+1);}while(d.getUTCDay()===0||d.getUTCDay()===6);
+      const e=new Date(String(earningsDate).slice(0,10)+'T00:00:00Z');
+      return isNaN(e)?null:Math.round((e-d)/86400000);
+    }
+    function s1RealMoneyTxt(stk){
+      const mr=(globalData&&globalData.marketRegime)||{}, m=mr[globalData&&globalData.dataSession];
+      let t='';
+      if(m&&m.regime&&m.regime!=='強')t+=' ｜ ⏸ 真錢暫停：大市「'+m.regime+'」（只喺大市「強」先做 S1）';
+      const g=s1EarnGap(stk&&stk.earningsDate,globalData&&globalData.dataSession);
+      if(g!=null&&g>=0&&g<=7)t+=' ｜ ⚠️ 業績 '+String(stk.earningsDate).slice(5)+'（入場後 '+g+' 日）— 業績前 7 日唔入';
+      return t;
+    }
     function getVerdict(tab,strat,curClose,stk){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
       const reqMax=(tab==='S4'||tab==='S5'||tab==='S6'||tab==='S1V1')?4:(tab==='S7'?6:5);
@@ -525,7 +542,7 @@
         if(rms<3)return{text:'🛑 唔入 — 跌穿EMA20之前連續日數唔夠('+rms+'日 < 3日)，大趨勢未確認健康',color:'red'};
         // 升返日數 — checklist：1-2日 ✅／3日 ⚠️細倉／4日+ ❌唔入
         if(ago>=3)return{text:'❌ 唔入 — 升返第'+(ago+1)+'日(4日+)，Setup唔成立，唔係假突破係真跌穿',color:'red'};
-        const tail=' ｜ '+qMark+' '+qLabel+e50Tag+' ｜ R:R OK 先入，TradingView confirm';
+        const tail=' ｜ '+qMark+' '+qLabel+e50Tag+s1RealMoneyTxt(stk)+' ｜ R:R OK 先入，TradingView confirm';
         // 以下三種：Setup已經成立(R1-R5全過)，但質素較低 → 用青色(cyan)獨立標示，同「仲未成立」嘅黃色分開
         if(ago===2)return{text:'🔷 3日升返 — 訊號較弱，考慮細position'+tail,color:'cyan'};
         // ago 0-1（升返第1-2日）且 rms≥3：再睇趨勢質素分綠/青

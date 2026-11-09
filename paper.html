@@ -573,17 +573,36 @@ function s1PlanTxt(entry, stop, t1){
   if(rr2<2)return {txt:'唔入（R:R 唔夠）',ok:false};
   return {txt:'T1半 + T2 $'+t2.toFixed(2)+' 半（R:R 1:'+rr1.toFixed(1)+' / 1:'+rr2.toFixed(1)+'）',ok:true};
 }
+// 2026-11-09：S1 真錢提示 —— 一個月 paper trade：大市「強」+ 唔係業績前 7 日內入場 先好做
+function s1EarnGap(earningsDate,session){        // 下個交易日（跳過週末）到業績日嘅日數
+  if(!earningsDate||!session)return null;
+  const d=new Date(String(session).slice(0,10)+'T00:00:00Z');
+  do{d.setUTCDate(d.getUTCDate()+1);}while(d.getUTCDay()===0||d.getUTCDay()===6);
+  const e=new Date(String(earningsDate).slice(0,10)+'T00:00:00Z');
+  return isNaN(e)?null:Math.round((e-d)/86400000);
+}
+function s1RealOk(t){        // 已開嘅單：入場日大市「強」而且冇「業績前」標記
+  const rg=regimeOf(t.entryDate);
+  return !!(rg&&rg.regime==='強')&&!/業績前\d+日/.test(String(t.state||''));
+}
 function s1NextPanel(openP){
   const nx=_s1Next||[];
   let h='<div class="panel"><h2>📋 下個交易日掛單（'+nx.length+'）</h2>';
+  const mk=_regime[_dataSession];
+  if(mk&&mk.regime&&mk.regime!=='強')h+='<div class="warn" style="margin-bottom:8px">⏸ <b>真錢建議暫停 S1</b>：最新交易日大市係「'+mk.regime+'」（SPY $'+mk.spy+'，EMA50 $'+mk.e50+'，EMA200 $'+mk.e200+'）。Paper trade 數據顯示大市唔係「強」嗰陣 S1 多數輸（下面「真錢跟嘅 S1」表會自動更新）。Paper trade 照記。</div>';
   if(!nx.length)return h+'<div class="sub">最新交易日冇 🟢🔵 S1 訊號。</div></div>';
   h+='<div class="sub" style="margin-bottom:8px">最新交易日收市後嘅 🟢🔵 訊號。下個交易日開市先做開市前 Check：開市價要喺下面「開市範圍」入面（唔可以低過 EMA20，亦唔可以離 Limit 超過 1%），之後跌到 Limit 先成交。成交咗嘅會喺下一次 scan 之後出現喺持倉。</div>';
-  h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>訊號日</th><th>Limit（入場價）</th><th>開市範圍</th><th>止蝕 0% / 1%</th><th>T1</th><th>計劃（0% 組）</th><th>跌穿深度</th><th>狀態</th></tr></thead><tbody>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>訊號日</th><th>Limit（入場價）</th><th>開市範圍</th><th>止蝕 0% / 1%</th><th>T1</th><th>計劃（0% 組）</th><th>跌穿深度</th><th>真錢提示</th><th>狀態</th></tr></thead><tbody>';
   nx.forEach(x=>{
     const lim=x.limit, lo=Math.max(x.ema20, lim*0.99), hi=lim*1.01, s0=x.low, s1=x.low*0.99;
     const pl=s1PlanTxt(lim, s0, x.t1);
     const held=openP.some(p=>p.ticker===x.ticker);
     const tv='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(String(x.ticker).replace('-','.'));
+    const lv=_liveData[String(x.ticker).toUpperCase()]||{}, eg=s1EarnGap(lv.earningsDate,_dataSession);
+    const tips=[];
+    if(mk&&mk.regime&&mk.regime!=='強')tips.push('<span style="color:#ff5d6c">⏸ 大市「'+mk.regime+'」</span>');
+    if(eg!=null&&eg>=0&&eg<=7)tips.push('<span style="color:#ff9838">⚠️ 業績 '+String(lv.earningsDate).slice(5)+'（入場後 '+eg+' 日）</span>');
+    const tipTxt=tips.length?tips.join('<br>'):'<span style="color:#2ee6a6">✅ 符合</span>';
     h+='<tr><td><a href="'+tv+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">'+x.ticker+' ↗</a></td>'
       +'<td>'+(x.color==='green'?'🟢':'🔵')+'</td><td class="mono">'+String(x.signalDate).slice(5)+'</td>'
       +'<td class="mono">$'+lim.toFixed(2)+'</td>'
@@ -591,6 +610,7 @@ function s1NextPanel(openP){
       +'<td class="mono red">$'+s0.toFixed(2)+' / $'+s1.toFixed(2)+'</td><td class="mono green">$'+x.t1.toFixed(2)+'</td>'
       +'<td style="font-size:11px;color:'+(pl.ok?'inherit':'#ff5d6c')+'">'+pl.txt+'</td>'
       +'<td class="mono">'+x.depth+'%</td>'
+      +'<td style="font-size:11px">'+tipTxt+'</td>'
       +'<td style="font-size:11px">'+(held?'<span style="color:var(--faint)">已持倉，唔會再入</span>':(pl.ok?'⏳ 等開市':'—'))+'</td></tr>';
   });
   return h+'</tbody></table></div></div>';
@@ -635,6 +655,7 @@ function renderS1A(openP, closed){
         +'<td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td>'
         +'<td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';}));
     return x+'</tbody></table></div>';};
+  h+=catTable('✅ 真錢跟嘅 S1：大市「強」+ 唔係業績前 7 日內入場 vs 其他（2026-11-09 加；一個月數據顯示呢類先好做）',t=>s1RealOk(t)?'強市 + 唔係業績前':'其他',['強市 + 唔係業績前','其他']);
   h+=catTable('🟢 vs 🔵（🔵 = 條件較弱，例如趨勢連續少過 7 日）',colorOf,['🟢','🔵']);
   h+=catTable('業績前 7 日內入場 vs 其他（業績會有裂口風險）',earnOf,['業績前 7 日內入場','其他']);
   h+=sub('股票池',t=>part(t.state,3));
