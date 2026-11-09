@@ -827,6 +827,65 @@ def _resim(x, charts):
         return simulate_t12(ch, k0, entry, stop, t1, t2, AUTO_GROUP_STOP[grp]) if t2 is not None else None
     return None
 
+# ════════════════════════════════════════════════════════════════
+# 2026-11-09：S1V1 前頂假突破自動記錄（Sasa 定）
+#   訊號：Dashboard S1V1 綠色（scan.py s1v1_signals）；由 2026-11-09 嘅訊號開始記（forward test）
+#   入場：Limit = 前頂 × 1.003，最多等 5 個交易日；入場價 = Limit（跟 S1 記法）
+#   止蝕：假突破期間最低收市（Stop 單）；T1 = Wave2 頂；計劃跟 S1（T1全平 / T1半+T2半，到 T1 後止蝕移去入場同 T1 中間）
+#   唔加真錢過濾；入場日之後 7 日內出業績 → state 加「業績前N日」標記，之後分開睇
+# ════════════════════════════════════════════════════════════════
+S1V1_START = "2026-11-09"
+S1V1_GROUP = ("S1V1A", "前頂假突破", "假突破最低收市")
+
+def open_s1v1_auto(data, stocks, charts, open_pos, closed):
+    grp, label, _ = S1V1_GROUP
+    done = {(x["ticker"], _auto_sig_date(x.get("state"))) for x in list(open_pos) + list(closed) if x.get("group") == grp}
+    iv = _hold_intervals(open_pos, closed, [grp])
+    sigs = sorted(data.get("s1v1Signals") or [], key=lambda x: x["signalDate"])
+    n = wait = cancel = skip = 0
+    for sg in sigs:
+        if sg.get("status") == "skip":
+            skip += 1
+            continue
+        tk, sig = sg["ticker"], sg["signalDate"]
+        if sig < S1V1_START or (tk, sig) in done:
+            continue
+        ch = charts.get(tk) or {}
+        dates = _bar_dates(ch)
+        if not ch.get("c") or sig not in dates:
+            continue
+        ks = dates.index(sig)
+        st = scan.s1v1_order_status(sg["limit"], sg["stop"], sg["wave1Top"], ks, ch["o"], ch["l"], ch["c"])
+        if st["status"] == "wait":
+            wait += 1
+            continue
+        if st["status"] == "cancel":
+            cancel += 1
+            continue
+        k, entry = st["k"], st["px"]
+        if _busy(iv, (tk, grp), dates[k]):
+            print(f"  S1V1 {tk}：訊號 {sig} 喺 {dates[k]} 成交，但嗰日已經揸緊，唔再入")
+            continue
+        stop, t1, t2 = sg["stop"], sg["t1"], sg.get("t2")
+        if entry <= stop or t1 <= entry:
+            continue
+        dot = "🔥" if sg.get("color") == "fire" else "✅"
+        etag = _s1_earn_tag(stocks, tk, dates[k])
+        state = (f"S1V1自動 {dot} | {label} | {sg.get('plan', '')} | 前頂 {sg.get('wave1Top')} → Wave2 {sg.get('wave2Top')} | "
+                 f"{sg.get('universe', '')} | Limit {sg['limit']} 等{st.get('waited')}日 | {AUTO_SIG_MARK} {sig}"
+                 + (f" | {etag}" if etag else ""))
+        gv_post({"action": "paper_open", "ticker": tk, "group": grp, "state": state, "entryDate": dates[k],
+                 "entry": round(entry, 2), "stop": round(stop, 2), "t1": round(t1, 2),
+                 "t2": round(t2, 2) if t2 else "", "bonus": sg.get("bonus"), "trend": sg.get("macro"),
+                 "pullback": "", "spy1m": "", "m1": ""})
+        n += 1
+        print(f"成交 [{grp}] {tk}: 訊號 {sig} → {dates[k]} @ {entry:.2f} 止蝕 {stop:.2f} T1 {t1:.2f}"
+              + (f" T2 {t2:.2f}" if t2 else "") + f"（{sg.get('plan')}）")
+        res = simulate_s1(ch, k, entry, stop, t1, t2)
+        done.add((tk, sig)); iv.setdefault((tk, grp), []).append((dates[k], _exit_day(ch, res)))
+        _post_s1_result(tk, grp, ch, entry, stop, res)
+    print(f"S1V1 自動記錄：最近訊號 {len(sigs)} 個 → 新成交 {n}，等緊 {wait}，取消 {cancel}，唔入 {skip}")
+
 def migrate_intraday_stops(open_pos, closed, charts):
     groups = (set(a for a, _, _ in S1_AUTO_GROUPS) | set(g for g, _, _ in S7N_GROUPS)
               | set(g for g, _ in S6_GROUPS.values()) | set(AUTO_GROUP_STOP))
@@ -916,7 +975,7 @@ def main():
     for p in list(open_pos):
         tk = p["ticker"]; grp = p.get("group", "A")
         ed = str(p.get("entryDate", ""))
-        if grp in [a for a, _, _ in S1_AUTO_GROUPS]:
+        if grp in [a for a, _, _ in S1_AUTO_GROUPS] or grp == S1V1_GROUP[0]:
             manage_s1_auto(p, charts)
             continue
         if grp in [g for g, _, _ in S7N_GROUPS]:
@@ -1002,6 +1061,7 @@ def main():
         open_s6_auto(data, charts, open_pos, closed)
         open_auto("S3", data, charts, open_pos, closed)
         open_auto("S5", data, charts, open_pos, closed)
+        open_s1v1_auto(data, stocks, charts, open_pos, closed)
     print("Paper trade 完成")
 
 if __name__ == "__main__":

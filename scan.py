@@ -1863,6 +1863,10 @@ def build_record(ticker, hist):
         strategies["S5"]["s5Signals"] = s5_setups(_days, chart, start)
     except Exception:
         strategies["S5"]["s5Signals"] = []
+    try:
+        strategies["S1V1"]["s1v1Signals"] = s1v1_signals(_days, chart, start)
+    except Exception:
+        strategies["S1V1"]["s1v1Signals"] = []
 
     return {
         "ticker": ticker,
@@ -2353,10 +2357,107 @@ def s5_setups(days, ch, offset):
     return out
 
 
+# ── S1V1 前頂假突破自動記錄（2026-11-09，Sasa 定）──
+# 訊號 = Dashboard S1V1 綠色：R1-R4 全過 + 大趨勢（S1 c3-c5）連續 ≥7 日 + 唔係雜亂 + 收市距 entry ≤3%
+# 同一個（前頂, Wave2頂）結構只記第一日。Limit = 前頂 × 1.003（Scanner entry），最多等 5 個交易日：
+#   開市低過前頂 → 取消（形態失敗）；跌到 Limit → 成交（入場價 = Limit，跟 S1 記法）；收市跌返落前頂下面 → 取消
+# 止蝕 = 假突破期間最低收市（唔計影線；淨係影線跌穿前頂、冇收市跌穿嘅唔入）；T1 = Wave2 頂、T2 = Scanner T2
+# 計劃跟 S1：R:R 到 T1 ≥ 2 → T1 全平；否則 R:R 到 T2 ≥ 2 → T1 半 + T2 半；兩樣都唔夠 → 唔入
+S1V1_LOOKBACK = 30
+S1V1_MAX_WAIT = 5
+S1V1_MIN_RISK = 0.005
+
+def s1v1_order_status(limit, stop, w1, k_sig, o, l, c):
+    n = len(c)
+    for j, k in enumerate(range(k_sig + 1, min(n, k_sig + 1 + S1V1_MAX_WAIT)), 1):
+        if None in (o[k], l[k], c[k]):
+            continue
+        if o[k] < w1:
+            return {"status": "cancel", "k": k, "why": f"開市 {o[k]:.2f} 低過前頂 {w1:.2f}（形態失敗）", "waited": j}
+        if l[k] <= limit:
+            return {"status": "fill", "k": k, "px": limit, "waited": j}
+        if c[k] < w1:
+            return {"status": "cancel", "k": k, "why": f"收市 {c[k]:.2f} 跌返落前頂 {w1:.2f} 下面", "waited": j}
+    waited = min(n - 1 - k_sig, S1V1_MAX_WAIT)
+    if waited >= S1V1_MAX_WAIT:
+        return {"status": "cancel", "k": k_sig + S1V1_MAX_WAIT,
+                "why": f"等咗 {S1V1_MAX_WAIT} 個交易日都冇回落到 Limit", "waited": waited}
+    return {"status": "wait", "waited": waited}
+
+
+def s1v1_signals(days, ch, offset):
+    c, o, l, ts = ch["c"], ch["o"], ch["l"], ch["t"]
+    last = offset + len(c) - 1
+    day = lambda i: datetime.fromtimestamp(ts[i], timezone.utc).strftime("%Y-%m-%d")
+    first_ok = max(offset + 1, last - S1V1_LOOKBACK + 1)
+
+    def macro(t):          # 嗰日為止，S1 c3-c5（EMA200↑ / RSI40-70 / 3M1M）連續日數
+        m, j = 0, t
+        while j in days:
+            cd = (days[j].get("S1") or {}).get("conds") or []
+            if len(cd) >= 5 and all(cd[2:5]):
+                m += 1
+                j -= 1
+            else:
+                break
+        return m
+
+    seen, out = set(), []
+    for t in sorted(k for k in days if k >= offset):
+        v = days[t].get("S1V1") or {}
+        if not v.get("ready"):
+            continue
+        ci = t - offset
+        w1, w2, entry, t1, t2 = v.get("wave1Top"), v.get("wave2Top"), v.get("entry"), v.get("t1"), v.get("t2")
+        if None in (w1, w2, entry, t1, t2) or ci >= len(c) or c[ci] is None:
+            continue
+        m = macro(t)
+        if (c[ci] - entry) / entry * 100 > 3 or m < 7 or v.get("cleanLevel") == "messy":
+            continue
+        key = (w1, w2)
+        if key in seen:
+            continue
+        seen.add(key)
+        if t < first_ok:
+            continue
+        limit = round(entry, 2)
+        base = {"grp": "V", "signalDate": day(ci), "close": c[ci], "wave1Top": w1, "wave2Top": w2, "limit": limit,
+                "breachLowWick": v.get("breachLow"), "macro": m, "bonus": v.get("bonusScore"),
+                "color": "fire" if (v.get("bonusScore") or 0) >= 2 else "ok",
+                "clean": v.get("cleanLevel"), "ptype": v.get("patternType")}
+        rec = ci - (v.get("daysSinceRecover") or 0)
+        br = rec - (v.get("daysRecover") or 0)
+        fb = [x for x in c[max(0, br):rec] if x is not None]     # 假突破期間：收市仲喺前頂下面嗰幾日
+        if not fb or min(fb) >= w1:
+            out.append({**base, "status": "skip", "skip": "淨係影線（冇收市跌穿前頂）"})
+            continue
+        stop = round(min(fb), 2)
+        if stop >= limit * (1 - S1V1_MIN_RISK):
+            out.append({**base, "stop": stop, "status": "skip", "skip": "止蝕太近（少過 0.5%）"})
+            continue
+        risk = limit - stop
+        rr1, rr2 = (t1 - limit) / risk, (t2 - limit) / risk
+        if rr1 >= 2:
+            plan, t2u = "T1全平", None
+        elif rr2 >= 2:
+            plan, t2u = "T1半+T2半", t2
+        else:
+            out.append({**base, "stop": stop, "t1": round(t1, 2), "t2": round(t2, 2), "rr1": round(rr1, 2),
+                        "rr2": round(rr2, 2), "status": "skip", "skip": f"R:R 唔夠 2（T1 1:{rr1:.1f} / T2 1:{rr2:.1f}）"})
+            continue
+        st = s1v1_order_status(limit, stop, w1, ci, o, l, c)
+        sk = st.get("k")
+        out.append({**base, "stop": stop, "t1": round(t1, 2), "t2": round(t2u, 2) if t2u else None, "plan": plan,
+                    "rr1": round(rr1, 2), "rr2": round(rr2, 2), "status": st["status"], "waited": st.get("waited"),
+                    "why": st.get("why"), "statusDate": day(sk) if sk is not None and sk < len(c) else None,
+                    "fillPx": round(st["px"], 2) if st.get("px") is not None else None})
+    return out
+
+
 def flat_signals(stocks, key, regime_map):
     """將每隻股嘅訊號 list（strategies[S].<key>）攤平，加股票池同大市；之後喺 stock record 刪走。"""
     out = []
-    strat = {"s3": "S3", "s5": "S5"}[key]
+    strat = {"s3": "S3", "s5": "S5", "s1v1": "S1V1"}[key]
     for st in stocks:
         lst = ((st.get("strategies") or {}).get(strat) or {}).pop(key + "Signals", None) or []
         if not st.get("inScope", st.get("inSP500")):
@@ -2674,7 +2775,7 @@ def main():
         output["s6Signals"] = []
         for r in records:
             (r.get("strategies") or {}).get("S6", {}).pop("breakouts", None)
-    for key, name in (("s3", "S3 突破"), ("s5", "S5 支持阻力")):
+    for key, name in (("s3", "S3 突破"), ("s5", "S5 支持阻力"), ("s1v1", "S1V1 前頂假突破")):
         try:
             output[key + "Signals"] = flat_signals(records, key, output["marketRegime"])
             sg = output[key + "Signals"]
