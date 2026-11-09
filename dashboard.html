@@ -545,7 +545,7 @@
         const tail=' ｜ '+qMark+' '+qLabel+e50Tag+' ｜ R:R OK 先入，TradingView confirm';
         // 2026-11-09：大市唔係「強」或者業績前 7 日內 → 結論係「真錢暫停」，setup 質素放後面做參考
         const blk=s1RealMoneyBlock(stk);
-        const fin=v=>blk?{text:'⏸ 真錢暫停：'+blk+' ｜ Setup 本身（參考）：'+v.text.replace(/^(🔥|✅|🔷)\s*/,'').replace(' ｜ R:R OK 先入，TradingView confirm','').replace('（入場窗口）',''),color:'amber',paused:true}:v;
+        const fin=v=>blk?{text:'⏸ 真錢暫停：'+blk+' ｜ Setup 本身（參考）：'+v.text.replace(/^(🔥|✅|🔷)\s*/,'').replace(' ｜ R:R OK 先入，TradingView confirm','').replace('（入場窗口）+ ',' + ').replace('（入場窗口）',''),color:'amber',paused:true}:v;
         // 以下三種：Setup已經成立(R1-R5全過)，但質素較低 → 用青色(cyan)獨立標示，同「仲未成立」嘅黃色分開
         if(ago===2)return fin({text:'🔷 3日升返 — 訊號較弱，考慮細position'+tail,color:'cyan'});
         // ago 0-1（升返第1-2日）且 rms≥3：再睇趨勢質素分綠/青
