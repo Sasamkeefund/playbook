@@ -8,6 +8,7 @@ Paper Trade 引擎 — 每日 scan 後自動行，持倉 + 戰績存 Google Shee
   S6A/S6C：S6 旗形突破自動記錄（手法A 放量 Limit @ 收市 vs 手法C Limit @ H1 等回測）
   S3A/S3B/S3C：S3 突破交易自動記錄（手法A / B / C）
   S5R/S5S/S5S2：S5 支持阻力自動記錄（跟 checklist 4/4 vs 淨結構 vs 淨結構＋止蝕 A×0.98）
+  S5C/S5C2：S5 確認先入（收市企返 0.786 上先第二朝開市買；止蝕 A / A×0.98；2026-11-09 加）
   （舊版 S7 A/B/C/D 已於 2026-10-04 移除：冇等突破就買，4 組全部負期望）
 """
 import sys, re, json, datetime, urllib.request, urllib.parse
@@ -679,11 +680,14 @@ def open_s6_auto(data, charts, open_pos, closed):
 #   S3A / S3B / S3C = 手法A / B / C：Limit @ 訊號日收市，下一個交易日高開 > 1% 取消
 #   S5R = 跟 checklist（4/4 + 3日🔥 + 結構）；S5S = 淨結構：Limit @ 0.786，最多等 20 日
 #   S5S2 = 同 S5S 一樣，止蝕 A × 0.98（2% 緩衝；2026-10-07 加，睇緩衝會唔會少啲俾人打止蝕）
+#   S5C / S5C2 = 確認先入（2026-11-09 Sasa 加）：同一批 S5 結構，唔預先掛 0.786；跌到 0.786 之後
+#         有一日收市企返 0.786 上，第二朝開市買（高開 > 1% 唔追）；止蝕 A / A × 0.98；由 2026-11-09 入場開始記
 #   出場：Stop 單盤中掂到止蝕就平；T1 平一半、止蝕移去入場價；T2 平餘下（S3 入場價高過 T1 就全倉等 T2）
 # ════════════════════════════════════════════════════════════════
 AUTO_SIG_MARK = "訊號日"
 # 上線日：之前嘅訊號唔記錄（Sasa 要 forward test，唔要補記歷史）。scanner 嘅 30 日清單仍然會顯示，方便對圖。
 AUTO_START = "2026-10-02"
+S5C_START = "2026-11-09"   # S5C / S5C2 forward test：入場日由 11/09（11/06 收市確認、11/09 開市買）開始
 
 def cleanup_backfill(open_pos, closed):
     """刪走上線日之前嘅 S3 / S5 / S6 自動記錄（第一次上線時補記咗嘅舊訊號）。"""
@@ -707,7 +711,8 @@ AUTO_CFG = {
                       "C": ("S3C", "手法C", "回測低×0.98")}},
     "S5": {"key": "s5Signals", "gfield": "grp",
            "groups": {"R": ("S5R", "跟checklist", "A點"), "S": ("S5S", "淨結構", "A點"),
-                      "S2": ("S5S2", "淨結構·2%緩衝", "A點×0.98")}},
+                      "S2": ("S5S2", "淨結構·2%緩衝", "A點×0.98"),
+                      "C": ("S5C", "確認先入", "A點"), "C2": ("S5C2", "確認先入·2%緩衝", "A點×0.98")}},
 }
 AUTO_GROUP_STOP = {g: txt for cfg in AUTO_CFG.values() for g, _, txt in cfg["groups"].values()}
 
@@ -760,7 +765,10 @@ def open_auto(strat, data, charts, open_pos, closed):
         if not ch.get("c") or sig not in dates:
             continue
         ks = dates.index(sig)
-        if strat == "S5":
+        conf = strat == "S5" and gk in ("C", "C2")
+        if conf:
+            st = scan.s5c_order_status(sg["limit"], sg["poleA"], sg["poleB"], ks, ch["o"], ch["l"], ch["c"])
+        elif strat == "S5":
             st = scan.s5_order_status(sg["limit"], sg["stop"], sg["poleB"], ks, ch["o"], ch["l"], ch["c"])
         else:
             st = scan.limit_next_day_status(sg["limit"], sg["stop"], ks, ch["o"], ch["l"], ch["c"])
@@ -771,6 +779,8 @@ def open_auto(strat, data, charts, open_pos, closed):
             cancel += 1
             continue
         k, entry = st["k"], st["px"]
+        if conf and dates[k] < S5C_START:
+            continue          # 確認先入只做 forward test：上線前已經入咗場嘅唔記
         if _busy(iv, (tk, grp), dates[k]):
             print(f"  {strat} {tk} [{grp}]：訊號 {sig} 喺 {dates[k]} 成交，但嗰日已經揸緊同一組，唔再入")
             continue
@@ -786,14 +796,16 @@ def open_auto(strat, data, charts, open_pos, closed):
             desc = f"A {sg.get('poleA')} → B {sg.get('poleB')} | 整理區 {sg.get('congesBottom')}-{sg.get('congesTop')}"
         plan = "T1半+T2半" if t1 is not None else "全倉等T2"
         waited = f" 等{st.get('waited')}日" if strat == "S5" else ""
+        order = (f"0.786 {sg['limit']}，確認日 {dates[st['kc']]} 收市 {ch['c'][st['kc']]:.2f}" if conf
+                 else f"Limit {sg['limit']}{waited}")
         gv_post({"action": "paper_open", "ticker": tk, "group": grp,
                  "state": f"{strat}自動 | {label} | {plan} | {desc} | {sg.get('universe', '')} | "
-                          f"Limit {sg['limit']}{waited} | {AUTO_SIG_MARK} {sig}",
+                          f"{order} | {AUTO_SIG_MARK} {sig}",
                  "entryDate": dates[k], "entry": round(entry, 2), "stop": round(stop, 2),
                  "t1": round(t1, 2) if t1 is not None else "", "t2": round(t2, 2),
                  "bonus": sg.get("bonus"), "trend": sg.get("streak"), "pullback": "", "spy1m": "", "m1": ""})
         n += 1
-        print(f"成交 [{grp}] {tk}: 訊號 {sig} → {dates[k]} @ {entry:.2f}（Limit {sg['limit']}）止蝕 {stop:.2f}"
+        print(f"成交 [{grp}] {tk}: 訊號 {sig} → {dates[k]} @ {entry:.2f}（{'確認先入，' if conf else ''}Limit {sg['limit']}）止蝕 {stop:.2f}"
               + (f" T1 {t1:.2f}" if t1 is not None else "") + f" T2 {t2:.2f}")
         res = simulate_t12(ch, k, entry, stop, t1, t2, stop_txt)
         done.add((tk, grp, sig)); iv.setdefault((tk, grp), []).append((dates[k], _exit_day(ch, res)))

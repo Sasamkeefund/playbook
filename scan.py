@@ -2287,6 +2287,8 @@ def s3_breakouts(days, closes, volumes, ch, offset):
 #         S5S2 = 淨結構 + 止蝕 A × 0.98（2% 緩衝，2026-10-07 加，同 S5S 比較緩衝有冇用）
 #   掛單：結構第一日出現 → Limit @ 0.786；最多等 20 個交易日；收市升穿 B（冇回調落嚟）→ 取消
 #   止蝕 = A（S5S2 = A × 0.98），Stop 單盤中掂到就止蝕；T1 = 入場 + (B − 入場) × 0.618（平一半，止蝕移去入場價）；T2 = B
+#   S5C / S5C2「確認先入」（2026-11-09 Sasa 加，S5 改善研究）：同 S5S 一樣嘅結構，唔預先掛 0.786 Limit，
+#         等收市企返 0.786 上先第二朝開市買（高開 > 1% 唔追）；止蝕 A / A × 0.98，T1 / T2 同 S5S
 # ════════════════════════════════════════════════════════════════
 S5_LOOKBACK = 30
 S5_MIN_STREAK = 3
@@ -2312,13 +2314,54 @@ def s5_order_status(limit, stop, top, k_sig, o, l, c):
     return {"status": "wait", "waited": waited}
 
 
+def s5c_order_status(limit, a, top, k_sig, o, l, c):
+    """S5C / S5C2 確認先入：等股價跌到 0.786（盤中最低 ≤ 0.786），之後有一日收市企返 0.786 或以上
+    = 確認支持守住 → 第二朝開市買。最多等 20 個交易日；期間跌穿 A、或者未跌到 0.786 就收市升穿 B → 取消。
+    開市前 Check：開市高過確認日收市 1% 以上（唔追）或者低過 A → 取消。
+    等緊嘅 phase：touch = 等跌到 0.786；confirm = 跌咗到、等收市企返上；buy = 啱啱確認，下個交易日開市買。"""
+    n = len(c)
+    touched = False
+    for j, k in enumerate(range(k_sig + 1, min(n, k_sig + 1 + S5_MAX_WAIT)), 1):
+        if None in (o[k], l[k], c[k]):
+            continue
+        if not touched:
+            if l[k] <= limit:
+                if o[k] <= a or l[k] <= a:
+                    return {"status": "cancel", "k": k, "why": f"跌到 0.786 嗰日已經跌穿 A {a:.2f}", "waited": j}
+                touched = True
+            elif c[k] > top:
+                return {"status": "cancel", "k": k, "why": f"收市 {c[k]:.2f} 升穿 B {top:.2f}，冇回調到 0.786", "waited": j}
+            else:
+                continue
+        elif l[k] <= a:
+            return {"status": "cancel", "k": k, "why": f"跌穿 A {a:.2f}，支持失守", "waited": j}
+        if c[k] >= limit:
+            if k + 1 >= n:
+                return {"status": "wait", "phase": "buy", "kc": k, "waited": j}
+            op = o[k + 1]
+            if op is None:
+                return {"status": "wait", "phase": "buy", "kc": k, "waited": j}
+            if op <= a:
+                return {"status": "cancel", "k": k + 1, "kc": k, "waited": j,
+                        "why": f"收市企返 0.786 上，但第二朝開市 {op:.2f} 低過 A"}
+            if op > c[k] * 1.01:
+                return {"status": "cancel", "k": k + 1, "kc": k, "waited": j,
+                        "why": f"收市企返 0.786 上，但第二朝高開 {op:.2f}（確認日收市 {c[k]:.2f} +1% 以上），唔追"}
+            return {"status": "fill", "k": k + 1, "kc": k, "px": op, "waited": j}
+    waited = min(n - 1 - k_sig, S5_MAX_WAIT)
+    if waited >= S5_MAX_WAIT:
+        return {"status": "cancel", "k": k_sig + S5_MAX_WAIT, "waited": waited,
+                "why": f"等咗 {S5_MAX_WAIT} 個交易日都冇" + ("收市企返 0.786 上" if touched else "跌到 0.786")}
+    return {"status": "wait", "phase": "confirm" if touched else "touch", "waited": waited}
+
+
 def s5_setups(days, ch, offset):
     c, o, l, ts = ch["c"], ch["o"], ch["l"], ch["t"]
     last = offset + len(c) - 1
     day = lambda i: datetime.fromtimestamp(ts[i], timezone.utc).strftime("%Y-%m-%d")
     first_ok = max(offset + 1, last - S5_LOOKBACK + 1)
     out = []
-    for grp in ("R", "S", "S2"):          # S2 = 同 S 一樣嘅結構，止蝕改 A × 0.98
+    for grp in ("R", "S", "S2", "C", "C2"):   # S2 = 同 S 一樣嘅結構，止蝕改 A × 0.98；C / C2 = 確認先入（止蝕 A / A × 0.98）
         seen = set()
         for t in sorted(k for k in days if k >= offset):
             cur = (days[t].get("S5") or {})
@@ -2344,8 +2387,9 @@ def s5_setups(days, ch, offset):
             if not (a < c[ci] < b):
                 continue          # 現價已經高過 B（升浪頂）或者跌穿 A：唔係回調緊，結構唔適用
             t1, t2 = round(entry + (b - entry) * 0.618, 2), round(b, 2)
-            stop = round(a * S5_BUF2, 2) if grp == "S2" else a
-            st = s5_order_status(entry, stop, b, ci, o, l, c)
+            stop = round(a * S5_BUF2, 2) if grp in ("S2", "C2") else a
+            conf = grp in ("C", "C2")
+            st = s5c_order_status(entry, a, b, ci, o, l, c) if conf else s5_order_status(entry, stop, b, ci, o, l, c)
             sk = st.get("k")
             out.append({"grp": grp, "signalDate": day(ci), "limit": entry, "close": c[ci], "stop": stop,
                         "poleA": a, "poleB": b, "congesTop": cur.get("congesTop"), "congesBottom": cur.get("congesBottom"),
@@ -2354,6 +2398,12 @@ def s5_setups(days, ch, offset):
                         "status": st["status"], "waited": st.get("waited"), "why": st.get("why"),
                         "statusDate": day(sk) if sk is not None and sk < len(c) else None,
                         "fillPx": round(st["px"], 2) if st.get("px") is not None else None})
+            if conf:
+                kc = st.get("kc")
+                out[-1].update({"phase": st.get("phase"),
+                                "confirmDate": day(kc) if kc is not None else None,
+                                "confirmClose": round(c[kc], 2) if kc is not None else None,
+                                "maxBuy": round(c[kc] * 1.01, 2) if kc is not None else None})
     return out
 
 
