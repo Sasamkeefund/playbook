@@ -592,7 +592,7 @@ function s1NextPanel(openP){
   if(mk&&mk.regime&&mk.regime!=='強')h+='<div class="warn" style="margin-bottom:8px">⏸ <b>真錢建議暫停 S1</b>：最新交易日大市係「'+mk.regime+'」（SPY $'+mk.spy+'，EMA50 $'+mk.e50+'，EMA200 $'+mk.e200+'）。Paper trade 數據顯示大市唔係「強」嗰陣 S1 多數輸（下面「真錢跟嘅 S1」表會自動更新）。Paper trade 照記。</div>';
   if(!nx.length)return h+'<div class="sub">最新交易日冇 🟢🔵 S1 訊號。</div></div>';
   h+='<div class="sub" style="margin-bottom:8px">最新交易日收市後嘅 🟢🔵 訊號。下個交易日開市先做開市前 Check：開市價要喺下面「開市範圍」入面（唔可以低過 EMA20，亦唔可以離 Limit 超過 1%），之後跌到 Limit 先成交。成交咗嘅會喺下一次 scan 之後出現喺持倉。</div>';
-  h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>訊號日</th><th>Limit（入場價）</th><th>開市範圍</th><th>止蝕 0% / 1%</th><th>T1</th><th>計劃（0% 組）</th><th>跌穿深度</th><th>真錢提示</th><th>狀態</th></tr></thead><tbody>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>股</th><th>色</th><th>訊號日</th><th>Limit（入場價）</th><th>開市範圍</th><th>止蝕 0% / 1%</th><th>T1</th><th>計劃（0% 組）</th><th>跌穿深度</th><th>真錢提示</th><th>Paper trade 狀態</th></tr></thead><tbody>';
   nx.forEach(x=>{
     const lim=x.limit, lo=Math.max(x.ema20, lim*0.99), hi=lim*1.01, s0=x.low, s1=x.low*0.99;
     const pl=s1PlanTxt(lim, s0, x.t1);

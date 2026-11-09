@@ -489,13 +489,13 @@
       const e=new Date(String(earningsDate).slice(0,10)+'T00:00:00Z');
       return isNaN(e)?null:Math.round((e-d)/86400000);
     }
-    function s1RealMoneyTxt(stk){
+    function s1RealMoneyBlock(stk){
       const mr=(globalData&&globalData.marketRegime)||{}, m=mr[globalData&&globalData.dataSession];
-      let t='';
-      if(m&&m.regime&&m.regime!=='強')t+=' ｜ ⏸ 真錢暫停：大市「'+m.regime+'」（只喺大市「強」先做 S1）';
+      const why=[];
+      if(m&&m.regime&&m.regime!=='強')why.push('大市「'+m.regime+'」（只喺大市「強」先做 S1）');
       const g=s1EarnGap(stk&&stk.earningsDate,globalData&&globalData.dataSession);
-      if(g!=null&&g>=0&&g<=7)t+=' ｜ ⚠️ 業績 '+String(stk.earningsDate).slice(5)+'（入場後 '+g+' 日）— 業績前 7 日唔入';
-      return t;
+      if(g!=null&&g>=0&&g<=7)why.push('業績 '+String(stk.earningsDate).slice(5)+'（入場後 '+g+' 日，業績前 7 日唔入）');
+      return why.join('、');
     }
     function getVerdict(tab,strat,curClose,stk){
       const req=strat.score, bonus=strat.bonusScore, b=strat.bonus||[];
@@ -542,18 +542,21 @@
         if(rms<3)return{text:'🛑 唔入 — 跌穿EMA20之前連續日數唔夠('+rms+'日 < 3日)，大趨勢未確認健康',color:'red'};
         // 升返日數 — checklist：1-2日 ✅／3日 ⚠️細倉／4日+ ❌唔入
         if(ago>=3)return{text:'❌ 唔入 — 升返第'+(ago+1)+'日(4日+)，Setup唔成立，唔係假突破係真跌穿',color:'red'};
-        const tail=' ｜ '+qMark+' '+qLabel+e50Tag+s1RealMoneyTxt(stk)+' ｜ R:R OK 先入，TradingView confirm';
+        const tail=' ｜ '+qMark+' '+qLabel+e50Tag+' ｜ R:R OK 先入，TradingView confirm';
+        // 2026-11-09：大市唔係「強」或者業績前 7 日內 → 結論係「真錢暫停」，setup 質素放後面做參考
+        const blk=s1RealMoneyBlock(stk);
+        const fin=v=>blk?{text:'⏸ 真錢暫停：'+blk+' ｜ Setup 本身（參考）：'+v.text.replace(/^(🔥|✅|🔷)\s*/,'').replace(' ｜ R:R OK 先入，TradingView confirm','').replace('（入場窗口）',''),color:'amber',paused:true}:v;
         // 以下三種：Setup已經成立(R1-R5全過)，但質素較低 → 用青色(cyan)獨立標示，同「仲未成立」嘅黃色分開
-        if(ago===2)return{text:'🔷 3日升返 — 訊號較弱，考慮細position'+tail,color:'cyan'};
+        if(ago===2)return fin({text:'🔷 3日升返 — 訊號較弱，考慮細position'+tail,color:'cyan'});
         // ago 0-1（升返第1-2日）且 rms≥3：再睇趨勢質素分綠/青
-        if(rms<7)return{text:'🔷 setup（趨勢轉弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'cyan'};
+        if(rms<7)return fin({text:'🔷 setup（趨勢轉弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'cyan'});
         // 原本會係綠色嘅setup，但回調連EMA50都跌穿 → 降級做青色警示，唔hard reject
-        if(breachE50)return{text:'🔷 setup（回調連EMA50都跌穿，訊號較弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'cyan'};
+        if(breachE50)return fin({text:'🔷 setup（回調連EMA50都跌穿，訊號較弱，保守/細倉）：升返第'+(ago+1)+'日'+tail,color:'cyan'});
         // Bonus太低（≤1/5）：即使ago/rms/breachE50都過關，數據本身已經反映呢個唔似正常回調
         // （例如單日暴跌暴升，1週淨表現變成正數、RelVol爆量——呢類shape應該同高質setup分開色）
-        if(bonus<=1)return{text:'🔷 setup（Bonus好低'+bonus+'/5，可能唔係正常回調，建議check清楚原因）：升返第'+(ago+1)+'日'+tail,color:'cyan'};
-        if(bonus>=4)return{text:'🔥 高質 setup：升返第'+(ago+1)+'日（入場窗口）+ Bonus高'+tail,color:'green'};
-        return{text:'✅ setup：升返第'+(ago+1)+'日（入場窗口）'+tail,color:'green'};}
+        if(bonus<=1)return fin({text:'🔷 setup（Bonus好低'+bonus+'/5，可能唔係正常回調，建議check清楚原因）：升返第'+(ago+1)+'日'+tail,color:'cyan'});
+        if(bonus>=4)return fin({text:'🔥 高質 setup：升返第'+(ago+1)+'日（入場窗口）+ Bonus高'+tail,color:'green'});
+        return fin({text:'✅ setup：升返第'+(ago+1)+'日（入場窗口）'+tail,color:'green'});}
       if(tab==='S6'){const b1=b[0],b5=b[4];
         if(req<reqMax)return{text:'— 未 ready',color:'red'};
         const h1=strat.h1, pth=strat.pctToH1, broke=strat.brokeH1, fr=strat.flagRetrace, streak=strat.streak||0;
@@ -915,7 +918,7 @@
               +'<td class="s1col mono" style="text-align:center;color:'+recCol+'">'+recTxt+'</td>'
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():''}
-          <td class="verdict v-${v.color}">${v.text}${activeTab==='S1'?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
+          <td class="verdict v-${v.color}">${v.text}${(activeTab==='S1'&&!v.paused)?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
         </tr>`;
       }).join('');
     }
@@ -1261,7 +1264,7 @@
         <span style="color:var(--dim)">REQ <b class="mono" style="color:var(--text)">${st.score}</b></span>
         <span style="display:flex;gap:6px;align-items:center"><span style="color:var(--dim)">Bonus</span>${bonusCks}</span>
         <span style="color:var(--dim)">Streak <b class="mono" style="color:var(--text)">${st.streak}</b></span>
-        ${activeTab==='S1'?fakeoutBadge(st):''}
+        ${(activeTab==='S1'&&!v.paused)?fakeoutBadge(st):''}
         <span style="margin-left:auto;color:${vCol};font-weight:600">${v.text}</span>`;
     }
     let pendingAB={a:null,b:null};

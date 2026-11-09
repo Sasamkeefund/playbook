@@ -189,6 +189,15 @@
         if(ago>=3)return{color:'red'};
         if(ago===2)return{color:'amber'};
         if(rms<7)return{color:'amber'};
+        // 2026-11-09：真錢只喺大市「強」、唔係業績前 7 日內先做（同 dashboard 一致）
+        const mk=(scan&&scan.marketRegime||{})[scan&&scan.dataSession];
+        if(mk&&mk.regime&&mk.regime!=='強')return{color:'amber'};
+        if(stk&&stk.earningsDate&&scan&&scan.dataSession){
+          const d=new Date(String(scan.dataSession).slice(0,10)+'T00:00:00Z');
+          do{d.setUTCDate(d.getUTCDate()+1);}while(d.getUTCDay()===0||d.getUTCDay()===6);
+          const g=Math.round((new Date(String(stk.earningsDate).slice(0,10)+'T00:00:00Z')-d)/86400000);
+          if(g>=0&&g<=7)return{color:'amber'};
+        }
         return{color:'green'};
       }
       if(tab==='S6'){const b1=b[0],b5=b[4];
