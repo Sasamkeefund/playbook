@@ -210,6 +210,7 @@
 
     .verdict{font-size:12.5px;font-weight:500}
     .verdict.v-green{color:var(--up)} .verdict.v-amber{color:var(--amber)} .verdict.v-red{color:var(--down)} .verdict.v-cyan{color:var(--cyan)}
+    .verdict.v-paused{opacity:.7;border-left:3px dashed currentColor;padding-left:8px}
 
     .empty{text-align:center;padding:2.5rem;color:var(--dim)}
     .footer{margin-top:1.6rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--faint)}
@@ -286,6 +287,7 @@
         <option value="actionable">🟢🔵 可考慮（綠+青）</option>
         <option value="green">🟢 頂級/良好/突破/setup</option>
         <option value="cyan">🔵 已成立但質素較低（細倉）</option>
+        <option value="paused">⏸ 已成立但真錢暫停（大市唔強 / 業績前）</option>
         <option value="amber">🟡 未成立/等緊（續watch）</option>
         <option value="red">🔴 未夠班/跳過</option>
       </select>
@@ -545,7 +547,8 @@
         const tail=' ｜ '+qMark+' '+qLabel+e50Tag+' ｜ R:R OK 先入，TradingView confirm';
         // 2026-11-09：大市唔係「強」或者業績前 7 日內 → 結論係「真錢暫停」，setup 質素放後面做參考
         const blk=s1RealMoneyBlock(stk);
-        const fin=v=>blk?{text:'⏸ 真錢暫停：'+blk+' ｜ Setup 本身（參考）：'+v.text.replace(/^(🔥|✅|🔷)\s*/,'').replace(' ｜ R:R OK 先入，TradingView confirm','').replace('（入場窗口）+ ',' + ').replace('（入場窗口）',''),color:'amber',paused:true}:v;
+        // 顏色跟返 setup 本身質素（綠 / 青），paused 標記令佢唔會出現喺「可考慮」篩選
+        const fin=v=>blk?{text:'⏸ 真錢暫停：'+blk+' ｜ Setup 本身：'+v.text.replace(' ｜ R:R OK 先入，TradingView confirm','').replace('（入場窗口）+ ',' + ').replace('（入場窗口）',''),color:v.color,paused:true}:v;
         // 以下三種：Setup已經成立(R1-R5全過)，但質素較低 → 用青色(cyan)獨立標示，同「仲未成立」嘅黃色分開
         if(ago===2)return fin({text:'🔷 3日升返 — 訊號較弱，考慮細position'+tail,color:'cyan'});
         // ago 0-1（升返第1-2日）且 rms≥3：再睇趨勢質素分綠/青
@@ -808,8 +811,9 @@
         else if(ff==='below')s=s.filter(x=>x.strategies.S1.pullbackTouch&&!x.strategies.S1.aboveNow);
       }
       const vf=document.getElementById('filterVerdict')?document.getElementById('filterVerdict').value:'';
-      if(vf==='actionable')s=s.filter(x=>{const vc=getVerdict(activeTab,x.strategies[activeTab],x.close,x).color;return vc==='green'||vc==='cyan';});
-      else if(vf)s=s.filter(x=>getVerdict(activeTab,x.strategies[activeTab],x.close,x).color===vf);
+      if(vf==='actionable')s=s.filter(x=>{const v=getVerdict(activeTab,x.strategies[activeTab],x.close,x);return (v.color==='green'||v.color==='cyan')&&!v.paused;});
+      else if(vf==='paused')s=s.filter(x=>!!getVerdict(activeTab,x.strategies[activeTab],x.close,x).paused);
+      else if(vf)s=s.filter(x=>{const v=getVerdict(activeTab,x.strategies[activeTab],x.close,x);return v.color===vf&&!v.paused;});
       // 排序
       if(sortKey){
         const stratKeys=['score','bonusScore','streak','recentMaxStreak','pullbackDaysAgo'];
@@ -918,7 +922,7 @@
               +'<td class="s1col mono" style="text-align:center;color:'+recCol+'">'+recTxt+'</td>'
               +'<td class="s1col" style="text-align:center;color:'+aboveCol+';font-weight:700">'+aboveTxt+'</td>';
           })():''}
-          <td class="verdict v-${v.color}">${v.text}${(activeTab==='S1'&&!v.paused)?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
+          <td class="verdict v-${v.color}${v.paused?' v-paused':''}">${v.text}${(activeTab==='S1'&&!v.paused)?'<br><span style="font-size:10px">'+fakeoutBadge(st)+'</span>':''}</td>
         </tr>`;
       }).join('');
     }
