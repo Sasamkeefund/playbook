@@ -946,6 +946,31 @@ def migrate_intraday_stops(open_pos, closed, charts):
     if n:
         print(f"止蝕改用盤中 Stop 單：重新計咗 {n} 張已平倉自動記錄")
 
+# ════════════════════════════════════════════════════════════════
+# 冇數據平唔到嘅持倉（2026-11-11 Sasa 同意）
+#   WBD 等收購、價格釘死，2026-10-08 起 scanner 冇咗佢嘅數據 → S3C 嗰張（10/06 入場 @30.95）永遠平唔到。
+#   用入場價平倉（0R），原因加「唔計戰績」：唔係真正嘅 S3 訊號，Paper Trade 頁唔計入戰績。
+# ════════════════════════════════════════════════════════════════
+VOID_TAG = "唔計戰績"
+NO_DATA_CLOSE = [("WBD", "S3C")]
+
+def close_no_data(open_pos, closed, charts, session):
+    for tk, grp in NO_DATA_CLOSE:
+        if (charts.get(tk) or {}).get("c"):
+            continue          # 有返數據就照常管理
+        for p in list(open_pos):
+            if p.get("ticker") != tk or p.get("group") != grp:
+                continue
+            entry = _num(p.get("entry"))
+            reason = f"數據停咗（等收購、價格釘死），用入場價平倉，{VOID_TAG}"
+            exit_date = session or today_str()
+            gv_post({"action": "paper_close", "ticker": tk, "group": grp, "exitDate": exit_date,
+                     "exitPx": entry, "reason": reason, "r": 0, "pct": 0})
+            open_pos.remove(p)
+            q = dict(p); q.update({"exitDate": exit_date, "exitPx": entry, "reason": reason, "r": 0, "pct": 0})
+            closed.append(q)
+            print(f"平倉 [{grp}] {tk}：冇數據（等收購），用入場價 {entry} 平倉（{VOID_TAG}）")
+
 def main():
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
@@ -976,6 +1001,7 @@ def main():
     migrate_intraday_stops(open_pos, closed, charts)
     revert_s1_open_fill(open_pos, closed, charts)
     tag_s1_earnings(open_pos, closed, stocks, charts)
+    close_no_data(open_pos, closed, charts, session)
 
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}

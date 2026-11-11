@@ -209,7 +209,7 @@ async function load(){
     return;
   }
   const d=paperResult.value;
-  _allOpen=d.open||[]; _allClosed=d.closed||[];
+  _allOpen=d.open||[]; _allClosed=(d.closed||[]).filter(t=>!String(t.reason||'').includes('唔計戰績'));   // 2026-11-11：數據停咗嘅單（例如 WBD）唔計戰績
   _liveData={};
   if(dataResult.status==='fulfilled'){
     (dataResult.value.stocks||[]).forEach(s=>{ _liveData[s.ticker.toUpperCase()]=s; });
