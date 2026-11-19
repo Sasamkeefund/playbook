@@ -60,12 +60,12 @@ jobs:
 
       # 持倉股最後收市價（數據停咗 3 個交易日 → 用呢個價自動平倉，唔計戰績）
       - name: Commit last_px.json
+        continue-on-error: true     # 唔重要：失敗都唔好阻住下面 S6 嗰步，聽晚會再寫過
         run: |
           git add last_px.json
           if ! git diff --staged --quiet; then
             git commit -m "paper last price $(date -u +%Y-%m-%d)"
-            git pull --rebase origin main
-            git push
+            for i in 1 2 3; do git pull --rebase origin main && git push && break; sleep 10; done
           fi
 
       - name: Lock S6 breakout RV
