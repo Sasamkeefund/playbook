@@ -971,6 +971,100 @@ def close_no_data(open_pos, closed, charts, session):
             closed.append(q)
             print(f"平倉 [{grp}] {tk}：冇數據（等收購），用入場價 {entry} 平倉（{VOID_TAG}）")
 
+# ════════════════════════════════════════════════════════════════
+# 自動規則（2026-11-19 Sasa 同意）：持倉嘅股連續 3 個交易日冇數據 → 用最後收市價平倉，標「唔計戰績」
+#   起因：BKH、NWE（S7E20 / S7S10，11/05 入場）兩間公司合併，11/16 起 scanner 冇咗佢哋嘅數據 → 永遠平唔到。
+#   以後收購／合併／除牌／改 ticker 都自動處理，唔會再卡住。
+#   · 每隻持倉股嘅最後收市價記喺 last_px.json（每晚 scan 之後 commit 返入 repo），數據冇咗都攞得返。
+#   · R 照計（掂咗 T1 嘅組 = 一半 T1 + 一半最後價），但原因有「唔計戰績」→ Paper Trade 頁唔計入戰績。
+#   · 只管自動組；人手記錄（S1 / TV）唔郁，照舊由你自己撳平倉。
+#   · 成個 scan 冇數據（charts.json 空）就乜都唔做，唔會因為 scanner 壞咗而亂平倉。
+# ════════════════════════════════════════════════════════════════
+LAST_PX_FILE = "last_px.json"
+NO_DATA_DAYS = 3
+
+def _auto_groups():
+    g = {a for a, _, _ in S1_AUTO_GROUPS} | {S1V1_GROUP[0]} | {a for a, _, _ in S7N_GROUPS}
+    return g | {a for a, _ in S6_GROUPS.values()} | set(AUTO_GROUP_STOP)
+
+def _trading_calendar(charts):
+    """由 charts.json 砌返交易日曆：頭 300 隻股入面，夠多股都有嘅 bar 日期。"""
+    from collections import Counter
+    cnt = Counter()
+    for i, ch in enumerate(charts.values()):
+        cnt.update(set(_bar_dates(ch)))
+        if i >= 300:
+            break
+    if not cnt:
+        return []
+    top = max(cnt.values())
+    return sorted(d for d, n in cnt.items() if n >= top * 0.3)
+
+def _load_last_px():
+    try:
+        with open(LAST_PX_FILE, encoding="utf-8") as fh:
+            d = json.load(fh)
+        return d if isinstance(d, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def close_stale_data(open_pos, closed, charts, session):
+    if not session:
+        return                                   # 冇數據交易日（scan 失敗）→ 唔做
+    old = _load_last_px()
+    cache = {k: dict(v) for k, v in old.items() if isinstance(v, dict) and v.get("date")}
+    cal = _trading_calendar(charts)
+    autos = _auto_groups()
+    for p in list(open_pos):
+        tk, grp = p.get("ticker"), p.get("group")
+        ch = charts.get(tk) or {}
+        dates = _bar_dates(ch) if ch.get("c") else []
+        if dates:
+            prev = cache.get(tk)
+            if not prev or dates[-1] >= str(prev.get("date", "")):
+                cache[tk] = {"date": dates[-1], "close": round(float(ch["c"][-1]), 4)}
+            if dates[-1] >= session:
+                continue                         # 今日有數據 → 照常管理
+        if grp not in autos:
+            continue
+        entry, stop = _num(p.get("entry")), _num(p.get("stop"))
+        if entry is None:
+            continue
+        last = cache.get(tk)
+        if last:
+            last_date, px = str(last["date"])[:10], float(last["close"])
+        else:
+            nd = _norm_date(str(p.get("entryDate", "")))
+            if not nd:
+                continue
+            last_date, px = "%04d-%02d-%02d" % nd, entry
+        missed = sum(1 for d in cal if last_date < d <= session)
+        if missed < NO_DATA_DAYS:
+            print(f"⚠️ [{grp}] {tk}：{missed} 個交易日冇數據（最後 {last_date}），夠 {NO_DATA_DAYS} 日先自動平倉")
+            continue
+        risk = entry - stop if stop is not None else 0
+        R = (lambda x: (x - entry) / risk) if risk > 0 else (lambda x: 0.0)
+        t1 = _num(p.get("t1"))
+        t1hit = str(p.get("t1hit", "")).upper() == "Y"
+        r = 0.5 * R(t1) + 0.5 * R(px) if (t1hit and t1 is not None) else R(px)
+        pct = r * risk / entry * 100 if risk > 0 else (px - entry) / entry * 100
+        how = f"用最後收市價 {px:.2f}（{last_date}）平倉" if last else "冇最後價記錄，用入場價平倉"
+        reason = f"數據停咗 {missed} 個交易日（可能收購／合併／除牌），{how}，{VOID_TAG}"
+        gv_post({"action": "paper_close", "ticker": tk, "group": grp, "exitDate": last_date,
+                 "exitPx": round(px, 2), "reason": reason, "r": round(r, 2), "pct": round(pct, 1)})
+        open_pos.remove(p)
+        q = dict(p); q.update({"exitDate": last_date, "exitPx": round(px, 2), "reason": reason,
+                               "r": round(r, 2), "pct": round(pct, 1)})
+        closed.append(q)
+        print(f"平倉 [{grp}] {tk}：{reason}（R={r:.2f}）")
+    # 淨係留住仲持倉嘅股；有變先寫檔（每晚 scan 之後 commit）
+    held_tk = {p.get("ticker") for p in open_pos}
+    cache = {k: v for k, v in cache.items() if k in held_tk}
+    if cache != old:
+        with open(LAST_PX_FILE, "w", encoding="utf-8") as fh:
+            json.dump(cache, fh, ensure_ascii=False, indent=1, sort_keys=True)
+            fh.write("\n")
+
 def main():
     # 1. 攞最新 scan data
     data = json.load(open("data.json"))
@@ -1002,6 +1096,7 @@ def main():
     revert_s1_open_fill(open_pos, closed, charts)
     tag_s1_earnings(open_pos, closed, stocks, charts)
     close_no_data(open_pos, closed, charts, session)
+    close_stale_data(open_pos, closed, charts, session)
 
     # 持倉 key = ticker|group（同一隻股可同時喺 A、B 組）
     held = {(p["ticker"], p.get("group", "A")) for p in open_pos}

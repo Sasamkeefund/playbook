@@ -58,5 +58,15 @@ jobs:
       - name: Run S7 paper trade
         run: python paper_trade.py
 
+      # 持倉股最後收市價（數據停咗 3 個交易日 → 用呢個價自動平倉，唔計戰績）
+      - name: Commit last_px.json
+        run: |
+          git add last_px.json
+          if ! git diff --staged --quiet; then
+            git commit -m "paper last price $(date -u +%Y-%m-%d)"
+            git pull --rebase origin main
+            git push
+          fi
+
       - name: Lock S6 breakout RV
         run: python s6_breakout.py
