@@ -228,7 +228,7 @@ async function load(){
 // ── 分頁：🤖 自動記錄（系統自己記）/ ✋ 人手記錄（你自己落）──
 const PT_MODES={
   AUTO:{grp:'auto',title:'📊 自動記錄總覽 — 邊個策略做到勝率 50% 以上？',
-    sub:'系統每晚 scan 完自動記錄嘅 paper trade（冇真錢）。每個策略分組對比做法，撳策略名睇詳細。'},
+    sub:'系統每晚 scan 完自動記錄嘅 paper trade（冇真錢）。戰績主要睇強市入場；每個策略分組對比做法，撳策略名睇詳細。'},
   S1A:{grp:'auto',title:'📒 S1 自動記錄 — 跟你平時 S1 做法，每個 🟢🔵 訊號自動記錄',
     sub:'入場：收市企返EMA20 → 掛Limit（收市價）→ 第二日開市前Check（開市<EMA20／裂口>1% 取消）→ 跌到先成交 ｜ 止損：前底實體（0% vs 1%），Stop 單盤中掂到就止蝕 ｜ T1：前頂實體 ｜ R:R≥2 到T1全平，否則T1半+T2(1.618)半'},
   S1V1A:{grp:'auto',title:'📒 S1V1 自動記錄 — 前頂假突破（Dashboard S1V1 綠色訊號）',
@@ -282,28 +282,26 @@ const AUTO_STRATS=[
 ];
 function renderAutoOverview(){
   const valid=t=>t.r!==''&&t.r!=null&&!isNaN(Number(t.r));
-  let h='<div class="panel"><h2>📊 各策略戰績</h2><div class="sub" style="margin-bottom:8px">勝率要有 20 張已平倉單先有參考價值：夠 20 張而勝率 ≥ 50% 會變綠色，少過 50% 變紅色。「掛緊」= 等緊成交嘅單。</div>';
-  h+='<div style="overflow-x:auto"><table><thead><tr><th>策略</th><th>掛緊</th><th>組</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
+  let h='<div class="panel"><h2>📊 各策略戰績</h2><div class="sub" style="margin-bottom:8px">'+_STRONG_NOTE+'<br>勝率要有 20 張已平倉單先有參考價值：強市入場夠 20 張而勝率 ≥ 50% 會變綠色，少過 50% 變紅色。「掛緊」= 等緊成交嘅單。</div>';
+  h+='<div style="overflow-x:auto"><table>'+_statHead(['策略','掛緊','組','持倉中'])+'<tbody>';
   AUTO_STRATS.forEach(st=>{
     st.groups.forEach(([g,lab],i)=>{
-      const cl=_allClosed.filter(t=>t.group===g&&valid(t)), s=_autoStat(cl);
-      const wrN=cl.length?cl.filter(t=>Number(t.r)>0).length/cl.length*100:null;
-      const wrCls=(wrN!=null&&cl.length>=20)?(wrN>=50?'green':'red'):'';
+      const cl=_allClosed.filter(t=>t.group===g&&valid(t));
       const rs=st.groups.length;
       h+='<tr'+(i===0?' style="border-top:2px solid var(--border)"':'')+'>'
         +(i===0?'<td rowspan="'+rs+'" style="font-weight:700;vertical-align:top;white-space:nowrap"><a href="#" onclick="switchPT(\''+st.m+'\');return false" style="color:var(--accent);text-decoration:none">'+st.name+' ›</a></td>'
                +'<td rowspan="'+rs+'" class="mono" style="text-align:center;vertical-align:top">'+st.pend()+'</td>':'')
         +'<td style="font-size:12px;white-space:nowrap">'+g+' <span style="color:var(--faint)">'+lab+'</span></td>'
         +'<td class="mono" style="text-align:center">'+_allOpen.filter(p=>p.group===g).length+'</td>'
-        +'<td class="mono" style="text-align:center">'+s.n+(s.n<20?'<span style="font-size:10px;color:var(--faint)"> /20</span>':'')+'</td>'
-        +'<td class="mono '+wrCls+'" style="text-align:center">'+s.wr+'</td>'
-        +'<td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';
+        +_statCells(cl)+'</tr>';
     });
   });
   h+='</tbody></table></div></div>';
   const groups=AUTO_STRATS.flatMap(x=>x.groups.map(g=>g[0]));
-  const allCl=_allClosed.filter(t=>groups.includes(t.group)&&valid(t)), all=_autoStat(allCl);
-  h+='<div class="panel"><h2>🧮 全部自動記錄合計</h2><div class="sub">已平倉 '+all.n+' 張 ｜ 勝率 '+all.wr+' ｜ 每單期望 <span class="'+all.col+'">'+all.exp+'</span> ｜ 累計 <span class="'+all.col+'">'+all.tot+'</span></div>'
+  const allCl=_allClosed.filter(t=>groups.includes(t.group)&&valid(t)), all=_autoStat(allCl), str=_autoStat(allCl.filter(_isStrong));
+  h+='<div class="panel"><h2>🧮 全部自動記錄合計</h2>'
+    +'<div class="sub">🟢 <b>強市入場</b>：已平倉 '+str.n+' 張 ｜ 勝率 '+str.wr+' ｜ 每單期望 <span class="'+(str.n?str.col:'')+'">'+str.exp+'</span> ｜ 累計 <span class="'+(str.n?str.col:'')+'">'+str.tot+'</span></div>'
+    +'<div class="sub" style="color:var(--dim)">全部入場（參考）：已平倉 '+all.n+' 張 ｜ 勝率 '+all.wr+' ｜ 每單期望 '+all.exp+' ｜ 累計 '+all.tot+'</div>'
     +regimeStatsHtml(allCl)+'</div>';
   h+='<div class="warn"><b>🤖 全部係自動記錄，冇真錢。</b>S3、S5、S6 由 2026-10-02 開始記錄（只做 forward test）；S1V1 由 2026-11-09 嘅訊號開始；S1、S7 更早已經開始。2026-10-07 起全部止蝕改用 Stop 單（盤中掂到就止蝕，裂口低開用開市價），之前已平倉嘅單都用新規則重新計過。</div>';
   document.getElementById('content').innerHTML=h;
@@ -347,9 +345,9 @@ function renderS7N(openP, closed){
   }else h+='<div class="sub">最新交易日冇放量突破。</div>';
   h+='</div>';
   // 兩組對比
-  h+='<div class="panel"><h2>🔬 兩組對比：用 20MA 定 10MA 止賺？</h2><div style="overflow-x:auto"><table><thead><tr><th>組</th><th>止賺</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
-  [['S7E20','收市跌穿 20MA'],['S7S10','收市跌穿 10MA']].forEach(([g,lab])=>{const s=stat(closed.filter(t=>t.group===g));
-    h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td><td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';});
+  h+='<div class="panel"><h2>🔬 兩組對比：用 20MA 定 10MA 止賺？</h2><div class="sub" style="margin-bottom:8px">'+_STRONG_NOTE+'</div><div style="overflow-x:auto"><table>'+_statHead(['組','止賺','持倉中'])+'<tbody>';
+  [['S7E20','收市跌穿 20MA'],['S7S10','收市跌穿 10MA']].forEach(([g,lab])=>{
+    h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td>'+_statCells(closed.filter(t=>t.group===g))+'</tr>';});
   h+='</tbody></table></div>'+regimeStatsHtml(closed)+'<div class="sub" style="margin-top:10px">每個訊號兩組各開一單，入場同止蝕一樣，只係止賺唔同。要升過 入場+0.5×ATR 先開始用均線止賺。</div></div>';
   {const PG=_posGroupBar('S7N',[['S7E20','20MA 止賺'],['S7S10','10MA 止賺']],openP,closed);h+=PG.bar;openP=PG.open;closed=PG.closed;}
   // 持倉
@@ -400,9 +398,9 @@ function renderS6(openP, closed){
   }else h+='<div class="sub">而家冇掛緊嘅 S6 單。</div>';
   h+='</div>';
   // 2. 兩組對比
-  h+='<div class="panel"><h2>🔬 兩組對比：手法A vs 手法C</h2><div style="overflow-x:auto"><table><thead><tr><th>組</th><th>入場方法</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
-  [['S6A','手法A：突破日 RV > 1.5，Limit @ 突破日收市'],['S6C','手法C：RV ≤ 1.5，Limit @ H1 等回測']].forEach(([g,lab])=>{const s=stat(closed.filter(t=>t.group===g));
-    h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td><td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';});
+  h+='<div class="panel"><h2>🔬 兩組對比：手法A vs 手法C</h2><div class="sub" style="margin-bottom:8px">'+_STRONG_NOTE+'</div><div style="overflow-x:auto"><table>'+_statHead(['組','入場方法','持倉中'])+'<tbody>';
+  [['S6A','手法A：突破日 RV > 1.5，Limit @ 突破日收市'],['S6C','手法C：RV ≤ 1.5，Limit @ H1 等回測']].forEach(([g,lab])=>{
+    h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td>'+_statCells(closed.filter(t=>t.group===g))+'</tr>';});
   h+='</tbody></table></div>';
   const qv=[...new Set(closed.map(t=>part(t.state,2)).filter(Boolean))];
   if(qv.length){
@@ -460,10 +458,30 @@ const _md=d=>String(d||'').slice(5);
 const _money=v=>(v==null||v==='')?'—':'$'+Number(v).toFixed(2);
 function _autoStat(cl){const w=cl.filter(t=>Number(t.r)>0).length,R=cl.reduce((a,t)=>a+(Number(t.r)||0),0);
   return {n:cl.length,wr:cl.length?Math.round(w/cl.length*100)+'%':'—',exp:cl.length?(R/cl.length>=0?'+':'')+(R/cl.length).toFixed(2)+'R':'—',tot:cl.length?(R>=0?'+':'')+R.toFixed(1)+'R':'—',col:R>=0?'green':'red'};}
+// 2026-11-23（Sasa 同意）：戰績主要睇「強市入場」—— 開單當日大市「強」嘅單（真錢只會喺強市做）；
+// 全部入場（包埋中 / 弱市）擺最右做參考。只係改顯示，記錄照舊。
+function _isStrong(t){const r=regimeOf(t.entryDate);return !!(r&&r.regime==='強');}
+function _statHead(firstCols,tailCols){
+  return '<thead><tr>'+firstCols.map(c=>'<th rowspan="2">'+c+'</th>').join('')
+    +'<th colspan="4" style="text-align:center;color:#2ee6a6">🟢 強市入場（主要睇）</th>'
+    +'<th rowspan="2" style="color:var(--dim)">全部入場<br><span style="font-weight:400;font-size:10px">包埋中 / 弱市，參考</span></th>'
+    +(tailCols||[]).map(c=>'<th rowspan="2">'+c+'</th>').join('')+'</tr>'
+    +'<tr><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead>';
+}
+function _statCells(cl){
+  const sc=cl.filter(_isStrong), s=_autoStat(sc), a=_autoStat(cl);
+  const wrN=sc.length?sc.filter(t=>Number(t.r)>0).length/sc.length*100:null;
+  const wrCls=(wrN!=null&&sc.length>=20)?(wrN>=50?'green':'red'):'';
+  return '<td class="mono" style="text-align:center">'+s.n+(s.n<20?'<span style="font-size:10px;color:var(--faint)"> /20</span>':'')+'</td>'
+    +'<td class="mono '+wrCls+'" style="text-align:center">'+s.wr+'</td>'
+    +'<td class="mono '+(s.n?s.col:'')+'" style="text-align:center">'+s.exp+'</td><td class="mono '+(s.n?s.col:'')+'" style="text-align:center">'+s.tot+'</td>'
+    +'<td class="mono" style="text-align:center;font-size:11px;color:var(--dim)">'+(a.n?a.n+' 張 · '+a.wr+'<br>'+a.exp:'—')+'</td>';
+}
+const _STRONG_NOTE='🟢 主要數字只計開單當日大市「強」嘅單（真錢只會喺強市做）；「全部入場」包埋中 / 弱市，做參考。每個大市分開嘅數字睇「📈 按開單當日大市分組」。';
 function _autoCompare(title,groups,openP,closed,note){
-  let h='<div class="panel"><h2>'+title+'</h2><div style="overflow-x:auto"><table><thead><tr><th>組</th><th>做法</th><th>持倉中</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th></tr></thead><tbody>';
-  groups.forEach(([g,lab])=>{const s=_autoStat(closed.filter(t=>t.group===g));
-    h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td><td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td></tr>';});
+  let h='<div class="panel"><h2>'+title+'</h2><div class="sub" style="margin-bottom:8px">'+_STRONG_NOTE+'</div><div style="overflow-x:auto"><table>'+_statHead(['組','做法','持倉中'])+'<tbody>';
+  groups.forEach(([g,lab])=>{
+    h+='<tr><td style="font-weight:700">'+g+'</td><td style="font-size:12px">'+lab+'</td><td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td>'+_statCells(closed.filter(t=>t.group===g))+'</tr>';});
   return h+'</tbody></table></div>'+regimeStatsHtml(closed)+'<div class="sub" style="margin-top:10px">'+note+'</div></div>';
 }
 // ── 持倉 / 已平倉：按組分開睇（2026-10-07：全部擺埋一齊太多，難睇）──
@@ -666,14 +684,13 @@ function renderS1A(openP, closed){
     return (p.t1hit==='Y'||p.t1hit==='y')&&t1?0.5*(t1-e)/risk+0.5*r:r;};
   const mtmTxt=ops=>{const m=ops.map(mtm).filter(v=>v!=null);if(!m.length)return '<td class="mono" style="text-align:center">—</td>';
     const v=m.reduce((a,x)=>a+x,0);return '<td class="mono '+(v>=0?'green':'red')+'" style="text-align:center">'+(v>=0?'+':'')+v.toFixed(1)+'R</td>';};
-  let h=s1NextPanel(openP)+'<div class="panel"><h2>🔬 兩組對比：止蝕要唔要加 1% 緩衝？</h2><div style="overflow-x:auto"><table><thead><tr>'
-    +'<th>組</th><th>止蝕</th><th>持倉中</th><th>持倉中（按現價）</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th><th>被前底止蝕</th></tr></thead><tbody>';
-  G.forEach(([g,lab,desc])=>{const s=stat(closed.filter(t=>t.group===g));
+  let h=s1NextPanel(openP)+'<div class="panel"><h2>🔬 兩組對比：止蝕要唔要加 1% 緩衝？</h2><div class="sub" style="margin-bottom:8px">'+_STRONG_NOTE+' 真錢條件（強市 + 唔係業績前）睇下面「✅ 真錢跟嘅 S1」。</div><div style="overflow-x:auto"><table>'
+    +_statHead(['組','止蝕','持倉中','持倉中（按現價）'],['被前底止蝕<br><span style="font-weight:400;font-size:10px">強市入場</span>'])+'<tbody>';
+  G.forEach(([g,lab,desc])=>{const cl=closed.filter(t=>t.group===g), s=stat(cl.filter(_isStrong));
     h+='<tr><td style="font-weight:700">'+lab+'</td><td style="font-size:11px;color:var(--dim)">'+desc+'</td>'
       +'<td class="mono" style="text-align:center">'+openP.filter(p=>p.group===g).length+'</td>'
       +mtmTxt(openP.filter(p=>p.group===g))
-      +'<td class="mono" style="text-align:center">'+s.n+'</td><td class="mono" style="text-align:center">'+s.wr+'</td>'
-      +'<td class="mono '+s.col+'" style="text-align:center">'+s.exp+'</td><td class="mono '+s.col+'" style="text-align:center">'+s.tot+'</td>'
+      +_statCells(cl)
       +'<td class="mono" style="text-align:center">'+s.sl+'</td></tr>';});
   h+='</tbody></table></div>';
   // 顏色 / 股票池
@@ -766,7 +783,9 @@ function renderS1V1(openP, closed){
   const head='<table><thead><tr><th></th><th>持倉中</th><th>持倉中（按現價）</th><th>已平倉</th><th>勝率</th><th>每單期望</th><th>累計R</th><th>止蝕出場</th></tr></thead><tbody>';
   const catTable=(title,fn,cats)=>'<div style="overflow-x:auto;margin-top:14px"><div class="sub" style="margin-bottom:6px">'+title+'</div>'+head
     +cats.map(c=>sRow(c,openP.filter(p=>fn(p)===c),closed.filter(t=>fn(t)===c))).join('')+'</tbody></table></div>';
-  h+='<div class="panel"><h2>🔬 S1V1 戰績（止蝕 = 假突破最低收市）</h2><div style="overflow-x:auto">'+head+sRow('全部',openP,closed)+'</tbody></table></div>';
+  h+='<div class="panel"><h2>🔬 S1V1 戰績（止蝕 = 假突破最低收市）</h2><div class="sub" style="margin-bottom:8px">'+_STRONG_NOTE+'</div><div style="overflow-x:auto">'+head
+    +sRow('<b style="color:#2ee6a6">🟢 強市入場（主要睇）</b>',openP.filter(_isStrong),closed.filter(_isStrong))
+    +sRow('<span style="color:var(--dim)">全部入場（參考）</span>',openP,closed)+'</tbody></table></div>';
   h+=catTable('🔥 vs ✅（🔥 = Bonus ≥ 2：回調快 / 回調縮量 / Wave2 升得快過 Wave1，至少兩樣）',t=>/🔥/.test(_pt(t.state,0))?'🔥 Bonus ≥ 2':'✅ Bonus 0–1',['🔥 Bonus ≥ 2','✅ Bonus 0–1']);
   h+=catTable('業績前 7 日內入場 vs 其他（只係標記，照樣入場）',t=>/業績前\d+日/.test(t.state||'')?'業績前 7 日內入場':'其他',['業績前 7 日內入場','其他']);
   h+=catTable('計劃：T1 全平 vs T1 半 + T2 半',t=>_pt(t.state,2)==='T1半+T2半'?'T1半+T2半':'T1全平',['T1全平','T1半+T2半']);
