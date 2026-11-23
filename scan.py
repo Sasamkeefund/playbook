@@ -2648,13 +2648,18 @@ def get_forex_s1_data(forex_charts):
                 "pullbackDaysAgo": f_pullback_days_ago,
                 "aboveNow": f_above_now,
             }
+            # 2026-11-23：Yahoo 外匯日線嘅「開市價」唔準 —— 已收市嘅 bar 開市價差唔多等於收市價，
+            # 所以 Dashboard 啲外匯 K 線冇實體。外匯 24 小時交易，今日開市 = 尋日收市（紐約 5pm 換日），
+            # 圖表改用上一日收市做開市價；最高／最低包埋開市同收市，K 線唔會出界。
+            # 外匯 S1 / S5 判斷只用收市、最高、最低（上面 fc / fh / fl），唔受影響。
+            fo_fix = [fc[i - 1] if i > 0 else fo[i] for i in range(len(fc))]
             win = 120
             fstart = max(0, fidx - win)
             forex_charts[fx] = {
                 "t": [ft[i] if i < len(ft) else 0 for i in range(fstart, fidx + 1)],
-                "o": [round(fo[i], 5) for i in range(fstart, fidx + 1)],
-                "h": [round(fh[i], 5) for i in range(fstart, fidx + 1)],
-                "l": [round(fl[i], 5) for i in range(fstart, fidx + 1)],
+                "o": [round(fo_fix[i], 5) for i in range(fstart, fidx + 1)],
+                "h": [round(max(fh[i], fo_fix[i], fc[i]), 5) for i in range(fstart, fidx + 1)],
+                "l": [round(min(fl[i], fo_fix[i], fc[i]), 5) for i in range(fstart, fidx + 1)],
                 "c": [round(fc[i], 5) for i in range(fstart, fidx + 1)],
                 "e20": [round(fe20[i], 5) if fe20[i] is not None else None for i in range(fstart, fidx + 1)],
                 "e50": [round(fe50[i], 5) if fe50[i] is not None else None for i in range(fstart, fidx + 1)],
